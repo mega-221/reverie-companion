@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import type { Character, CompendiumEntry } from './types';
 import { vigorMax, strainMax, dpMax, evasion, movementTiles, burdenMax, currentBurden } from './calc';
