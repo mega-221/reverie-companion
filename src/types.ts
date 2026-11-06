@@ -15,7 +15,8 @@ export type CharacterData = {
   specialSkills: { name: string; rank: number; attribute: string }[];
   convictions: { season: string; name: string; statement: string; rank: number }[];
   failings: { name: string; rank: number; convictionIndex: number; statement: string }[];
-  abilities: { name: string; equipped: boolean }[]; // Updated type
+  abilities: { name: string; equipped: boolean }[];
+  disciplines: string[];
   items: { name: string; burden: number; qty: number; equipped: boolean }[];
   bonus: { vm: number; sl: number; dp: number; eva: number };
   trackers: {
@@ -23,4 +24,27 @@ export type CharacterData = {
     injuries: { severity: number; part: string; weeksLeft: number }[];
   };
   notes: string;
+};
+
+export type CompendiumEntry = {
+  id: string;
+  type: string;
+  name: string;
+  data: {
+    description?: string;
+    type?: 'attack' | 'defensive' | 'utility';
+    speed?: '>' | '>>' | '>>>' | '|' | '<';
+    sn_cost?: number;
+    class_rank?: number;
+    requirement?: string;
+    range?: 'Melee' | 'Ranged' | 'Melee/Ranged';
+    acc?: string;
+    dmg?: string;
+    eva?: string;
+    discipline?: string;
+    archetype?: string;
+    paths?: string[];
+    source?: string; // <--- ADDED
+    [key: string]: any;
+  };
 };

@@ -12,6 +12,7 @@ export function defaultCharacterData(): CharacterData {
       Intuition: 0, Persuasion: 0, Willpower: 0,
     },
     specialSkills: [], convictions: [], failings: [], abilities: [], items: [],
+    disciplines: [], // Added
     bonus: { vm: 0, sl: 0, dp: 0, eva: 0 },
     trackers: { vigor: 6, strain: 0, dp: 3, ap: 0, injuries: [] },
     notes: '',
