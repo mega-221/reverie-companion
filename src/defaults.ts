@@ -2,7 +2,8 @@ import type { CharacterData } from './types';
 
 export function defaultCharacterData(): CharacterData {
   return {
-    identity: { origin: '', className: '', path: '', tier: 2, level: 5, xp: 0, concept: '' },
+    identity: { origin: '', className: '', path: '', concept: '' },
+    progression: { tier: 2, level: 5, xp: 0 },
     attributes: { grt: 1, ref: 1, int: 1, psy: 1 },
     skills: {
       Athletics: 0, Brawling: 0, Endurance: 0,
@@ -12,7 +13,7 @@ export function defaultCharacterData(): CharacterData {
     },
     specialSkills: [], convictions: [], failings: [], abilities: [], items: [],
     bonus: { vm: 0, sl: 0, dp: 0, eva: 0 },
-    trackers: { vigor: 6, strain: 0, dp: 3, injuries: [] },
+    trackers: { vigor: 6, strain: 0, dp: 3, ap: 0, injuries: [] },
     notes: '',
   };
 }

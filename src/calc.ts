@@ -1,8 +1,8 @@
 import type { CharacterData } from './types';
 
-export const vigorMax  = (d: CharacterData) => 5 + (d.identity.tier - 1) + d.bonus.vm;
-export const strainMax = (d: CharacterData) => 5 + (d.identity.tier - 1) + d.bonus.sl;
-export const dpMax     = (d: CharacterData) => 2 + (d.identity.tier - 1) + d.bonus.dp;
+export const vigorMax  = (d: CharacterData) => 5 + (d.progression.tier - 1) + d.bonus.vm;
+export const strainMax = (d: CharacterData) => 5 + (d.progression.tier - 1) + d.bonus.sl;
+export const dpMax     = (d: CharacterData) => 2 + (d.progression.tier - 1) + d.bonus.dp;
 export const evasion   = (d: CharacterData) => 10 + d.bonus.eva;
 
 export function movementTiles(d: CharacterData) {
@@ -20,4 +20,4 @@ export function burdenMax(d: CharacterData) {
 }
 
 export const currentBurden = (d: CharacterData) =>
-  d.items.reduce((sum, i) => sum + (i.burden * (i.qty || 1)), 0);
+  d.items.reduce((sum, i) => sum + (i.equipped ? i.burden * (i.qty || 1) : 0), 0);
