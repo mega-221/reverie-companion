@@ -11,9 +11,9 @@ export type CharacterData = {
   identity: { origin: string; className: string; path: string; tier: number; level: number; xp: number; concept: string };
   attributes: { grt: number; ref: number; int: number; psy: number };
   skills: Record<string, number>;
-  specialSkills: { name: string; rank: number }[];
+  specialSkills: { name: string; rank: number; attribute: string }[]; // Added attribute
   convictions: { season: string; name: string; statement: string; rank: number }[];
-  failings: { name: string; rank: number; convictionIndex: number }[];
+  failings: { name: string; rank: number; convictionIndex: number; statement: string }[]; // Added statement
   abilities: string[];
   items: { name: string; burden: number; qty: number }[];
   bonus: { vm: number; sl: number; dp: number; eva: number };
