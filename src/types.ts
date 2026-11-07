@@ -8,7 +8,7 @@ export type Character = {
 };
 
 export type CharacterData = {
-  identity: { origin: string; className: string; path: string; concept: string };
+  identity: { origin: string; className: string; path: string; quote: string; inspirations: string[]; originChoices: Record<string, string> };
   progression: { tier: number; level: number; xp: number };
   attributes: { grt: number; ref: number; int: number; psy: number };
   skills: Record<string, number>;
@@ -32,6 +32,7 @@ export type CompendiumEntry = {
   name: string;
   data: {
     description?: string;
+    // Ability specific fields
     type?: 'attack' | 'defensive' | 'utility';
     speed?: '>' | '>>' | '>>>' | '|' | '<';
     sn_cost?: number;
@@ -41,10 +42,11 @@ export type CompendiumEntry = {
     acc?: string;
     dmg?: string;
     eva?: string;
+    // Discipline/Class fields
     discipline?: string;
     archetype?: string;
     paths?: string[];
-    source?: string; // <--- ADDED
+    // Other
     [key: string]: any;
   };
 };

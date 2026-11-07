@@ -12,10 +12,10 @@ const ATTRIBUTE_NAMES = {
 };
 
 const ATTRIBUTE_DESCRIPTIONS = {
-  grt: "Your physical body. The resilience and power of flesh and bone.",
-  ref: "Your uncontrolled impulses. The precise senses and natural instincts.",
-  int: "Your pointed mind. The library of knowledge and its application.",
-  psy: "Your own soul. The internal will and the poetry to communicate it."
+  grt: "Grit: Your physical body. The resilience and power of flesh and bone.",
+  ref: "Reflex: Your uncontrolled impulses. The precise senses and natural instincts.",
+  int: "Intellect: Your pointed mind. The library of knowledge and its application.",
+  psy: "Psyche: Your own soul. The internal will and the poetry to communicate it."
 };
 
 const SKILL_GROUPS = {
@@ -40,22 +40,45 @@ const CORE_SKILL_DESCRIPTIONS: Record<string, string> = {
   Willpower: "Mental resilience. Your ability to resist the will of others."
 };
 
+const SPECIAL_SKILL_DESCRIPTIONS: Record<string, string> = {
+  Carry: "Back strength. Your ability to carry heavy items and armour over a prolonged period.",
+  Discipline: "Nerve and courage. Your ability to maintain a clear mind under physical pressure and duress.",
+  Stance: "Posture. Your ability to grip items and avoid tripping.",
+  Interface: "Sleight of hand. Your ability to perform precise hand movements like lockpicking.",
+  Pilot: "Systemic coordination. Your ability to operate vehicles and siege weapons.",
+  Scout: "Worldly navigation. Your ability to survey and quickly traverse areas.",
+  Engineering: "Advanced problem solving. Your ability to apply scientific principles to complex tasks and craft items.",
+  Lore: "Studied narratives. Your knowledge of the world's history, geography and the humanities.",
+  Medicine: "Anatomy and herbalism. Your ability to mend injuries and brew concoctions.",
+  Authority: "Soft force. Your ability to impose your will onto others.",
+  Deception: "Dishonesty and composure. Your ability to lie and manipulate others.",
+  Whisper: "Planar entanglement. Your ability to interact with non-humans and the unknowable."
+};
+
+const SPECIAL_SKILL_ATTRIBUTES: Record<string, 'grt' | 'ref' | 'int' | 'psy'> = {
+  Carry: 'grt', Discipline: 'grt', Stance: 'grt', Armour: 'grt',
+  Interface: 'ref', Pilot: 'ref', Scout: 'ref',
+  Engineering: 'int', Lore: 'int', Medicine: 'int',
+  Authority: 'psy', Deception: 'psy', Whisper: 'psy'
+};
+
 const SEASONS = ['Vamor', 'Bruma', 'Trumst', 'Halice'];
 
+const CORE_SKILLS = ['Athletics', 'Brawling', 'Endurance', 'Dexterity', 'Perception', 'Stealth', 'Knowledge', 'Reasoning', 'Survival', 'Intuition', 'Persuasion', 'Willpower'];
+const SPECIAL_SKILLS = ['Carry', 'Discipline', 'Stance', 'Interface', 'Pilot', 'Scout', 'Engineering', 'Lore', 'Medicine', 'Authority', 'Deception', 'Whisper'];
+
 const SectionHeader = ({ title }: { title: string }) => (
-  <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">
+  <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">
     {title}
   </h2>
 );
 
-// REWRITTEN TOOLTIP TO PREVENT OVERFLOW
 const Tooltip = ({ text, children, className = "w-full", noBorder = false }: { text: string, children: React.ReactNode, className?: string, noBorder?: boolean }) => {
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [show, setShow] = useState(false);
 
   const handleMouseEnter = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    // Clamp X to prevent overflow left/right
     const x = Math.max(140, Math.min(window.innerWidth - 140, rect.left + rect.width / 2));
     setCoords({ x, y: rect.top });
     setShow(true);
@@ -99,11 +122,89 @@ const getTypeStyle = (type?: string) => {
   }
 };
 
+// Segmented Resource Bar Component
+const ResourceBar = ({ current, max, color, overLimitColor }: { current: number, max: number, color: string, overLimitColor?: string }) => {
+  const overLimit = Math.max(0, current - max);
+  
+  return (
+    <div className="flex gap-1 w-full mt-1 mb-2">
+      {Array.from({ length: max }).map((_, i) => {
+        let barColor = 'bg-gray-700';
+        
+        if (i < current) {
+          // Turn the leftmost segments purple first
+          if (overLimitColor && i < overLimit) {
+            barColor = overLimitColor;
+          } else {
+            barColor = color;
+          }
+        }
+        
+        return (
+          <div key={i} className={`h-3 flex-1 rounded-sm ${barColor}`} />
+        );
+      })}
+    </div>
+  );
+};
+
+type OriginChoice = { id: string; label: string; options: string[]; type: 'inspiration' | 'starting'; rank?: number };
+const ORIGIN_CHOICES: Record<string, OriginChoice[]> = {
+  'Commoner': [
+    { id: 'insp', label: 'Inspiration (Any basic skill)', options: CORE_SKILLS, type: 'inspiration' },
+    { id: 'start', label: 'Starting Skill (Any special skill at rank 2)', options: SPECIAL_SKILLS, type: 'starting', rank: 2 }
+  ],
+  'Seeker': [
+    { id: 'insp', label: 'Inspiration (Any basic skill)', options: CORE_SKILLS, type: 'inspiration' },
+    { id: 'start', label: 'Starting Skill (Any special skill at rank 2)', options: SPECIAL_SKILLS, type: 'starting', rank: 2 }
+  ],
+  'Artisan': [
+    { id: 'insp', label: 'Inspiration (Reasoning or Knowledge)', options: ['Reasoning', 'Knowledge'], type: 'inspiration' }
+  ],
+  'Academa': [
+    { id: 'start', label: 'Starting Skill (Engineering, Lore, or Medicine at rank 3)', options: ['Engineering', 'Lore', 'Medicine'], type: 'starting', rank: 3 }
+  ]
+};
+
+type OriginEffect = { inspiration?: string[]; starting?: Record<string, number>; specialAbilities?: string[] };
+const ORIGIN_EFFECTS: Record<string, OriginEffect> = {
+  'Commoner': {},
+  'Merchant': { inspiration: ['Persuasion', 'Knowledge'], starting: { 'Lore': 2 } },
+  'Warrior': { inspiration: ['Athletics'], starting: { 'Armour': 2, 'Stance': 2 } },
+  'Brigand': { inspiration: ['Dexterity', 'Stealth'], starting: { 'Interface': 2 } },
+  'Scholar': { inspiration: ['Knowledge'], starting: { 'Lore': 3 } },
+  'Seeker': { inspiration: ['Willpower'] },
+  'Artisan': { inspiration: ['Reasoning', 'Knowledge'], starting: { 'Carry': 2, 'Engineering': 2 } },
+  'City Bureaucrat': { inspiration: ['Intuition', 'Persuasion'], starting: { 'Deception': 2 } },
+  'Memorialist': { inspiration: ['Intuition', 'Perception'], starting: { 'Lore': 2 } },
+  'Fogborn': { inspiration: ['Survival'], starting: { 'Whisper': 2, 'Lore': 2 } },
+  'Stormrider': { inspiration: ['Survival', 'Dexterity'], starting: { 'Pilot': 2 } },
+  'Ravineborn': { inspiration: ['Endurance', 'Willpower'], starting: { 'Carry': 2 } },
+  'Sky Raider': { inspiration: ['Brawling'], starting: { 'Stance': 2, 'Pilot': 2 } },
+  'Wastelander': { inspiration: ['Survival', 'Endurance'], starting: { 'Carry': 2 } },
+  'Steam Artificer': { inspiration: ['Reasoning'], starting: { 'Engineering': 2, 'Lore': 2 } },
+  'Woodlands Survivor': { inspiration: ['Perception', 'Survival'], starting: { 'Whisper': 2 } },
+  'Borderlands Settler': { inspiration: ['Athletics', 'Willpower'], starting: { 'Carry': 2 } },
+  'Garrison Guard': { inspiration: ['Brawling', 'Intuition'], starting: { 'Authority': 2 } },
+  'Scorchblade': { inspiration: ['Endurance'], starting: { 'Discipline': 2 }, specialAbilities: ['Duel'] },
+  'Academa': { inspiration: ['Knowledge', 'Reasoning'] },
+  'Coaster': { inspiration: ['Survival'], starting: { 'Pilot': 2, 'Carry': 2 } },
+  'Vallentian': { inspiration: ['Intuition', 'Knowledge'], starting: { 'Lore': 2 } },
+  'Sectarian': { inspiration: ['Stealth'], starting: { 'Scout': 2, 'Whisper': 2 } },
+  'Circle Apostle': { inspiration: ['Perception'], starting: { 'Lore': 2, 'Medicine': 2 } },
+  'Eye of The Lords': { inspiration: ['Reasoning', 'Stealth'], starting: { 'Authority': 2 } },
+  'Tunnel Rat': { inspiration: ['Dexterity', 'Survival'], starting: { 'Interface': 2 } },
+  'Clansman': { inspiration: ['Intuition', 'Knowledge'], starting: { 'Authority': 2 } },
+  'Desert Skirmisher': { inspiration: ['Perception'], starting: { 'Scout': 2 }, specialAbilities: ['Precision'] },
+  'Reformationist': { inspiration: ['Reasoning', 'Willpower'], starting: { 'Lore': 2 } },
+  'Herd Nomad': { inspiration: ['Knowledge', 'Survival'], starting: { 'Whisper': 2 } },
+};
+
 type Tab = 'gameplay' | 'narrative' | 'progression';
 
 export default function CharacterSheet({ id, onBack }: { id: string, onBack: () => void }) {
   const { 
-    getDisciplines, getAbilities, getClasses, getSpecialSkills, 
+    entries, getDisciplines, getAbilities, getClasses, getSpecialSkills, 
     getConvictions, getFailings, getEntryByName 
   } = useCompendium();
   
@@ -117,20 +218,31 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   
   const [expandedAbility, setExpandedAbility] = useState<number | null>(null);
   
-  // Modal State
+  // Modals
   const [isAbilityModalOpen, setIsAbilityModalOpen] = useState(false);
   const [modalAbilityIndex, setModalAbilityIndex] = useState<number | null>(null);
   const [modalDiscipline, setModalDiscipline] = useState<string>('');
   const [expandedModalAbility, setExpandedModalAbility] = useState<string | null>(null);
 
+  const [isSpecialSkillModalOpen, setIsSpecialSkillModalOpen] = useState(false);
+  const [modalSpecialSkillIndex, setModalSpecialSkillIndex] = useState<number | null>(null);
+  const [expandedSpecialSkill, setExpandedSpecialSkill] = useState<string | null>(null);
+
+  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
+
+  const [isOriginModalOpen, setIsOriginModalOpen] = useState(false);
+  const [modalOriginPlane, setModalOriginPlane] = useState<string>('Generic');
+  const [expandedOrigin, setExpandedOrigin] = useState<string | null>(null);
+  const [tempChoices, setTempChoices] = useState<Record<string, string>>({});
+
   useEffect(() => {
-    if (isAbilityModalOpen) {
+    if (isAbilityModalOpen || isSpecialSkillModalOpen || isClassModalOpen || isOriginModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => { document.body.style.overflow = 'unset'; };
-  }, [isAbilityModalOpen]);
+  }, [isAbilityModalOpen, isSpecialSkillModalOpen, isClassModalOpen, isOriginModalOpen]);
 
   useEffect(() => {
     supabase.from('characters').select('*').eq('id', id).single()
@@ -143,6 +255,12 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         }
         if (!fetchedChar.data.disciplines) {
           fetchedChar.data.disciplines = [];
+        }
+        if (!fetchedChar.data.identity.inspirations) {
+          fetchedChar.data.identity.inspirations = [];
+        }
+        if (!fetchedChar.data.identity.originChoices) {
+          fetchedChar.data.identity.originChoices = {};
         }
         setChar(fetchedChar);
       });
@@ -168,6 +286,30 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     patch({ trackers: { ...char.data.trackers, [key]: nextVal } });
   }
 
+  // Helper to get the minimum skill rank based on Origin
+  function getMinSkillRank(skillName: string) {
+    const origin = char?.data.identity.origin;
+    if (!origin) return 0;
+    
+    let minRank = 0;
+    const effects = ORIGIN_EFFECTS[origin];
+    if (effects?.starting && effects.starting[skillName]) {
+      minRank = Math.max(minRank, effects.starting[skillName]);
+    }
+    
+    const choices = char?.data.identity.originChoices || {};
+    Object.entries(choices).forEach(([choiceId, chosenSkill]) => {
+      if (chosenSkill === skillName) {
+        const choice = ORIGIN_CHOICES[origin]?.find(c => c.id === choiceId);
+        if (choice?.type === 'starting' && choice.rank) {
+          minRank = Math.max(minRank, choice.rank);
+        }
+      }
+    });
+    
+    return minRank;
+  }
+
   async function save() {
     if (!char) return;
     setSaving(true);
@@ -187,6 +329,131 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     await supabase.from('characters').update({ name: tempName }).eq('id', char.id);
   }
 
+  function openOriginModal() {
+    setTempChoices(char?.data.identity.originChoices || {});
+    const currentOrigin = allOrigins.find(o => o.name === char?.data.identity.origin);
+    if (currentOrigin) {
+      setModalOriginPlane(currentOrigin.data.plane || 'Generic');
+      setExpandedOrigin(currentOrigin.id);
+    } else {
+      setExpandedOrigin(null);
+    }
+    setIsOriginModalOpen(true);
+  }
+
+  function applyOrigin(originName: string, choices: Record<string, string>) {
+    const oldOriginName = char?.data.identity.origin;
+    let newSkills = { ...char?.data.skills };
+    let newSpecialSkills = [...(char?.data.specialSkills || [])];
+    let newInspirations = [...(char?.data.identity.inspirations || [])];
+    let newAbilities = [...(char?.data.abilities || [])];
+
+    // 1. Revert Old Origin
+    if (oldOriginName && oldOriginName !== originName) {
+      const oldEffects = ORIGIN_EFFECTS[oldOriginName];
+
+      if (oldEffects) {
+        if (oldEffects.starting) {
+          Object.entries(oldEffects.starting).forEach(([skill, rank]) => {
+            newSkills[skill] = Math.max(0, (newSkills[skill] || 0) - rank);
+            newSpecialSkills = newSpecialSkills.filter(s => s.name !== skill);
+          });
+        }
+        if (oldEffects.inspiration) {
+          oldEffects.inspiration.forEach(insp => {
+            newInspirations = newInspirations.filter(i => i !== insp);
+          });
+        }
+        if (oldEffects.specialAbilities) {
+          oldEffects.specialAbilities.forEach(disc => {
+            const abilitiesToRemove = getAbilities().filter(a => a.data.source === disc && (a.data.class_rank || 0) <= 1);
+            newAbilities = newAbilities.filter(ab => !abilitiesToRemove.find(x => x.name === ab.name));
+          });
+        }
+      }
+
+      // Revert Choices
+      const oldChoices = char?.data.identity.originChoices || {};
+      Object.entries(oldChoices).forEach(([choiceId, skillName]) => {
+        const choice = ORIGIN_CHOICES[oldOriginName]?.find(c => c.id === choiceId);
+        if (choice) {
+          if (choice.type === 'inspiration') {
+            newInspirations = newInspirations.filter(i => i !== skillName);
+          } else if (choice.type === 'starting') {
+            newSkills[skillName] = Math.max(0, (newSkills[skillName] || 0) - (choice.rank || 0));
+            newSpecialSkills = newSpecialSkills.filter(s => s.name !== skillName);
+          }
+        }
+      });
+    }
+
+    // 2. Apply New Origin
+    const effects = ORIGIN_EFFECTS[originName];
+    if (effects) {
+      if (effects.starting) {
+        Object.entries(effects.starting).forEach(([skill, rank]) => {
+          if (CORE_SKILLS.includes(skill)) {
+            newSkills[skill] = Math.max(newSkills[skill] || 0, rank);
+          } else {
+            const existing = newSpecialSkills.find(s => s.name === skill);
+            if (existing) {
+              existing.rank = Math.max(existing.rank, rank);
+            } else {
+              const attr = SPECIAL_SKILL_ATTRIBUTES[skill] || 'grt';
+              newSpecialSkills.push({ name: skill, rank, attribute: attr });
+            }
+          }
+        });
+      }
+      if (effects.inspiration) {
+        effects.inspiration.forEach(insp => {
+          if (!newInspirations.includes(insp)) newInspirations.push(insp);
+        });
+      }
+      if (effects.specialAbilities) {
+        effects.specialAbilities.forEach(disc => {
+          const abilitiesToAdd = getAbilities().filter(a => a.data.source === disc && (a.data.class_rank || 0) <= 1);
+          abilitiesToAdd.forEach(ab => {
+            if (newAbilities.length < 6 && !newAbilities.find(x => x.name === ab.name)) {
+              newAbilities.push({ name: ab.name, equipped: true });
+            }
+          });
+        });
+      }
+    }
+
+    // 3. Apply Choices
+    if (choices) {
+      Object.entries(choices).forEach(([choiceId, skillName]) => {
+        const choice = ORIGIN_CHOICES[originName]?.find(c => c.id === choiceId);
+        if (choice) {
+          if (choice.type === 'inspiration') {
+            if (!newInspirations.includes(skillName)) newInspirations.push(skillName);
+          } else if (choice.type === 'starting') {
+            if (CORE_SKILLS.includes(skillName)) {
+              newSkills[skillName] = Math.max(newSkills[skillName] || 0, choice.rank || 0);
+            } else {
+              const existing = newSpecialSkills.find(s => s.name === skillName);
+              if (existing) {
+                existing.rank = Math.max(existing.rank, choice.rank || 0);
+              } else {
+                const attr = SPECIAL_SKILL_ATTRIBUTES[skillName] || 'grt';
+                newSpecialSkills.push({ name: skillName, rank: choice.rank || 0, attribute: attr });
+              }
+            }
+          }
+        }
+      });
+    }
+
+    patch({ 
+      identity: { ...char!.data.identity, origin: originName, inspirations: newInspirations, originChoices: choices }, 
+      skills: newSkills,
+      specialSkills: newSpecialSkills,
+      abilities: newAbilities
+    });
+  }
+
   const currentBurdenVal = currentBurden(char.data);
   const maxBurdenVal = burdenMax(char.data);
   const isOverburdened = currentBurdenVal > maxBurdenVal;
@@ -196,6 +463,9 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const charDisciplines = char.data.disciplines || [];
 
   const convictionNames = char.data.convictions.map(c => c.name).filter(Boolean).join(' • ');
+  
+  const allOrigins = entries.filter(e => e.type === 'origin');
+  const PLANES = ['Generic', 'Eterion', 'Agmar', 'Vesperik', 'Duiber', 'Lior'];
 
   return (
     <div className="min-h-screen bg-gray-900 pb-20 font-sans text-gray-200">
@@ -272,47 +542,72 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         {activeTab === 'gameplay' && (
           <div className="w-full flex flex-col gap-6 animate-in fade-in duration-200">
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch w-full">
-              <section className="bg-gray-800 border border-gray-700 rounded-xl p-5 shadow-sm flex flex-col justify-center">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch w-full lg:h-[260px]">
+              <section className="bg-gray-800 border border-gray-700 rounded-xl p-5 shadow-sm flex flex-col min-h-0">
                 <SectionHeader title="Identity" />
-                <div className="space-y-4">
-                  <label className="flex flex-col text-xs font-bold text-gray-400 uppercase tracking-wider">Origin
-                    <input className="border border-gray-600 bg-gray-900 p-2 rounded mt-1 font-normal text-sm w-full text-gray-200 focus:border-red-500 focus:outline-none" value={char.data.identity.origin} onChange={e => patch({ identity: { ...char.data.identity, origin: e.target.value } })} />
+                <div className="flex flex-col gap-4 flex-1 min-h-0">
+                  <label className="flex flex-col text-sm font-bold text-gray-400 shrink-0">Origin
+                    <div 
+                      className="border border-gray-600 bg-gray-900 p-2 rounded mt-1 font-normal text-sm w-full text-gray-200 cursor-pointer flex justify-between items-center hover:border-gray-500 transition-colors"
+                      onClick={openOriginModal}
+                    >
+                      <span className="truncate">{char.data.identity.origin || "— Select Origin —"}</span>
+                      <span className="text-gray-500 text-[10px]">▼</span>
+                    </div>
                   </label>
-                  <label className="flex flex-col text-xs font-bold text-gray-400 uppercase tracking-wider">Concept
-                    <input className="border border-gray-600 bg-gray-900 p-2 rounded mt-1 font-normal text-sm w-full text-gray-200 focus:border-red-500 focus:outline-none" value={char.data.identity.concept} onChange={e => patch({ identity: { ...char.data.identity, concept: e.target.value } })} />
-                  </label>
+                  
+                  <div className="flex-1 min-h-0 overflow-y-auto">
+                    <div className="text-sm font-normal text-gray-400 italic border-l-2 border-gray-600 pl-3 py-1 leading-relaxed">
+                      {getEntryByName(char.data.identity.origin)?.data?.lore || 'Select an origin to view its lore.'}
+                    </div>
+                  </div>
                 </div>
               </section>
 
-              <div className="border border-red-900 bg-red-950/40 rounded-xl p-5 flex flex-col justify-center gap-4 shadow-sm">
-                <div className="flex items-center justify-between gap-4 w-full">
-                  <span className="font-bold text-red-400 uppercase tracking-widest text-sm w-20 shrink-0">Vigor</span>
-                  <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm flex-1">
-                    <button onClick={() => updateTracker('vigor', -1)} className="w-10 py-1 text-gray-400 hover:bg-gray-800 hover:text-white rounded-l-lg font-bold shrink-0">−</button>
-                    <div className="flex-1 text-center font-bold text-2xl text-white">{char.data.trackers.vigor} <span className="text-sm text-gray-500 font-normal">/ {vigorMax(char.data)}</span></div>
-                    <button onClick={() => updateTracker('vigor', 1)} className="w-10 py-1 text-gray-400 hover:bg-gray-800 hover:text-white rounded-r-lg font-bold shrink-0">+</button>
+              <div className="border border-red-900 bg-red-950/40 rounded-xl p-5 flex flex-col justify-center gap-4 shadow-sm h-full">
+                
+                {/* Vigor */}
+                <div className="flex flex-col w-full">
+                  <div className="flex items-center justify-between gap-4 w-full">
+                    <span className="font-bold text-red-400 uppercase tracking-widest text-sm w-20 shrink-0">Vigor</span>
+                    <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm flex-1 h-10">
+                      <button onClick={() => updateTracker('vigor', -1)} className="w-10 h-full text-gray-400 hover:bg-gray-800 hover:text-white rounded-l-lg font-bold shrink-0">−</button>
+                      <div className="flex-1 text-center font-bold text-xl text-white">{char.data.trackers.vigor} <span className="text-sm text-gray-500 font-normal">/ {vigorMax(char.data)}</span></div>
+                      <button onClick={() => updateTracker('vigor', 1)} className="w-10 h-full text-gray-400 hover:bg-gray-800 hover:text-white rounded-r-lg font-bold shrink-0">+</button>
+                    </div>
                   </div>
+                  <ResourceBar current={char.data.trackers.vigor} max={vigorMax(char.data)} color="bg-red-500" />
                 </div>
-                <div className="flex items-center justify-between gap-4 w-full">
-                  <span className="font-bold text-red-400 uppercase tracking-widest text-sm w-20 shrink-0">Strain</span>
-                  <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm flex-1">
-                    <button onClick={() => updateTracker('strain', -1)} className="w-10 py-1 text-gray-400 hover:bg-gray-800 hover:text-white rounded-l-lg font-bold shrink-0">−</button>
-                    <div className="flex-1 text-center font-bold text-2xl text-white">{char.data.trackers.strain} <span className="text-sm text-gray-500 font-normal">/ {strainMax(char.data)}</span></div>
-                    <button onClick={() => updateTracker('strain', 1)} className="w-10 py-1 text-gray-400 hover:bg-gray-800 hover:text-white rounded-r-lg font-bold shrink-0">+</button>
+
+                {/* Strain */}
+                <div className="flex flex-col w-full">
+                  <div className="flex items-center justify-between gap-4 w-full">
+                    <span className="font-bold text-red-400 uppercase tracking-widest text-sm w-20 shrink-0">Strain</span>
+                    <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm flex-1 h-10">
+                      <button onClick={() => updateTracker('strain', -1)} className="w-10 h-full text-gray-400 hover:bg-gray-800 hover:text-white rounded-l-lg font-bold shrink-0">−</button>
+                      <div className="flex-1 text-center font-bold text-xl text-white">{char.data.trackers.strain} <span className="text-sm text-gray-500 font-normal">/ {strainMax(char.data)}</span></div>
+                      <button onClick={() => updateTracker('strain', 1)} className="w-10 h-full text-gray-400 hover:bg-gray-800 hover:text-white rounded-r-lg font-bold shrink-0">+</button>
+                    </div>
                   </div>
+                  <ResourceBar current={char.data.trackers.strain} max={strainMax(char.data)} color="bg-blue-500" overLimitColor="bg-purple-600" />
                 </div>
-                <div className="flex items-center justify-between gap-4 w-full">
-                  <span className="font-bold text-red-400 uppercase tracking-widest text-sm w-20 shrink-0">Destiny</span>
-                  <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm flex-1">
-                    <button onClick={() => updateTracker('dp', -1)} className="w-10 py-1 text-gray-400 hover:bg-gray-800 hover:text-white rounded-l-lg font-bold shrink-0">−</button>
-                    <div className="flex-1 text-center font-bold text-2xl text-white">{char.data.trackers.dp} <span className="text-sm text-gray-500 font-normal">/ {dpMax(char.data)}</span></div>
-                    <button onClick={() => updateTracker('dp', 1)} className="w-10 py-1 text-gray-400 hover:bg-gray-800 hover:text-white rounded-r-lg font-bold shrink-0">+</button>
+
+                {/* Destiny */}
+                <div className="flex flex-col w-full">
+                  <div className="flex items-center justify-between gap-4 w-full">
+                    <span className="font-bold text-red-400 uppercase tracking-widest text-sm w-20 shrink-0">Destiny</span>
+                    <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm flex-1 h-10">
+                      <button onClick={() => updateTracker('dp', -1)} className="w-10 h-full text-gray-400 hover:bg-gray-800 hover:text-white rounded-l-lg font-bold shrink-0">−</button>
+                      <div className="flex-1 text-center font-bold text-xl text-white">{char.data.trackers.dp} <span className="text-sm text-gray-500 font-normal">/ {dpMax(char.data)}</span></div>
+                      <button onClick={() => updateTracker('dp', 1)} className="w-10 h-full text-gray-400 hover:bg-gray-800 hover:text-white rounded-r-lg font-bold shrink-0">+</button>
+                    </div>
                   </div>
+                  <ResourceBar current={char.data.trackers.dp} max={dpMax(char.data)} color="bg-yellow-500" />
                 </div>
+
               </div>
 
-              <div className="border border-gray-700 rounded-xl bg-gray-800 p-5 shadow-sm grid grid-cols-2 gap-4 text-center items-center">
+              <div className="border border-gray-700 rounded-xl bg-gray-800 p-5 shadow-sm grid grid-cols-2 gap-4 text-center items-center h-full">
                 <div><div className="text-gray-400 text-xs uppercase font-bold mb-1 tracking-wider">Evasion</div><div className="font-bold text-3xl text-white">{evasion(char.data)}</div></div>
                 <div><div className="text-gray-400 text-xs uppercase font-bold mb-1 tracking-wider">Movement</div><div className="font-bold text-3xl text-white">{movementTiles(char.data)}</div></div>
                 <div className="flex flex-col items-center justify-center">
@@ -342,7 +637,9 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                     <div key={attr} className="bg-gray-800 border border-gray-700 rounded-xl p-5 shadow-sm flex flex-col min-w-0">
                       <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-3">
                         <Tooltip text={ATTRIBUTE_DESCRIPTIONS[attr]} className="w-auto">
-                          <span className={`text-2xl font-cinzel first-letter:font-cinzelDeco uppercase tracking-widest ${group.color}`}>{ATTRIBUTE_NAMES[attr]}</span>
+                          <span className={`text-2xl font-cinzel first-letter:font-cinzelDeco uppercase tracking-widest ${group.color}`}>
+                            {ATTRIBUTE_NAMES[attr]}
+                          </span>
                         </Tooltip>
                         <input type="number" min={1} max={4} className={`border-b-2 ${group.color} border-gray-600 p-1 w-12 text-center font-bold text-xl focus:outline-none bg-transparent text-white`} 
                           value={attrVal} onChange={e => patch({ attributes: { ...char.data.attributes, [attr]: Math.min(4, Math.max(1, +e.target.value)) } })} />
@@ -351,15 +648,32 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                         {group.skills.map(skill => {
                           const maxSkill = Math.min(8, attrVal * 2);
                           const currentSkill = char.data.skills[skill] ?? 0;
+                          const isInspired = char.data.identity.inspirations?.includes(skill);
+                          
+                          // Clamp minSkill to maxSkill to prevent UI breakage
+                          const minSkill = Math.min(getMinSkillRank(skill), maxSkill);
+                          
                           return (
                             <div key={skill} className="flex justify-between items-center text-sm w-full">
-                              <Tooltip text={CORE_SKILL_DESCRIPTIONS[skill]} className="w-auto">
-                                <span className="font-medium text-gray-300">{skill}</span>
-                              </Tooltip>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <Tooltip text={CORE_SKILL_DESCRIPTIONS[skill]} className="w-auto">
+                                  <span className="font-medium text-gray-300">{skill}</span>
+                                </Tooltip>
+                                {isInspired && (
+                                  <Tooltip text={`Inspiration: ${char.data.identity.origin}`} noBorder className="w-auto shrink-0">
+                                    <span className="text-yellow-500 text-xs cursor-help">★</span>
+                                  </Tooltip>
+                                )}
+                                {minSkill > 0 && (
+                                  <Tooltip text={`Minimum bound: ${minSkill} (from Origin)`} noBorder className="w-auto shrink-0">
+                                    <span className="text-gray-500 text-[10px] cursor-help">🔒</span>
+                                  </Tooltip>
+                                )}
+                              </div>
                               <div className="flex items-center gap-1 shrink-0 ml-2">
                                 <span className="text-gray-500 font-bold text-xs">+</span>
-                                <input type="number" min={0} max={maxSkill} className="border border-gray-600 bg-gray-900 p-1 w-10 text-center rounded shadow-sm focus:outline-none focus:border-red-500 font-bold text-white" 
-                                  value={currentSkill} onChange={e => patch({ skills: { ...char.data.skills, [skill]: Math.min(maxSkill, Math.max(0, +e.target.value)) } })} />
+                                <input type="number" min={minSkill} max={maxSkill} className="border border-gray-600 bg-gray-900 p-1 w-10 text-center rounded shadow-sm focus:outline-none focus:border-red-500 font-bold text-white" 
+                                  value={Math.max(minSkill, currentSkill)} onChange={e => patch({ skills: { ...char.data.skills, [skill]: Math.min(maxSkill, Math.max(minSkill, +e.target.value)) } })} />
                                 <span className="text-gray-500 text-xs font-bold w-5 text-right">/ {maxSkill}</span>
                               </div>
                             </div>
@@ -378,33 +692,44 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                     const compendiumEntry = getEntryByName(s.name);
                     const attr = compendiumEntry?.data?.attribute || 'grt'; 
                     const maxSkill = Math.min(8, char.data.attributes[attr as keyof typeof char.data.attributes] * 2);
+                    const isInspired = char.data.identity.inspirations?.includes(s.name);
+                    
+                    // Clamp minSkill to maxSkill
+                    const minSkill = Math.min(getMinSkillRank(s.name), maxSkill);
+
                     return (
                       <div key={i} className="flex items-center gap-1 w-full bg-gray-900 border border-gray-700 rounded-lg p-1">
-                        <div className="flex-1 min-w-0 relative group">
-                          <select className="w-full bg-transparent border-none text-sm text-gray-200 focus:outline-none cursor-pointer truncate appearance-none pl-1" 
-                            value={s.name} onChange={e => {
-                              const next = [...char.data.specialSkills];
-                              next[i] = { ...next[i], name: e.target.value };
-                              patch({ specialSkills: next });
-                            }}>
-                            <option value="" className="bg-gray-900">— Select Skill —</option>
-                            {getSpecialSkills().map(ss => <option key={ss.id} value={ss.name} className="bg-gray-900">{ss.name}</option>)}
-                          </select>
-                          {compendiumEntry?.data?.description && (
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-56 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
-                              {compendiumEntry.data.description}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
-                            </div>
+                        <div className="flex-1 min-w-0 flex items-center pl-1">
+                          <div 
+                            className="bg-transparent border-none text-sm text-gray-200 cursor-pointer flex justify-between items-center flex-1 min-w-0"
+                            onClick={() => {
+                              setModalSpecialSkillIndex(i);
+                              setExpandedSpecialSkill(null);
+                              setIsSpecialSkillModalOpen(true);
+                            }}
+                          >
+                            <span className="truncate">{s.name || "— Select Skill —"}</span>
+                            <span className="text-gray-500 text-[10px] mr-1">▼</span>
+                          </div>
+                          {isInspired && (
+                            <Tooltip text={`Inspiration: ${char.data.identity.origin}`} noBorder className="w-auto shrink-0 mr-1">
+                              <span className="text-yellow-500 text-xs cursor-help">★</span>
+                            </Tooltip>
+                          )}
+                          {minSkill > 0 && (
+                            <Tooltip text={`Minimum bound: ${minSkill} (from Origin)`} noBorder className="w-auto shrink-0 mr-1">
+                              <span className="text-gray-500 text-[10px] cursor-help">🔒</span>
+                            </Tooltip>
                           )}
                         </div>
                         <Tooltip text={ATTRIBUTE_DESCRIPTIONS[attr as keyof typeof ATTRIBUTE_DESCRIPTIONS]} className="w-auto shrink-0">
-                          <span className={`text-[9px] font-bold uppercase ${SKILL_GROUPS[attr as keyof typeof SKILL_GROUPS].color} border border-current px-1 py-0.5 rounded`}>{ATTRIBUTE_NAMES[attr as keyof typeof ATTRIBUTE_NAMES]}</span>
+                          <span className={`text-[9px] font-bold uppercase ${SKILL_GROUPS[attr as keyof typeof SKILL_GROUPS].color} border border-current px-1 py-0.5 rounded`}>{attr.toUpperCase()}</span>
                         </Tooltip>
                         <div className="flex items-center shrink-0">
-                          <input type="number" min={0} max={maxSkill} className="bg-transparent text-right w-8 font-bold text-sm text-white focus:outline-none" 
-                            value={s.rank} onChange={e => { 
+                          <input type="number" min={minSkill} max={maxSkill} className="bg-transparent text-right w-8 font-bold text-sm text-white focus:outline-none" 
+                            value={Math.max(minSkill, s.rank)} onChange={e => { 
                               const next = [...char.data.specialSkills]; 
-                              next[i] = { ...next[i], rank: Math.min(maxSkill, Math.max(0, +e.target.value)) }; 
+                              next[i] = { ...next[i], rank: Math.min(maxSkill, Math.max(minSkill, +e.target.value)) }; 
                               patch({ specialSkills: next }); 
                             }} />
                           <span className="text-gray-500 text-xs font-bold mr-1">/ {maxSkill}</span>
@@ -430,11 +755,13 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                     {selectedClassData ? (
                       <span className="text-xs text-gray-400 italic tracking-widest mb-1">{selectedClassData.data.archetype}</span>
                     ) : <div className="h-4 mb-1"></div>}
-                    <select className="border border-gray-600 bg-gray-900 p-2.5 rounded-lg font-normal shadow-sm focus:outline-none focus:border-red-500 w-full font-bold text-gray-200 text-lg" value={char.data.identity.className} 
-                      onChange={e => patch({ identity: { ...char.data.identity, className: e.target.value, path: '' } })}>
-                      <option value="">— Select Class —</option>
-                      {getClasses().map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                    </select>
+                    <div 
+                      className="border border-gray-600 bg-gray-900 p-2.5 rounded-lg font-normal shadow-sm w-full font-bold text-gray-200 text-lg cursor-pointer flex justify-between items-center hover:border-gray-500 transition-colors"
+                      onClick={() => setIsClassModalOpen(true)}
+                    >
+                      <span>{char.data.identity.className || "— Select Class —"}</span>
+                      <span className="text-gray-500 text-sm">▼</span>
+                    </div>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs text-gray-400 italic tracking-widest h-4 mb-1">
@@ -826,6 +1153,229 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           </button>
         </div>
       </footer>
+
+      {/* ORIGIN MODAL */}
+      {isOriginModalOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900 shrink-0">
+              <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Origin</h2>
+              <button onClick={() => setIsOriginModalOpen(false)} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+            </div>
+
+            <div className="p-4 border-b border-gray-700 bg-gray-800/50 shrink-0">
+              <div className="flex flex-wrap gap-2">
+                {PLANES.map(plane => (
+                  <button
+                    key={plane}
+                    onClick={() => {
+                      setModalOriginPlane(plane);
+                      setExpandedOrigin(null);
+                    }}
+                    className={`px-3 py-1.5 text-sm font-bold rounded-md transition-colors border ${
+                      modalOriginPlane === plane 
+                        ? 'bg-red-900/50 text-red-200 border-red-700' 
+                        : 'bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700'
+                    }`}
+                  >
+                    {plane}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {allOrigins.filter(o => o.data.plane === modalOriginPlane).map(origin => {
+                const isExpanded = expandedOrigin === origin.id;
+                const choices = ORIGIN_CHOICES[origin.name];
+                return (
+                  <div key={origin.id} className={`bg-gray-900 border border-gray-700 rounded-lg overflow-hidden transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''}`}>
+                    <button
+                      onClick={() => {
+                        setExpandedOrigin(isExpanded ? null : origin.id);
+                        if (char.data.identity.origin !== origin.name) {
+                          setTempChoices({});
+                        }
+                      }}
+                      className="w-full text-left p-3 hover:bg-gray-800/50 transition-colors flex justify-between items-center group"
+                    >
+                      <span className="font-bold text-gray-200 group-hover:text-white">{origin.name}</span>
+                      <span className="text-[10px] text-gray-400 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">{origin.data.plane}</span>
+                    </button>
+                    {isExpanded && (
+                      <div className="p-4 border-t border-gray-700 bg-black/20 text-sm">
+                        
+                        {origin.data.lore && (
+                          <div className="mb-4 text-sm italic text-gray-400 border-l-2 border-gray-600 pl-3">
+                            "{origin.data.lore}"
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-[100px_1fr] gap-2 mb-4 text-gray-300">
+                          <div className="font-bold text-gray-500 text-[10px] tracking-wider text-right mt-0.5">Inspiration</div>
+                          <div>{origin.data.inspiration || 'None'}</div>
+                          <div className="font-bold text-gray-500 text-[10px] tracking-wider text-right mt-0.5">Starting Skills</div>
+                          <div>{origin.data.starting || 'None'}</div>
+                        </div>
+
+                        {choices && (
+                          <div className="mb-4 space-y-3 p-3 bg-gray-800/50 rounded border border-gray-700">
+                            {choices.map(choice => {
+                              const selectedValue = tempChoices[choice.id];
+                              const skillDesc = CORE_SKILL_DESCRIPTIONS[selectedValue] || SPECIAL_SKILL_DESCRIPTIONS[selectedValue] || '';
+                              return (
+                                <div key={choice.id}>
+                                  <label className="block text-xs font-bold text-red-400 mb-1">{choice.label}</label>
+                                  <select 
+                                    className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-gray-200 focus:outline-none focus:border-red-500"
+                                    value={selectedValue || ''}
+                                    onChange={(e) => setTempChoices({ ...tempChoices, [choice.id]: e.target.value })}
+                                  >
+                                    <option value="">— Select —</option>
+                                    {choice.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                  </select>
+                                  {selectedValue && skillDesc && (
+                                    <div className="text-xs text-gray-400 mt-1 italic border-l-2 border-gray-700 pl-2">
+                                      {skillDesc}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <button 
+                          onClick={() => {
+                            if (choices) {
+                              const missing = choices.find(c => !tempChoices[c.id]);
+                              if (missing) {
+                                alert('Please make a selection for all choices.');
+                                return;
+                              }
+                            }
+                            applyOrigin(origin.name, tempChoices);
+                            setIsOriginModalOpen(false);
+                            setExpandedOrigin(null);
+                            setTempChoices({});
+                          }} 
+                          className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors"
+                        >
+                          Confirm Selection
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CLASS MODAL */}
+      {isClassModalOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900 shrink-0">
+              <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Class</h2>
+              <button onClick={() => setIsClassModalOpen(false)} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              {['Champion', 'Scoundrel', 'Guide', 'Scholar', 'Mystic', 'Aberration'].map(archetype => {
+                const classes = getClasses().filter(c => c.data.archetype === archetype);
+                if (classes.length === 0) return null;
+                return (
+                  <div key={archetype}>
+                    <div className="bg-gray-800 text-xs font-bold text-red-400 uppercase tracking-widest py-2 border-b border-gray-700 mb-2">
+                      {archetype}
+                    </div>
+                    <div className="space-y-2">
+                      {classes.map(c => (
+                        <button
+                          key={c.id}
+                          onClick={() => {
+                            patch({ identity: { ...char.data.identity, className: c.name, path: '' } });
+                            setIsClassModalOpen(false);
+                          }}
+                          className={`w-full text-left p-3 border rounded-lg transition-colors flex justify-between items-center ${
+                            char.data.identity.className === c.name 
+                              ? 'bg-red-900/30 border-red-700 text-red-100' 
+                              : 'bg-gray-900 border-gray-700 text-gray-200 hover:bg-gray-700/50 hover:border-gray-500'
+                          }`}
+                        >
+                          <span className="font-bold">{c.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SPECIAL SKILL MODAL */}
+      {isSpecialSkillModalOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900 shrink-0">
+              <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Special Skill</h2>
+              <button onClick={() => setIsSpecialSkillModalOpen(false)} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              {(Object.keys(ATTRIBUTE_NAMES) as Array<keyof typeof ATTRIBUTE_NAMES>).map(attr => {
+                const skills = getSpecialSkills().filter(s => s.data.attribute === attr);
+                if (skills.length === 0) return null;
+                return (
+                  <div key={attr}>
+                    <div className={`bg-gray-800 text-xs font-bold uppercase tracking-widest py-2 border-b border-gray-700 mb-2 ${SKILL_GROUPS[attr as keyof typeof SKILL_GROUPS].color}`}>
+                      {ATTRIBUTE_NAMES[attr]}
+                    </div>
+                    <div className="space-y-2">
+                      {skills.map(s => {
+                        const isExpanded = expandedSpecialSkill === s.id;
+                        return (
+                          <div key={s.id} className={`bg-gray-900 border border-gray-700 rounded-lg overflow-hidden transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''}`}>
+                            <button
+                              onClick={() => setExpandedSpecialSkill(isExpanded ? null : s.id)}
+                              className="w-full text-left p-3 hover:bg-gray-800/50 transition-colors flex justify-between items-center group"
+                            >
+                              <span className="font-bold text-gray-200 group-hover:text-white">{s.name}</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${SKILL_GROUPS[attr as keyof typeof SKILL_GROUPS].color} border-current`}>{attr.toUpperCase()}</span>
+                            </button>
+                            {isExpanded && (
+                              <div className="p-4 border-t border-gray-700 bg-black/20">
+                                <p className="text-sm italic text-gray-400 mb-4 border-l-2 border-gray-700 pl-2">{s.data.description}</p>
+                                <button 
+                                  onClick={() => {
+                                    if (modalSpecialSkillIndex !== null) {
+                                      const next = [...char.data.specialSkills];
+                                      next[modalSpecialSkillIndex] = { ...next[modalSpecialSkillIndex], name: s.name };
+                                      patch({ specialSkills: next });
+                                    }
+                                    setIsSpecialSkillModalOpen(false);
+                                    setExpandedSpecialSkill(null);
+                                  }} 
+                                  className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors"
+                                >
+                                  Confirm Selection
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ABILITY SELECTION MODAL */}
       {isAbilityModalOpen && (
