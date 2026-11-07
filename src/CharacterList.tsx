@@ -30,18 +30,35 @@ export default function CharacterList({
   }
 
   return (
-    <div className="mt-4">
-      <button onClick={create} className="bg-gray-800 text-white px-4 py-2 rounded mb-4 hover:bg-gray-700">
-        + New Character
-      </button>
-      <ul className="border rounded divide-y">
-        {chars.length === 0 && <li className="p-4 text-gray-500 italic">No characters yet.</li>}
+    <div className="mt-6 w-full max-w-3xl mx-auto">
+      <div className="flex justify-between items-end mb-6 border-b border-gray-700 pb-4">
+        <h2 className="text-3xl font-cinzel font-bold text-gray-200">
+          Your Characters
+        </h2>
+        <button 
+          onClick={create} 
+          className="bg-red-900 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-red-800 transition-colors shadow-sm"
+        >
+          + New Character
+        </button>
+      </div>
+
+      <ul className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-sm">
+        {chars.length === 0 && (
+          <li className="p-8 text-center text-gray-500 italic">No characters yet. Create one to begin.</li>
+        )}
         {chars.map(c => (
-          <li key={c.id} className="flex justify-between items-center p-4 hover:bg-gray-50">
-            <button onClick={() => onSelect(c.id)} className="text-blue-600 hover:underline font-medium text-lg text-left">
+          <li key={c.id} className="flex justify-between items-center p-4 border-b border-gray-700/50 last:border-0 hover:bg-gray-700/30 transition-colors">
+            <button 
+              onClick={() => onSelect(c.id)} 
+              className="font-cinzel font-bold text-lg text-gray-200 hover:text-red-400 text-left truncate transition-colors"
+            >
               {c.name}
             </button>
-            <button onClick={() => remove(c.id)} className="text-sm text-red-500 hover:text-red-700">
+            <button 
+              onClick={() => remove(c.id)} 
+              className="text-xs font-bold text-red-500 hover:text-red-400 uppercase tracking-wider shrink-0 ml-4"
+            >
               Delete
             </button>
           </li>

@@ -12,10 +12,10 @@ const ATTRIBUTE_NAMES = {
 };
 
 const ATTRIBUTE_DESCRIPTIONS = {
-  grt: "Grit: Your physical body. The resilience and power of flesh and bone.",
-  ref: "Reflex: Your uncontrolled impulses. The precise senses and natural instincts.",
-  int: "Intellect: Your pointed mind. The library of knowledge and its application.",
-  psy: "Psyche: Your own soul. The internal will and the poetry to communicate it."
+  grt: "Your physical body. The resilience and power of flesh and bone.",
+  ref: "Your uncontrolled impulses. The precise senses and natural instincts.",
+  int: "Your pointed mind. The library of knowledge and its application.",
+  psy: "Your own soul. The internal will and the poetry to communicate it."
 };
 
 const SKILL_GROUPS = {
@@ -63,6 +63,7 @@ const SPECIAL_SKILL_ATTRIBUTES: Record<string, 'grt' | 'ref' | 'int' | 'psy'> = 
 };
 
 const SEASONS = ['Vamor', 'Bruma', 'Trumst', 'Halice'];
+const SKILL_XP_COSTS = [1, 1, 2, 2, 3, 3, 4, 4];
 
 const CORE_SKILLS = ['Athletics', 'Brawling', 'Endurance', 'Dexterity', 'Perception', 'Stealth', 'Knowledge', 'Reasoning', 'Survival', 'Intuition', 'Persuasion', 'Willpower'];
 const SPECIAL_SKILLS = ['Carry', 'Discipline', 'Stance', 'Interface', 'Pilot', 'Scout', 'Engineering', 'Lore', 'Medicine', 'Authority', 'Deception', 'Whisper'];
@@ -106,7 +107,6 @@ const getSpeedData = (speed?: string, upkeep?: string) => {
   let rawSpeed = speed || '';
   let rawUpkeep = upkeep || '';
   
-  // Fallback for unparsed database strings
   if (rawSpeed.includes('/')) {
     const parts = rawSpeed.split('/');
     rawSpeed = parts[0].trim();
@@ -148,7 +148,6 @@ const getTypeStyle = (type?: string) => {
   }
 };
 
-// Segmented Resource Bar Component
 const ResourceBar = ({ current, max, color, overLimitColor }: { current: number, max: number, color: string, overLimitColor?: string }) => {
   const overLimit = Math.max(0, current - max);
   
@@ -158,7 +157,6 @@ const ResourceBar = ({ current, max, color, overLimitColor }: { current: number,
         let barColor = 'bg-gray-700';
         
         if (i < current) {
-          // Turn the leftmost segments purple first
           if (overLimitColor && i < overLimit) {
             barColor = overLimitColor;
           } else {
@@ -167,7 +165,7 @@ const ResourceBar = ({ current, max, color, overLimitColor }: { current: number,
         }
         
         return (
-          <div key={i} className={`h-3 flex-1 rounded-sm ${barColor}`} />
+          <div key={i} className={`h-3 flex-1 rounded-sm transition-colors duration-300 ease-in-out ${barColor}`} />
         );
       })}
     </div>
@@ -228,6 +226,11 @@ const ORIGIN_EFFECTS: Record<string, OriginEffect> = {
 
 type Tab = 'gameplay' | 'narrative' | 'progression';
 
+type LevelUpTarget = 
+  | { type: 'attribute'; key: keyof typeof ATTRIBUTE_NAMES }
+  | { type: 'skill'; key: string }
+  | { type: 'specialSkill'; index: number };
+
 export default function CharacterSheet({ id, onBack }: { id: string, onBack: () => void }) {
   const { 
     entries, getDisciplines, getAbilities, getClasses, getSpecialSkills, 
@@ -261,14 +264,20 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const [expandedOrigin, setExpandedOrigin] = useState<string | null>(null);
   const [tempChoices, setTempChoices] = useState<Record<string, string>>({});
 
+  const [levelUpTarget, setLevelUpTarget] = useState<LevelUpTarget | null>(null);
+
+  // Drag and Drop State
+  const [draggedAbilityIndex, setDraggedAbilityIndex] = useState<number | null>(null);
+  const [dragOverAbilityIndex, setDragOverAbilityIndex] = useState<number | null>(null);
+
   useEffect(() => {
-    if (isAbilityModalOpen || isSpecialSkillModalOpen || isClassModalOpen || isOriginModalOpen) {
+    if (isAbilityModalOpen || isSpecialSkillModalOpen || isClassModalOpen || isOriginModalOpen || levelUpTarget) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => { document.body.style.overflow = 'unset'; };
-  }, [isAbilityModalOpen, isSpecialSkillModalOpen, isClassModalOpen, isOriginModalOpen]);
+  }, [isAbilityModalOpen, isSpecialSkillModalOpen, isClassModalOpen, isOriginModalOpen, levelUpTarget]);
 
   useEffect(() => {
     supabase.from('characters').select('*').eq('id', id).single()
@@ -312,7 +321,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     patch({ trackers: { ...char.data.trackers, [key]: nextVal } });
   }
 
-  // Helper to get the minimum skill rank based on Origin
   function getMinSkillRank(skillName: string) {
     const origin = char?.data.identity.origin;
     if (!origin) return 0;
@@ -334,6 +342,12 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     });
     
     return minRank;
+  }
+
+  function getMaxAttribute(tier: number) {
+    if (tier >= 5) return 4;
+    if (tier >= 3) return 3;
+    return 2;
   }
 
   async function save() {
@@ -374,7 +388,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     let newInspirations = [...(char?.data.identity.inspirations || [])];
     let newAbilities = [...(char?.data.abilities || [])];
 
-    // 1. Revert Old Origin
     if (oldOriginName && oldOriginName !== originName) {
       const oldEffects = ORIGIN_EFFECTS[oldOriginName];
 
@@ -398,7 +411,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         }
       }
 
-      // Revert Choices
       const oldChoices = char?.data.identity.originChoices || {};
       Object.entries(oldChoices).forEach(([choiceId, skillName]) => {
         const choice = ORIGIN_CHOICES[oldOriginName]?.find(c => c.id === choiceId);
@@ -413,7 +425,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       });
     }
 
-    // 2. Apply New Origin
     const effects = ORIGIN_EFFECTS[originName];
     if (effects) {
       if (effects.starting) {
@@ -448,7 +459,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       }
     }
 
-    // 3. Apply Choices
     if (choices) {
       Object.entries(choices).forEach(([choiceId, skillName]) => {
         const choice = ORIGIN_CHOICES[originName]?.find(c => c.id === choiceId);
@@ -479,6 +489,130 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       abilities: newAbilities
     });
   }
+
+  // Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedAbilityIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedAbilityIndex === null) return;
+    if (dragOverAbilityIndex !== index) {
+      setDragOverAbilityIndex(index);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedAbilityIndex === null || draggedAbilityIndex === dropIndex) {
+      setDraggedAbilityIndex(null);
+      setDragOverAbilityIndex(null);
+      return;
+    }
+
+    const newAbilities = [...char.data.abilities];
+    const draggedItem = newAbilities[draggedAbilityIndex];
+    
+    newAbilities.splice(draggedAbilityIndex, 1);
+    newAbilities.splice(dropIndex, 0, draggedItem);
+
+    patch({ abilities: newAbilities });
+    
+    setDraggedAbilityIndex(null);
+    setDragOverAbilityIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedAbilityIndex(null);
+    setDragOverAbilityIndex(null);
+  };
+
+  // Level Up Logic
+  const handleAdvance = () => {
+    if (!char || !levelUpTarget) return;
+
+    if (levelUpTarget.type === 'attribute') {
+      const current = char.data.attributes[levelUpTarget.key];
+      const max = getMaxAttribute(char.data.progression.tier);
+      if (current < max) {
+        patch({ attributes: { ...char.data.attributes, [levelUpTarget.key]: current + 1 } });
+      }
+    } 
+    else if (levelUpTarget.type === 'skill') {
+      const current = char.data.skills[levelUpTarget.key] ?? 0;
+      const attr = Object.keys(SKILL_GROUPS).find(a => (SKILL_GROUPS[a as keyof typeof SKILL_GROUPS].skills as readonly string[]).includes(levelUpTarget.key)) as keyof typeof char.data.attributes;
+      const attrVal = char.data.attributes[attr];
+      const max = Math.min(8, attrVal * 2);
+      
+      if (current < max) {
+        const cost = SKILL_XP_COSTS[current];
+        if (char.data.progression.xp >= cost) {
+          patch({ 
+            skills: { ...char.data.skills, [levelUpTarget.key]: current + 1 },
+            progression: { ...char.data.progression, xp: char.data.progression.xp - cost }
+          });
+        }
+      }
+    }
+    else if (levelUpTarget.type === 'specialSkill') {
+      const skill = char.data.specialSkills[levelUpTarget.index];
+      const attr = skill.attribute as keyof typeof char.data.attributes;
+      const attrVal = char.data.attributes[attr];
+      const max = Math.min(8, attrVal * 2);
+      
+      if (skill.rank < max) {
+        const cost = SKILL_XP_COSTS[skill.rank];
+        if (char.data.progression.xp >= cost) {
+          const next = [...char.data.specialSkills];
+          next[levelUpTarget.index] = { ...next[levelUpTarget.index], rank: skill.rank + 1 };
+          patch({ 
+            specialSkills: next,
+            progression: { ...char.data.progression, xp: char.data.progression.xp - cost }
+          });
+        }
+      }
+    }
+  };
+
+  const handleRegress = () => {
+    if (!char || !levelUpTarget) return;
+
+    if (levelUpTarget.type === 'attribute') {
+      const current = char.data.attributes[levelUpTarget.key];
+      if (current > 1) {
+        patch({ attributes: { ...char.data.attributes, [levelUpTarget.key]: current - 1 } });
+      }
+    } 
+    else if (levelUpTarget.type === 'skill') {
+      const current = char.data.skills[levelUpTarget.key] ?? 0;
+      const min = getMinSkillRank(levelUpTarget.key);
+      
+      if (current > min) {
+        const refund = SKILL_XP_COSTS[current - 1];
+        patch({ 
+          skills: { ...char.data.skills, [levelUpTarget.key]: current - 1 },
+          progression: { ...char.data.progression, xp: char.data.progression.xp + refund }
+        });
+      }
+    }
+    else if (levelUpTarget.type === 'specialSkill') {
+      const skill = char.data.specialSkills[levelUpTarget.index];
+      const min = getMinSkillRank(skill.name);
+      
+      if (skill.rank > min) {
+        const refund = SKILL_XP_COSTS[skill.rank - 1];
+        const next = [...char.data.specialSkills];
+        next[levelUpTarget.index] = { ...next[levelUpTarget.index], rank: skill.rank - 1 };
+        patch({ 
+          specialSkills: next,
+          progression: { ...char.data.progression, xp: char.data.progression.xp + refund }
+        });
+      }
+    }
+  };
 
   const currentBurdenVal = currentBurden(char.data);
   const maxBurdenVal = burdenMax(char.data);
@@ -659,6 +793,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                 {(Object.keys(SKILL_GROUPS) as Array<keyof typeof SKILL_GROUPS>).map(attr => {
                   const group = SKILL_GROUPS[attr];
                   const attrVal = char.data.attributes[attr];
+                  
                   return (
                     <div key={attr} className="bg-gray-800 border border-gray-700 rounded-xl p-5 shadow-sm flex flex-col min-w-0">
                       <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-3">
@@ -667,15 +802,18 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                             {ATTRIBUTE_NAMES[attr]}
                           </span>
                         </Tooltip>
-                        <input type="number" min={1} max={4} className={`border-b-2 ${group.color} border-gray-600 p-1 w-12 text-center font-bold text-xl focus:outline-none bg-transparent text-white`} 
-                          value={attrVal} onChange={e => patch({ attributes: { ...char.data.attributes, [attr]: Math.min(4, Math.max(1, +e.target.value)) } })} />
+                        <button 
+                          onClick={() => setLevelUpTarget({ type: 'attribute', key: attr })}
+                          className={`border-b-2 ${group.color} border-gray-600 p-1 w-12 text-center font-bold text-xl focus:outline-none bg-transparent text-white hover:bg-gray-700 transition-colors rounded`}
+                        >
+                          {attrVal}
+                        </button>
                       </div>
                       <div className="space-y-2 flex-1">
                         {group.skills.map(skill => {
                           const originMin = getMinSkillRank(skill);
                           const attributeMax = Math.min(8, attrVal * 2);
                           const maxSkill = Math.max(originMin, attributeMax);
-                          const minSkill = originMin;
                           const currentSkill = char.data.skills[skill] ?? 0;
                           const isInspired = char.data.identity.inspirations?.includes(skill);
                           
@@ -690,16 +828,20 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                                     <span className="text-yellow-500 text-xs cursor-help">★</span>
                                   </Tooltip>
                                 )}
-                                {minSkill > 0 && (
-                                  <Tooltip text={`Minimum bound: ${minSkill} (from Origin)`} noBorder className="w-auto shrink-0">
+                                {originMin > 0 && (
+                                  <Tooltip text={`Minimum bound: ${originMin} (from Origin)`} noBorder className="w-auto shrink-0">
                                     <span className="text-gray-500 text-[10px] cursor-help">🔒</span>
                                   </Tooltip>
                                 )}
                               </div>
                               <div className="flex items-center gap-1 shrink-0 ml-2">
                                 <span className="text-gray-500 font-bold text-xs">+</span>
-                                <input type="number" min={minSkill} max={maxSkill} className="border border-gray-600 bg-gray-900 p-1 w-10 text-center rounded shadow-sm focus:outline-none focus:border-red-500 font-bold text-white" 
-                                  value={Math.max(minSkill, currentSkill)} onChange={e => patch({ skills: { ...char.data.skills, [skill]: Math.min(maxSkill, Math.max(minSkill, +e.target.value)) } })} />
+                                <button 
+                                  onClick={() => setLevelUpTarget({ type: 'skill', key: skill })}
+                                  className="border border-gray-600 bg-gray-900 p-1 w-10 text-center rounded shadow-sm focus:outline-none font-bold text-white hover:border-red-500 hover:bg-gray-800 transition-colors"
+                                >
+                                  {Math.max(originMin, currentSkill)}
+                                </button>
                                 <span className="text-gray-500 text-xs font-bold w-5 text-right">/ {maxSkill}</span>
                               </div>
                             </div>
@@ -720,31 +862,30 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                     const originMin = getMinSkillRank(s.name);
                     const attributeMax = Math.min(8, char.data.attributes[attr as keyof typeof char.data.attributes] * 2);
                     const maxSkill = Math.max(originMin, attributeMax);
-                    const minSkill = originMin;
                     const isInspired = char.data.identity.inspirations?.includes(s.name);
 
                     return (
                       <div key={i} className="flex items-center gap-1 w-full bg-gray-900 border border-gray-700 rounded-lg p-1">
                         <div className="flex-1 min-w-0 flex items-center pl-1">
                           <div 
-                            className={`bg-transparent border-none text-sm text-gray-200 flex justify-between items-center flex-1 min-w-0 ${minSkill > 0 ? 'cursor-not-allowed text-gray-400' : 'cursor-pointer'}`}
+                            className={`bg-transparent border-none text-sm text-gray-200 flex justify-between items-center flex-1 min-w-0 ${originMin > 0 ? 'cursor-not-allowed text-gray-400' : 'cursor-pointer'}`}
                             onClick={() => {
-                              if (minSkill > 0) return;
+                              if (originMin > 0) return;
                               setModalSpecialSkillIndex(i);
                               setExpandedSpecialSkill(null);
                               setIsSpecialSkillModalOpen(true);
                             }}
                           >
                             <span className="truncate">{s.name || "— Select Skill —"}</span>
-                            {minSkill === 0 && <span className="text-gray-500 text-[10px] mr-1">▼</span>}
+                            {originMin === 0 && <span className="text-gray-500 text-[10px] mr-1">▼</span>}
                           </div>
                           {isInspired && (
                             <Tooltip text={`Inspiration: ${char.data.identity.origin}`} noBorder className="w-auto shrink-0 mr-1">
                               <span className="text-yellow-500 text-xs cursor-help">★</span>
                             </Tooltip>
                           )}
-                          {minSkill > 0 && (
-                            <Tooltip text={`Minimum bound: ${minSkill} (from Origin)`} noBorder className="w-auto shrink-0 mr-1">
+                          {originMin > 0 && (
+                            <Tooltip text={`Minimum bound: ${originMin} (from Origin)`} noBorder className="w-auto shrink-0 mr-1">
                               <span className="text-gray-500 text-[10px] cursor-help">🔒</span>
                             </Tooltip>
                           )}
@@ -753,15 +894,19 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                           <span className={`text-[9px] font-bold uppercase ${SKILL_GROUPS[attr as keyof typeof SKILL_GROUPS].color} border border-current px-1 py-0.5 rounded`}>{attr.toUpperCase()}</span>
                         </Tooltip>
                         <div className="flex items-center shrink-0">
-                          <input type="number" min={minSkill} max={maxSkill} className="bg-transparent text-right w-8 font-bold text-sm text-white focus:outline-none" 
-                            value={Math.max(minSkill, s.rank)} onChange={e => { 
-                              const next = [...char.data.specialSkills]; 
-                              next[i] = { ...next[i], rank: Math.min(maxSkill, Math.max(minSkill, +e.target.value)) }; 
-                              patch({ specialSkills: next }); 
-                            }} />
+                          {s.name ? (
+                            <button 
+                              onClick={() => setLevelUpTarget({ type: 'specialSkill', index: i })}
+                              className="bg-transparent text-right w-8 font-bold text-sm text-white hover:text-red-400 focus:outline-none"
+                            >
+                              {Math.max(originMin, s.rank)}
+                            </button>
+                          ) : (
+                            <span className="text-right w-8 font-bold text-sm text-gray-600">0</span>
+                          )}
                           <span className="text-gray-500 text-xs font-bold mr-1">/ {maxSkill}</span>
                         </div>
-                        {minSkill === 0 ? (
+                        {originMin === 0 ? (
                           <button className="text-red-500 hover:text-red-400 font-bold px-1 text-sm shrink-0 border-l border-gray-700 pl-2" onClick={() => patch({ specialSkills: char.data.specialSkills.filter((_, j) => j !== i) })}>×</button>
                         ) : (
                           <div className="px-2 shrink-0 border-l border-gray-700 text-gray-500 text-xs flex items-center justify-center" title="Locked by Origin">
@@ -857,12 +1002,32 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                     }
 
                     return (
-                      <div key={i} className={`bg-gray-900 border border-gray-700 rounded-lg transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''}`}>
+                      <div 
+                        key={i} 
+                        className={`bg-gray-900 border border-gray-700 rounded-lg transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''} ${draggedAbilityIndex === i ? 'opacity-40 border-dashed border-gray-500' : ''} ${dragOverAbilityIndex === i && draggedAbilityIndex !== i ? (draggedAbilityIndex! < i ? 'border-b-2 border-b-red-500' : 'border-t-2 border-t-red-500') : ''}`}
+                        onDragOver={(e) => handleDragOver(e, i)}
+                        onDrop={(e) => handleDrop(e, i)}
+                      >
                         
                         <div 
-                          className={`flex flex-wrap gap-3 items-center p-2 cursor-pointer select-none hover:bg-gray-800/50 transition-colors ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'}`}
+                          className={`flex flex-wrap gap-2 items-center p-2 cursor-pointer select-none hover:bg-gray-800/50 transition-colors ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'}`}
                           onClick={() => setExpandedAbility(isExpanded ? null : i)}
                         >
+                          
+                          {/* Drag Handle */}
+                          <div 
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, i)}
+                            onDragEnd={handleDragEnd}
+                            className="cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-300 px-1 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Drag to reorder"
+                          >
+                            <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
+                              <path d="M4 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm8-12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
+                            </svg>
+                          </div>
+
                           <input 
                             type="checkbox" 
                             className="w-5 h-5 cursor-pointer accent-red-600 shrink-0 ml-1" 
@@ -873,7 +1038,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                           />
                           
                           <div 
-                            className="w-full sm:w-[260px] shrink-0 bg-gray-800 border border-gray-600 rounded-md py-1.5 px-2 text-sm font-bold text-gray-200 cursor-pointer flex justify-between items-center hover:border-gray-500 transition-colors"
+                            className="w-full sm:w-[240px] shrink-0 bg-gray-800 border border-gray-600 rounded-md py-1.5 px-2 text-sm font-bold text-gray-200 cursor-pointer flex justify-between items-center hover:border-gray-500 transition-colors"
                             onClick={(e) => { 
                               e.stopPropagation(); 
                               setModalAbilityIndex(i); 
@@ -1200,6 +1365,109 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           </button>
         </div>
       </footer>
+
+      {/* LEVEL UP MODAL */}
+      {levelUpTarget && (() => {
+        let title = '';
+        let description = '';
+        let currentRank = 0;
+        let maxRank = 0;
+        let minRank = 0;
+        let xpCost = 0;
+        let isMaxed = false;
+        let isMinned = false;
+
+        if (levelUpTarget.type === 'attribute') {
+          title = `${ATTRIBUTE_NAMES[levelUpTarget.key]}`;
+          description = ATTRIBUTE_DESCRIPTIONS[levelUpTarget.key];
+          currentRank = char.data.attributes[levelUpTarget.key];
+          maxRank = getMaxAttribute(char.data.progression.tier);
+          minRank = 1;
+          isMaxed = currentRank >= maxRank;
+          isMinned = currentRank <= minRank;
+        } else if (levelUpTarget.type === 'skill') {
+          title = levelUpTarget.key;
+          description = CORE_SKILL_DESCRIPTIONS[levelUpTarget.key];
+          currentRank = char.data.skills[levelUpTarget.key] ?? 0;
+          const attr = Object.keys(SKILL_GROUPS).find(a => (SKILL_GROUPS[a as keyof typeof SKILL_GROUPS].skills as readonly string[]).includes(levelUpTarget.key)) as keyof typeof char.data.attributes;
+          maxRank = Math.min(8, char.data.attributes[attr] * 2);
+          minRank = getMinSkillRank(levelUpTarget.key);
+          xpCost = currentRank < 8 ? SKILL_XP_COSTS[currentRank] : 0;
+          isMaxed = currentRank >= maxRank;
+          isMinned = currentRank <= minRank;
+        } else if (levelUpTarget.type === 'specialSkill') {
+          const skill = char.data.specialSkills[levelUpTarget.index];
+          title = skill.name || 'Special Skill';
+          description = SPECIAL_SKILL_DESCRIPTIONS[skill.name] || '';
+          currentRank = skill.rank;
+          const attr = skill.attribute as keyof typeof char.data.attributes;
+          maxRank = Math.min(8, char.data.attributes[attr] * 2);
+          minRank = getMinSkillRank(skill.name);
+          xpCost = currentRank < 8 ? SKILL_XP_COSTS[currentRank] : 0;
+          isMaxed = currentRank >= maxRank;
+          isMinned = currentRank <= minRank;
+        }
+
+        return (
+          <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+              
+              <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900 shrink-0">
+                <h2 className="font-cinzel font-bold text-xl text-gray-200">Advance {title}</h2>
+                <button onClick={() => setLevelUpTarget(null)} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+              </div>
+
+              <div className="p-5 flex flex-col gap-4">
+                {description && (
+                  <p className="text-sm italic text-gray-400 border-l-2 border-gray-600 pl-3">
+                    {description}
+                  </p>
+                )}
+
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-700 flex flex-col items-center justify-center">
+                  <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Current Rank</div>
+                  <div className="text-3xl font-bold text-white mb-2">{currentRank} <span className="text-lg text-gray-500 font-normal">/ {maxRank}</span></div>
+                  
+                  {levelUpTarget.type !== 'attribute' && (
+                    <div className="text-xs text-blue-400 font-bold bg-blue-900/30 px-2 py-1 rounded">
+                      {isMaxed ? 'Maximum Rank Reached' : `Next Rank Cost: ${xpCost} XP`}
+                    </div>
+                  )}
+                  {levelUpTarget.type === 'attribute' && isMaxed && (
+                    <div className="text-xs text-red-400 font-bold bg-red-900/30 px-2 py-1 rounded">
+                      Tier Limit Reached
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 w-full mt-2">
+                  <button 
+                    onClick={handleRegress}
+                    disabled={isMinned}
+                    className={`flex-1 py-3 rounded-lg font-bold text-sm border shadow-sm transition-colors flex items-center justify-center gap-2
+                      ${isMinned ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed' : 'bg-red-950/40 text-red-300 border-red-900 hover:bg-red-900/60'}`}
+                  >
+                    <span>←</span> Regress
+                  </button>
+                  <button 
+                    onClick={handleAdvance}
+                    disabled={isMaxed || (levelUpTarget.type !== 'attribute' && char.data.progression.xp < xpCost)}
+                    className={`flex-1 py-3 rounded-lg font-bold text-sm border shadow-sm transition-colors flex items-center justify-center gap-2
+                      ${isMaxed || (levelUpTarget.type !== 'attribute' && char.data.progression.xp < xpCost) ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed' : 'bg-green-950/40 text-green-300 border-green-900 hover:bg-green-900/60'}`}
+                  >
+                    Advance <span>→</span>
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-center text-sm font-bold text-gray-400 mt-2 bg-gray-900/50 p-2 rounded">
+                  <span>Available XP:</span>
+                  <span className="text-yellow-400">{char.data.progression.xp}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ORIGIN MODAL */}
       {isOriginModalOpen && (
@@ -1583,4 +1851,4 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
     </div>
   );
-} 
+}

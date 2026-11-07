@@ -25,7 +25,11 @@ export default function App() {
   }, []);
 
   if (loading) {
-    return <p className="p-8 text-center text-gray-500 h-screen flex items-center justify-center font-cinzel text-xl">Loading...</p>;
+    return (
+      <div className="w-full min-h-screen bg-gray-900 flex items-center justify-center font-cinzel text-xl text-gray-400">
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   if (!user) {
@@ -35,16 +39,18 @@ export default function App() {
   return (
     <CompendiumProvider>
       {selectedId ? (
-        <div className="w-full min-h-screen bg-gray-100 font-sans">
+        <div className="w-full min-h-screen bg-gray-900 font-sans">
           <CharacterSheet id={selectedId} onBack={() => setSelectedId(null)} />
         </div>
       ) : (
-        <div className="w-full min-h-screen bg-gray-50 p-8 font-sans">
+        <div className="w-full min-h-screen bg-gray-900 p-8 font-sans text-gray-200">
           <div className="max-w-4xl mx-auto">
-            <div className="flex justify-between items-center mb-8 border-b pb-4">
-              <p className="text-sm text-gray-600">Logged in as <strong>{user.email}</strong></p>
+            <div className="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
+              <p className="text-sm text-gray-400">
+                Logged in as <strong className="text-gray-200">{user.email}</strong>
+              </p>
               <button 
-                className="border px-3 py-1 rounded text-sm hover:bg-gray-100 transition-colors"
+                className="border border-gray-600 px-4 py-1.5 rounded-lg text-sm font-bold text-gray-300 hover:bg-gray-800 transition-colors"
                 onClick={() => supabase.auth.signOut()}
               >
                 Sign out
