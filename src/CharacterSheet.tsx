@@ -102,15 +102,41 @@ const Tooltip = ({ text, children, className = "w-full", noBorder = false }: { t
   );
 };
 
-const getSpeedData = (speed?: string) => {
-  switch(speed) {
-    case '>>>': return { label: '>>> Slow', tooltip: 'This ability takes 3 action points to perform.' };
-    case '>>': return { label: '>> Average', tooltip: 'This ability takes 2 action points to perform.' };
-    case '>': return { label: '> Swift', tooltip: 'This ability takes 1 action point to perform.' };
-    case '|': return { label: '| Instant', tooltip: 'This ability takes 0 action points to perform.' };
-    case '<': return { label: '< Reaction', tooltip: 'This ability takes 1 reaction to perform.' };
+const getSpeedData = (speed?: string, upkeep?: string) => {
+  let rawSpeed = speed || '';
+  let rawUpkeep = upkeep || '';
+  
+  // Fallback for unparsed database strings
+  if (rawSpeed.includes('/')) {
+    const parts = rawSpeed.split('/');
+    rawSpeed = parts[0].trim();
+    rawUpkeep = parts[1] ? parts[1].trim() : rawUpkeep;
+  }
+
+  let speedLabel = '';
+  let speedTooltip = '';
+  switch(rawSpeed) {
+    case '>>>': speedLabel = '>>> Slow'; speedTooltip = 'Takes 3 action points to perform.'; break;
+    case '>>': speedLabel = '>> Average'; speedTooltip = 'Takes 2 action points to perform.'; break;
+    case '>': speedLabel = '> Swift'; speedTooltip = 'Takes 1 action point to perform.'; break;
+    case '|': speedLabel = '| Instant'; speedTooltip = 'Takes 0 action points to perform.'; break;
+    case '<': speedLabel = '< Reaction'; speedTooltip = 'Takes 1 reaction to perform.'; break;
     default: return null;
   }
+
+  let upkeepLabel = '';
+  let upkeepTooltip = '';
+  if (rawUpkeep) {
+    switch(rawUpkeep) {
+      case '>>>': upkeepLabel = '>>> Channeling'; upkeepTooltip = 'May be performed on following turns for 3 action points.'; break;
+      case '>>': upkeepLabel = '>> Channeling'; upkeepTooltip = 'May be performed on following turns for 2 action points.'; break;
+      case '>': upkeepLabel = '> Channeling'; upkeepTooltip = 'May be performed on following turns for 1 action point.'; break;
+      case '|': upkeepLabel = '| Channeling'; upkeepTooltip = 'May be performed on following turns for 0 action points.'; break;
+      default: upkeepLabel = `${rawUpkeep} Channeling`; upkeepTooltip = `Upkeep: ${rawUpkeep}`; break;
+    }
+  }
+
+  return { speedLabel, speedTooltip, upkeepLabel, upkeepTooltip };
 };
 
 const getTypeStyle = (type?: string) => {
@@ -646,12 +672,12 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                       </div>
                       <div className="space-y-2 flex-1">
                         {group.skills.map(skill => {
-                          const maxSkill = Math.min(8, attrVal * 2);
+                          const originMin = getMinSkillRank(skill);
+                          const attributeMax = Math.min(8, attrVal * 2);
+                          const maxSkill = Math.max(originMin, attributeMax);
+                          const minSkill = originMin;
                           const currentSkill = char.data.skills[skill] ?? 0;
                           const isInspired = char.data.identity.inspirations?.includes(skill);
-                          
-                          // Clamp minSkill to maxSkill to prevent UI breakage
-                          const minSkill = Math.min(getMinSkillRank(skill), maxSkill);
                           
                           return (
                             <div key={skill} className="flex justify-between items-center text-sm w-full">
@@ -691,25 +717,26 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                   {char.data.specialSkills.map((s, i) => {
                     const compendiumEntry = getEntryByName(s.name);
                     const attr = compendiumEntry?.data?.attribute || 'grt'; 
-                    const maxSkill = Math.min(8, char.data.attributes[attr as keyof typeof char.data.attributes] * 2);
+                    const originMin = getMinSkillRank(s.name);
+                    const attributeMax = Math.min(8, char.data.attributes[attr as keyof typeof char.data.attributes] * 2);
+                    const maxSkill = Math.max(originMin, attributeMax);
+                    const minSkill = originMin;
                     const isInspired = char.data.identity.inspirations?.includes(s.name);
-                    
-                    // Clamp minSkill to maxSkill
-                    const minSkill = Math.min(getMinSkillRank(s.name), maxSkill);
 
                     return (
                       <div key={i} className="flex items-center gap-1 w-full bg-gray-900 border border-gray-700 rounded-lg p-1">
                         <div className="flex-1 min-w-0 flex items-center pl-1">
                           <div 
-                            className="bg-transparent border-none text-sm text-gray-200 cursor-pointer flex justify-between items-center flex-1 min-w-0"
+                            className={`bg-transparent border-none text-sm text-gray-200 flex justify-between items-center flex-1 min-w-0 ${minSkill > 0 ? 'cursor-not-allowed text-gray-400' : 'cursor-pointer'}`}
                             onClick={() => {
+                              if (minSkill > 0) return;
                               setModalSpecialSkillIndex(i);
                               setExpandedSpecialSkill(null);
                               setIsSpecialSkillModalOpen(true);
                             }}
                           >
                             <span className="truncate">{s.name || "— Select Skill —"}</span>
-                            <span className="text-gray-500 text-[10px] mr-1">▼</span>
+                            {minSkill === 0 && <span className="text-gray-500 text-[10px] mr-1">▼</span>}
                           </div>
                           {isInspired && (
                             <Tooltip text={`Inspiration: ${char.data.identity.origin}`} noBorder className="w-auto shrink-0 mr-1">
@@ -734,7 +761,13 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                             }} />
                           <span className="text-gray-500 text-xs font-bold mr-1">/ {maxSkill}</span>
                         </div>
-                        <button className="text-red-500 hover:text-red-400 font-bold px-1 text-sm shrink-0 border-l border-gray-700 pl-2" onClick={() => patch({ specialSkills: char.data.specialSkills.filter((_, j) => j !== i) })}>×</button>
+                        {minSkill === 0 ? (
+                          <button className="text-red-500 hover:text-red-400 font-bold px-1 text-sm shrink-0 border-l border-gray-700 pl-2" onClick={() => patch({ specialSkills: char.data.specialSkills.filter((_, j) => j !== i) })}>×</button>
+                        ) : (
+                          <div className="px-2 shrink-0 border-l border-gray-700 text-gray-500 text-xs flex items-center justify-center" title="Locked by Origin">
+                            🔒
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -808,7 +841,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                   {char.data.abilities.map((a, i) => {
                     const compendiumEntry = getEntryByName(a.name);
                     const isExpanded = expandedAbility === i;
-                    const speedData = compendiumEntry?.data?.speed ? getSpeedData(compendiumEntry.data.speed) : null;
+                    const speedData = compendiumEntry?.data?.speed ? getSpeedData(compendiumEntry.data.speed, compendiumEntry.data.upkeep) : null;
 
                     const statsToShow = [];
                     if (compendiumEntry) {
@@ -861,15 +894,29 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                             )}
                             
                             {speedData && (
-                              <div className="relative group inline-flex items-center">
-                                <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 cursor-help">
-                                  {speedData.label}
-                                </span>
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
-                                  {speedData.tooltip}
-                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
+                              <>
+                                <div className="relative group inline-flex items-center">
+                                  <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 cursor-help">
+                                    {speedData.speedLabel}
+                                  </span>
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
+                                    {speedData.speedTooltip}
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
+                                  </div>
                                 </div>
-                              </div>
+                                
+                                {speedData.upkeepLabel && (
+                                  <div className="relative group inline-flex items-center">
+                                    <span className="bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50 cursor-help">
+                                      {speedData.upkeepLabel}
+                                    </span>
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
+                                      {speedData.upkeepTooltip}
+                                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
                             )}
 
                             {compendiumEntry?.data?.range && (
@@ -1434,7 +1481,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                     </div>
                     <div className="space-y-2">
                       {groupedByRank[rank].map(ab => {
-                        const speedData = getSpeedData(ab.data.speed);
+                        const speedData = getSpeedData(ab.data.speed, ab.data.upkeep);
                         const isExpanded = expandedModalAbility === ab.id;
                         const hasDiscipline = ab.data.source ? charDisciplines.includes(ab.data.source) : false;
 
@@ -1464,7 +1511,12 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                                 )}
                                 {speedData && (
                                   <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">
-                                    {speedData.label}
+                                    {speedData.speedLabel}
+                                  </span>
+                                )}
+                                {speedData?.upkeepLabel && (
+                                  <span className="bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50">
+                                    {speedData.upkeepLabel}
                                   </span>
                                 )}
                                 {ab.data.range && (
@@ -1477,11 +1529,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                                     Rank {ab.data.class_rank}
                                   </span>
                                 )}
-                                {ab.data.source && (
-                                  <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">
-                                    {ab.data.source}
-                                  </span>
-                                )}
+                                {/* Removed source/discipline tag here */}
                               </div>
                             </button>
                             
@@ -1535,4 +1583,4 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
     </div>
   );
-}
+} 

@@ -35,10 +35,11 @@ export type CompendiumEntry = {
     // Ability specific fields
     type?: 'attack' | 'defensive' | 'utility';
     speed?: '>' | '>>' | '>>>' | '|' | '<';
-    sn_cost?: number;
+    upkeep?: '>' | '>>' | '>>>' | '|' | '<'; // <-- ADDED
+    sn_cost?: number | string;
     class_rank?: number;
     requirement?: string;
-    range?: 'Melee' | 'Ranged' | 'Melee/Ranged';
+    range?: 'Melee' | 'Ranged' | 'Melee/Ranged' | 'Self' | 'None';
     acc?: string;
     dmg?: string;
     eva?: string;
