@@ -22,7 +22,7 @@ export function defaultCharacterData(): CharacterData {
       extra: [],
     },
     bonus: { vm: 0, sl: 0, dp: 0, eva: 0 },
-    trackers: { vigor: 6, strain: 0, dp: 3, ap: 0, injuries: [] },
+    trackers: { vigor: 6, strain: 0, dp: 3, ap: 0, acc: 0, injuries: [] },
     notes: '',
   };
 }

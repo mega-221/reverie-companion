@@ -10,15 +10,19 @@ import {
 } from './components/sheet/utils';
 
 import Header from './components/sheet/Header';
-import VitalsSection from './components/sheet/VitalsSection';
-import SkillsSection from './components/sheet/SkillsSection';
 import ClassSection from './components/sheet/ClassSection';
 import AbilitiesSection from './components/sheet/AbilitiesSection';
-import InventorySection from './components/sheet/InventorySection';
 import NarrativeSection from './components/sheet/NarrativeSection';
 import Footer from './components/sheet/Footer';
 import InventoryModal from './components/sheet/InventoryModal';
 import { LevelUpModal, OriginModal, ClassModal, SpecialSkillModal, AbilityModal } from './components/sheet/Modals';
+
+import StatsCard from './components/sheet/StatsCard';
+import VitalsCard from './components/sheet/VitalsCard';
+import CoreSkillsCard from './components/sheet/CoreSkillsCard';
+import LoadoutCard from './components/sheet/LoadoutCard';
+import InjuriesCard from './components/sheet/InjuriesCard';
+import SpecialSkillsCard from './components/sheet/SpecialSkillsCard';
 
 export default function CharacterSheet({ id, onBack }: { id: string, onBack: () => void }) {
   const { getAbilities } = useCompendium();
@@ -102,6 +106,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             strain: fetchedChar.data.trackers?.strain ?? 0,
             dp: fetchedChar.data.trackers?.dp ?? 3,
             ap: fetchedChar.data.trackers?.ap ?? 0,
+            acc: fetchedChar.data.trackers?.acc ?? 0,
             injuries: fetchedChar.data.trackers?.injuries || []
           },
           equipment: migratedEq,
@@ -133,10 +138,17 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     if (!char) return;
     const current = char.data.trackers[key];
     let max = Infinity;
-    if (key === 'vigor') max = 5 + (char.data.progression.tier - 1) + char.data.bonus.vm;
+    let min = 0; 
+    
+    if (key === 'vigor') {
+      const baseMax = 5 + (char.data.progression.tier - 1) + char.data.bonus.vm;
+      max = baseMax * 2; // Allow TVG to exceed max
+      min = -baseMax; // Allow negative vigor
+    }
     if (key === 'strain') max = (5 + (char.data.progression.tier - 1) + char.data.bonus.sl) * 2;
     if (key === 'dp') max = 2 + (char.data.progression.tier - 1) + char.data.bonus.dp;
-    const nextVal = Math.max(0, Math.min(max, current + amount));
+    
+    const nextVal = Math.max(min, Math.min(max, current + amount));
     patch({ trackers: { ...char.data.trackers, [key]: nextVal } });
   }
 
@@ -291,18 +303,45 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     <div className="min-h-screen bg-gray-900 pb-20 font-sans text-gray-200">
       <Header char={char} onBack={onBack} onSave={save} saving={saving} saved={saved} onNameSave={(name) => { setChar({ ...char, name }); handleNameSave(name); }} />
       <main className="w-full px-4 sm:px-6 pt-6">
+        
         {activeTab === 'gameplay' && (
-          <div className="w-full flex flex-col gap-6 animate-in fade-in duration-200">
-            <VitalsSection char={char} updateTracker={updateTracker} patch={patch} onOpenInventory={() => setIsInventoryModalOpen(true)} />
-            <SkillsSection char={char} patch={patch} setLevelUpTarget={setLevelUpTarget} setIsSpecialSkillModalOpen={setIsSpecialSkillModalOpen} setModalSpecialSkillIndex={setModalSpecialSkillIndex} setExpandedSpecialSkill={() => {}} />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200 items-start">
+            
+            {/* ROW 1 */}
+            <div className="lg:col-span-4 h-full">
+              <StatsCard char={char} updateTracker={updateTracker} patch={patch} />
+            </div>
+            <div className="lg:col-span-4 h-full">
+              <VitalsCard char={char} updateTracker={updateTracker} />
+            </div>
+            <div className="lg:col-span-4 h-full">
+              <CoreSkillsCard char={char} setLevelUpTarget={setLevelUpTarget} />
+            </div>
+
+            {/* ROW 2 */}
+            <div className="lg:col-span-4 h-full">
+              <LoadoutCard char={char} patch={patch} onOpenInventory={() => setIsInventoryModalOpen(true)} />
+            </div>
+            <div className="lg:col-span-4 h-full">
+              <InjuriesCard char={char} patch={patch} />
+            </div>
+            <div className="lg:col-span-4 h-full">
+              <SpecialSkillsCard char={char} patch={patch} setLevelUpTarget={setLevelUpTarget} setIsSpecialSkillModalOpen={setIsSpecialSkillModalOpen} setModalSpecialSkillIndex={setModalSpecialSkillIndex} setExpandedSpecialSkill={() => {}} />
+            </div>
+
+            {/* ROW 3 */}
+            <div className="lg:col-span-4 h-full">
               <ClassSection char={char} patch={patch} setIsClassModalOpen={setIsClassModalOpen} />
+            </div>
+            <div className="lg:col-span-8">
               <AbilitiesSection char={char} patch={patch} setModalAbilityIndex={setModalAbilityIndex} setIsAbilityModalOpen={setIsAbilityModalOpen} setModalDiscipline={() => {}} setExpandedModalAbility={() => {}} />
             </div>
-            <InventorySection char={char} patch={patch} />
+
           </div>
         )}
+
         {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} openOriginModal={() => setIsOriginModalOpen(true)} />}
+        
         {activeTab === 'progression' && (
           <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in duration-200">
             <section className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm w-full">
