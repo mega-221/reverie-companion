@@ -66,7 +66,11 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
           <button onClick={() => setLevelUpTarget(null)} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
         </div>
         <div className="p-5 flex flex-col gap-4">
-          {description && <p className="text-sm italic text-gray-200 border-l-2 border-gray-600 pl-3">{description}</p>}
+          {description && (
+            <div className="text-sm italic text-gray-200 border-l-2 border-gray-600 pl-3">
+              {description.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+            </div>
+          )}
           
           <div className="bg-black/20 rounded-lg p-3 border border-gray-700 flex flex-col items-center justify-center shadow-inner">
             <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Current Rank</div>
@@ -171,7 +175,11 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
                 </button>
                 {isExpanded && (
                   <div className="p-4 border-t border-gray-700 bg-black/20 text-sm">
-                    {origin.data.lore && <div className="mb-4 text-sm italic text-gray-200 border-l-2 border-gray-600 pl-3">"{origin.data.lore}"</div>}
+                    {origin.data.lore && (
+                      <div className="mb-4 text-sm italic text-gray-200 border-l-2 border-gray-600 pl-3">
+                        {origin.data.lore.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">"{line}"</span>)}
+                      </div>
+                    )}
                     <div className="grid grid-cols-[100px_1fr] gap-2 mb-4 text-gray-300">
                       <div className="font-bold text-gray-500 text-[10px] tracking-wider text-right mt-0.5">Inspiration</div><div>{origin.data.inspiration || 'None'}</div>
                       <div className="font-bold text-gray-500 text-[10px] tracking-wider text-right mt-0.5">Starting Skills</div><div>{origin.data.starting || 'None'}</div>
@@ -212,6 +220,9 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
 export function ClassModal({ char, isOpen, onClose, patch }: any) {
   const { getClasses } = useCompendium();
   if (!isOpen) return null;
+
+  const archetypes = ['Champion', 'Scoundrel', 'Guide', 'Scholar', 'Mystic', 'Aberration'];
+
   return (
     <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
@@ -220,9 +231,13 @@ export function ClassModal({ char, isOpen, onClose, patch }: any) {
           <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {['Champion', 'Scoundrel', 'Guide', 'Scholar', 'Mystic', 'Aberration'].map(archetype => {
-            const classes = getClasses().filter((c: any) => c.data.archetype === archetype);
+          {archetypes.map(archetype => {
+            let classes = getClasses().filter((c: any) => c.data.archetype === archetype);
             if (classes.length === 0) return null;
+
+            // Enforce alphabetical sorting for all classes in the archetype
+            classes = classes.sort((a: any, b: any) => a.name.localeCompare(b.name));
+
             return (
               <div key={archetype}>
                 <div className="bg-black/20 text-xs font-bold text-red-400 uppercase tracking-widest py-2 border-b border-gray-700 mb-2 px-2 rounded-t">{archetype}</div>
@@ -271,7 +286,9 @@ export function SpecialSkillModal({ char, isOpen, onClose, patch, modalIndex }: 
                         </button>
                         {isExpanded && (
                           <div className="p-4 border-t border-gray-700 bg-black/40">
-                            <p className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">{s.data.description}</p>
+                            <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">
+                              {s.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                            </div>
                             <button onClick={() => { if (modalIndex !== null) { const next = [...char.data.specialSkills]; next[modalIndex] = { ...next[modalIndex], name: s.name }; patch({ specialSkills: next }); } onClose(); setExpandedSpecialSkill(null); }} className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors">Confirm Selection</button>
                           </div>
                         )}
@@ -356,7 +373,9 @@ export function AbilityModal({ char, isOpen, onClose, patch, modalIndex }: any) 
                             <div className="flex flex-wrap justify-between gap-2 mb-3 bg-black/20 p-2 rounded border border-gray-800 shadow-inner text-center">
                               {statsToShow.map((stat, idx) => <div key={idx} className={`flex-1 flex flex-col items-center justify-center min-w-[80px] ${idx !== statsToShow.length - 1 ? 'border-r border-gray-700' : ''}`}><span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">{stat.label}</span><span className={`text-sm font-bold ${stat.color}`}>{stat.value}</span></div>)}
                             </div>
-                            <p className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">{ab.data.description}</p>
+                            <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">
+                              {ab.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                            </div>
                             {hasDiscipline ? (
                               <button onClick={() => { if (modalIndex !== null) { const next = [...char.data.abilities]; next[modalIndex] = { ...next[modalIndex], name: ab.name }; patch({ abilities: next }); } onClose(); setExpandedModalAbility(null); }} className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors">Confirm Selection</button>
                             ) : (

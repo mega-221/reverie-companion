@@ -81,6 +81,8 @@ export type Tab = 'gameplay' | 'narrative' | 'progression';
 export type LevelUpTarget = { type: 'attribute'; key: keyof typeof ATTRIBUTE_NAMES } | { type: 'skill'; key: string } | { type: 'specialSkill'; index: number };
 
 export const getMaxAttribute = (tier: number) => tier >= 5 ? 4 : tier >= 3 ? 3 : 2;
+export const getMaxAttributePoints = (tier: number) => Math.max(0, tier - 1);
+export const getSpentAttributePoints = (attributes: { grt: number, ref: number, int: number, psy: number }) => (attributes.grt - 1) + (attributes.ref - 1) + (attributes.int - 1) + (attributes.psy - 1);
 
 export const getMinSkillRank = (skillName: string, char: any) => {
   const origin = char?.data.identity.origin;
@@ -134,7 +136,6 @@ export const getTypeStyle = (type?: string) => {
   }
 };
 
-// UI Helpers
 export const SectionHeader = ({ title }: { title: string }) => (
   <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">
     {title}
@@ -173,10 +174,4 @@ export const ResourceBar = ({ current, max, color, overLimitColor }: { current: 
       })}
     </div>
   );
-};
-
-export const getMaxAttributePoints = (tier: number) => Math.max(0, tier - 1);
-
-export const getSpentAttributePoints = (attributes: { grt: number, ref: number, int: number, psy: number }) => {
-  return (attributes.grt - 1) + (attributes.ref - 1) + (attributes.int - 1) + (attributes.psy - 1);
 };

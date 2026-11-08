@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
-import type { Character } from './types';
+import type { Character, CharacterData } from './types';
 import { useCompendium } from './CompendiumContext';
 import { 
   ORIGIN_EFFECTS, ORIGIN_CHOICES, CORE_SKILLS, SPECIAL_SKILL_ATTRIBUTES, 
@@ -17,6 +17,7 @@ import AbilitiesSection from './components/sheet/AbilitiesSection';
 import InventorySection from './components/sheet/InventorySection';
 import NarrativeSection from './components/sheet/NarrativeSection';
 import Footer from './components/sheet/Footer';
+import InventoryModal from './components/sheet/InventoryModal';
 import { LevelUpModal, OriginModal, ClassModal, SpecialSkillModal, AbilityModal } from './components/sheet/Modals';
 
 export default function CharacterSheet({ id, onBack }: { id: string, onBack: () => void }) {
@@ -33,14 +34,42 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const [modalSpecialSkillIndex, setModalSpecialSkillIndex] = useState<number | null>(null);
   const [isAbilityModalOpen, setIsAbilityModalOpen] = useState(false);
   const [modalAbilityIndex, setModalAbilityIndex] = useState<number | null>(null);
+  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
 
   useEffect(() => {
     supabase.from('characters').select('*').eq('id', id).single()
       .then(({ data }) => {
         if (!data) return;
         const fetchedChar = data as Character;
-        
-        const safeData = {
+
+        // --- Migrate items to have stable IDs ---
+        const rawItems: any[] = Array.isArray(fetchedChar.data.items) ? fetchedChar.data.items : [];
+        const migratedItems = rawItems.map((i: any) =>
+          typeof i === 'string'
+            ? { id: crypto.randomUUID(), name: i, qty: 1 }
+            : { ...i, id: i.id || crypto.randomUUID() }
+        );
+
+        // --- Migrate equipment: was names, now IDs ---
+        const resolveEq = (val: string): string => {
+          if (!val) return '';
+          if (val.length > 30) return val; // already a UUID
+          const existing = migratedItems.find((i: any) => i.name === val);
+          if (existing) return existing.id;
+          const newId = crypto.randomUUID();
+          migratedItems.push({ id: newId, name: val, qty: 1 });
+          return newId;
+        };
+
+        const rawEq = fetchedChar.data.equipment || ({} as any);
+        const migratedEq = {
+          mainHand: resolveEq(rawEq.mainHand || ''),
+          mainHandMode: (rawEq.mainHandMode || (rawEq.mainHand ? '1H' : '')) as '1H' | '2H' | '',
+          offHand: resolveEq(rawEq.offHand || ''),
+          armour: resolveEq(rawEq.armour || ''),
+        };
+
+        const safeData: CharacterData = {
           ...fetchedChar.data,
           identity: {
             origin: fetchedChar.data.identity?.origin || '',
@@ -50,37 +79,39 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             inspirations: fetchedChar.data.identity?.inspirations || [],
             originChoices: fetchedChar.data.identity?.originChoices || {}
           },
-          progression: { 
-            tier: fetchedChar.data.progression?.tier || 2, 
-            level: fetchedChar.data.progression?.level || 5, 
-            xp: fetchedChar.data.progression?.xp || 0 
+          progression: {
+            tier: fetchedChar.data.progression?.tier || 2,
+            level: fetchedChar.data.progression?.level || 5,
+            xp: fetchedChar.data.progression?.xp ?? 0
           },
-          attributes: { 
-            grt: fetchedChar.data.attributes?.grt || 1, 
-            ref: fetchedChar.data.attributes?.ref || 1, 
-            int: fetchedChar.data.attributes?.int || 1, 
-            psy: fetchedChar.data.attributes?.psy || 1 
+          attributes: {
+            grt: fetchedChar.data.attributes?.grt || 1,
+            ref: fetchedChar.data.attributes?.ref || 1,
+            int: fetchedChar.data.attributes?.int || 1,
+            psy: fetchedChar.data.attributes?.psy || 1
           },
-          bonus: { 
-            vm: fetchedChar.data.bonus?.vm || 0, 
-            sl: fetchedChar.data.bonus?.sl || 0, 
-            dp: fetchedChar.data.bonus?.dp || 0, 
-            eva: fetchedChar.data.bonus?.eva || 0 
+          bonus: {
+            vm: fetchedChar.data.bonus?.vm || 0,
+            sl: fetchedChar.data.bonus?.sl || 0,
+            dp: fetchedChar.data.bonus?.dp || 0,
+            eva: fetchedChar.data.bonus?.eva || 0
           },
           trackers: {
-            vigor: fetchedChar.data.trackers?.vigor || 6, 
-            strain: fetchedChar.data.trackers?.strain || 0, 
-            dp: fetchedChar.data.trackers?.dp || 3, 
-            ap: fetchedChar.data.trackers?.ap || 0, 
+            vigor: fetchedChar.data.trackers?.vigor ?? 6,
+            strain: fetchedChar.data.trackers?.strain ?? 0,
+            dp: fetchedChar.data.trackers?.dp ?? 3,
+            ap: fetchedChar.data.trackers?.ap ?? 0,
             injuries: fetchedChar.data.trackers?.injuries || []
           },
-          abilities: Array.isArray(fetchedChar.data.abilities) 
+          equipment: migratedEq,
+          abilities: Array.isArray(fetchedChar.data.abilities)
             ? fetchedChar.data.abilities.map((a: any) => typeof a === 'string' ? { name: a, equipped: true } : a)
             : [],
           convictions: fetchedChar.data.convictions || [],
           failings: fetchedChar.data.failings || [],
           specialSkills: fetchedChar.data.specialSkills || [],
-          items: fetchedChar.data.items || [],
+          items: migratedItems,
+          possessions: (fetchedChar.data.possessions || []).map((i: any) => ({ ...i, id: i.id || crypto.randomUUID() })),
           disciplines: fetchedChar.data.disciplines || [],
           skills: fetchedChar.data.skills || {},
           notes: fetchedChar.data.notes || ''
@@ -92,7 +123,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
   if (!char) return <p className="text-gray-400 p-8 text-center font-cinzel text-xl h-screen flex items-center justify-center bg-gray-900">Loading character...</p>;
 
-  function patch(p: Partial<Character['data']>) {
+  function patch(p: Partial<CharacterData>) {
     setChar(c => c && { ...c, data: { ...c.data, ...p } });
     setSaved(false);
   }
@@ -102,7 +133,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     const current = char.data.trackers[key];
     let max = Infinity;
     if (key === 'vigor') max = 5 + (char.data.progression.tier - 1) + char.data.bonus.vm;
-    if (key === 'strain') max = (5 + (char.data.progression.tier - 1) + char.data.bonus.sl) * 2; 
+    if (key === 'strain') max = (5 + (char.data.progression.tier - 1) + char.data.bonus.sl) * 2;
     if (key === 'dp') max = 2 + (char.data.progression.tier - 1) + char.data.bonus.dp;
     const nextVal = Math.max(0, Math.min(max, current + amount));
     patch({ trackers: { ...char.data.trackers, [key]: nextVal } });
@@ -261,7 +292,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       <main className="w-full px-4 sm:px-6 pt-6">
         {activeTab === 'gameplay' && (
           <div className="w-full flex flex-col gap-6 animate-in fade-in duration-200">
-            <VitalsSection char={char} updateTracker={updateTracker} patch={patch} openOriginModal={() => setIsOriginModalOpen(true)} />
+            <VitalsSection char={char} updateTracker={updateTracker} patch={patch} onOpenInventory={() => setIsInventoryModalOpen(true)} />
             <SkillsSection char={char} patch={patch} setLevelUpTarget={setLevelUpTarget} setIsSpecialSkillModalOpen={setIsSpecialSkillModalOpen} setModalSpecialSkillIndex={setModalSpecialSkillIndex} setExpandedSpecialSkill={() => {}} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full">
               <ClassSection char={char} patch={patch} setIsClassModalOpen={setIsClassModalOpen} />
@@ -270,10 +301,10 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             <InventorySection char={char} patch={patch} />
           </div>
         )}
-        {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} />}
+        {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} openOriginModal={() => setIsOriginModalOpen(true)} />}
         {activeTab === 'progression' && (
           <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in duration-200">
-            <section className="sheet-panel p-6 w-full">
+            <section className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm w-full">
               <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">Progression</h2>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl">
@@ -307,6 +338,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       <ClassModal char={char} isOpen={isClassModalOpen} onClose={() => setIsClassModalOpen(false)} patch={patch} />
       <SpecialSkillModal char={char} isOpen={isSpecialSkillModalOpen} onClose={() => setIsSpecialSkillModalOpen(false)} patch={patch} modalIndex={modalSpecialSkillIndex} />
       <AbilityModal char={char} isOpen={isAbilityModalOpen} onClose={() => setIsAbilityModalOpen(false)} patch={patch} modalIndex={modalAbilityIndex} />
+      <InventoryModal char={char} isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} patch={patch} />
     </div>
   );
 }

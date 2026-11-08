@@ -19,6 +19,15 @@ export default function SkillsSection({
 }) {
   const { getEntryByName } = useCompendium();
 
+  if (!char.data.identity.origin) {
+    return (
+      <div className="sheet-panel p-8 text-center flex flex-col items-center justify-center min-h-[300px]">
+        <h2 className="text-2xl font-cinzel text-gray-400 mb-2">Skills Locked</h2>
+        <p className="text-gray-500 italic">You must select an Origin in the Narrative tab before you can allocate skills and attributes.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full items-start">
       <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">

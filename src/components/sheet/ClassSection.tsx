@@ -21,7 +21,6 @@ export default function ClassSection({ char, patch, setIsClassModalOpen }: { cha
               <span className="text-xs text-gray-400 italic tracking-widest mb-1">{selectedClassData.data.archetype}</span>
             ) : <div className="h-4 mb-1"></div>}
             
-            {/* Updated Class Box */}
             <div className="border border-gray-700 bg-gray-900 p-2.5 rounded-lg shadow-inner w-full font-bold text-gray-200 text-lg cursor-pointer flex justify-between items-center hover:border-gray-500 transition-colors" onClick={() => setIsClassModalOpen(true)}>
               <span>{char.data.identity.className || "— Select Class —"}</span>
               <span className="text-gray-500 text-sm">▼</span>
@@ -30,7 +29,6 @@ export default function ClassSection({ char, patch, setIsClassModalOpen }: { cha
           <div className="flex flex-col">
             <span className="text-xs text-gray-400 italic tracking-widest h-4 mb-1">{char.data.identity.className ? 'Path' : '\u00A0'}</span>
             
-            {/* Updated Path Select */}
             <select className="border border-gray-700 bg-gray-900 p-2.5 rounded-lg shadow-inner disabled:opacity-50 focus:outline-none focus:border-red-500 w-full font-bold text-gray-200 text-lg" value={char.data.identity.path} disabled={!char.data.identity.className} onChange={e => patch({ identity: { ...char.data.identity, path: e.target.value } })}>
               <option value="">— Select Path —</option>
               {(selectedClassData?.data?.paths || []).map((p: string) => <option key={p} value={p}>{p}</option>)}
@@ -51,7 +49,11 @@ export default function ClassSection({ char, patch, setIsClassModalOpen }: { cha
                     <span className={`font-bold ${isLocked ? 'text-gray-500' : 'text-gray-200'}`}>{passive.name}</span>
                     <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${isLocked ? 'bg-gray-800 text-gray-600 border-gray-700' : 'bg-gray-800 text-gray-400 border-gray-600'}`}>{isLocked ? `Rank ${passive.data.class_rank} Req` : 'Passive'}</span>
                   </div>
-                  <p className={`text-xs italic leading-snug ${isLocked ? 'text-gray-500' : 'text-gray-300'}`}>{passive.data.description}</p>
+                  <div className={`text-xs italic leading-snug ${isLocked ? 'text-gray-500' : 'text-gray-300'}`}>
+                    {passive.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => (
+                      <span key={idx} className="block mb-1 last:mb-0">{line}</span>
+                    ))}
+                  </div>
                 </div>
               );
             })}
@@ -65,7 +67,6 @@ export default function ClassSection({ char, patch, setIsClassModalOpen }: { cha
         <div className="space-y-2">
           {charDisciplines.map((d: string, i: number) => (
             <div key={i} className="flex gap-2 items-center w-full">
-              {/* Updated Discipline Select */}
               <select className="border border-gray-700 bg-gray-900 p-2 rounded-lg shadow-inner focus:outline-none focus:border-red-500 flex-1 text-sm w-full text-gray-200" value={d} onChange={e => { const next = [...charDisciplines]; next[i] = e.target.value; patch({ disciplines: next }); }}>
                 <option value="">— Select Discipline —</option>
                 {getDisciplines().map(disc => <option key={disc.id} value={disc.name}>{disc.name}</option>)}

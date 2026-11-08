@@ -98,7 +98,7 @@ export default function AbilitiesSection({
   };
 
   return (
-    <section className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm w-full lg:col-span-2">
+    <section className="sheet-panel p-6 w-full lg:col-span-2">
       <div className="flex justify-between items-end mb-4 border-b border-gray-700 pb-2">
         <div className="flex gap-4">
           <button onClick={() => setActiveAbilityTab('discipline')} className={`font-bold text-xl font-cinzel first-letter:font-cinzelDeco transition-colors ${activeAbilityTab === 'discipline' ? 'text-gray-200 border-b-2 border-red-500 pb-2 -mb-[10px]' : 'text-gray-500 hover:text-gray-300 pb-2'}`}>Learned Abilities</button>
@@ -134,7 +134,9 @@ export default function AbilitiesSection({
                           <div className="flex flex-wrap justify-between gap-2 mb-3 bg-gray-900/50 p-2 rounded border border-gray-800 shadow-inner text-center">
                             {renderStats(ab).map((stat, idx) => <div key={idx} className={`flex-1 flex flex-col items-center justify-center min-w-[80px] ${idx !== renderStats(ab).length - 1 ? 'border-r border-gray-700' : ''}`}><span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">{stat.label}</span><span className={`text-sm font-bold ${stat.color}`}>{stat.value}</span></div>)}
                           </div>
-                          <p className="italic text-gray-200 border-l-2 border-gray-700 pl-3 mt-4">{ab.data.description}</p>
+                          <div className="italic text-gray-200 border-l-2 border-gray-700 pl-3 mt-4">
+                            {ab.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -224,7 +226,9 @@ export default function AbilitiesSection({
                         <div className="flex flex-wrap justify-between gap-2 mb-3 bg-gray-900/50 p-2 rounded border border-gray-800 shadow-inner text-center">
                           {renderStats(compendiumEntry).map((stat, idx) => <div key={idx} className={`flex-1 flex flex-col items-center justify-center min-w-[80px] ${idx !== renderStats(compendiumEntry).length - 1 ? 'border-r border-gray-700' : ''}`}><span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">{stat.label}</span><span className={`text-sm font-bold ${stat.color}`}>{stat.value}</span></div>)}
                         </div>
-                        <p className="italic text-gray-200 border-l-2 border-gray-700 pl-3 mt-4">{compendiumEntry.data.description}</p>
+                        <div className="italic text-gray-200 border-l-2 border-gray-700 pl-3 mt-4">
+                          {compendiumEntry.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -258,7 +262,9 @@ export default function AbilitiesSection({
                     <div className="flex flex-wrap justify-between gap-2 mb-3 bg-gray-900/50 p-2 rounded border border-gray-800 shadow-inner text-center">
                       {renderStats(ab).map((stat, idx) => <div key={idx} className={`flex-1 flex flex-col items-center justify-center min-w-[80px] ${idx !== renderStats(ab).length - 1 ? 'border-r border-gray-700' : ''}`}><span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">{stat.label}</span><span className={`text-sm font-bold ${stat.color}`}>{stat.value}</span></div>)}
                     </div>
-                    <p className="italic text-gray-200 border-l-2 border-gray-700 pl-3 mt-4">{ab.data.description}</p>
+                    <div className="italic text-gray-200 border-l-2 border-gray-700 pl-3 mt-4">
+                      {ab.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                    </div>
                   </div>
                 )}
               </div>

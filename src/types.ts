@@ -7,6 +7,24 @@ export type Character = {
   updated_at: string;
 };
 
+export type InventoryItem = {
+  id: string;
+  name: string;
+  qty: number;
+  category?: string;
+  subtype?: string;
+  burden?: number;
+  value?: number;
+  req?: string;
+  dmg?: string;
+  range?: string;
+  ammo?: string;
+  effect?: string;
+  season?: string;
+  ability_access?: string;
+  location?: string;
+};
+
 export type CharacterData = {
   identity: { origin: string; className: string; path: string; quote: string; inspirations: string[]; originChoices: Record<string, string> };
   progression: { tier: number; level: number; xp: number };
@@ -17,7 +35,14 @@ export type CharacterData = {
   failings: { name: string; rank: number; convictionIndex: number; statement: string }[];
   abilities: { name: string; equipped: boolean }[];
   disciplines: string[];
-  items: { name: string; burden: number; qty: number; equipped: boolean }[];
+  items: InventoryItem[];
+  possessions: InventoryItem[];
+  equipment: {
+    mainHand: string;
+    mainHandMode: '1H' | '2H' | '';
+    offHand: string;
+    armour: string;
+  };
   bonus: { vm: number; sl: number; dp: number; eva: number };
   trackers: {
     vigor: number; strain: number; dp: number; ap: number;
@@ -32,22 +57,26 @@ export type CompendiumEntry = {
   name: string;
   data: {
     description?: string;
-    // Ability specific fields
     type?: 'attack' | 'defensive' | 'utility';
     speed?: '>' | '>>' | '>>>' | '|' | '<';
-    upkeep?: '>' | '>>' | '>>>' | '|' | '<'; // <-- ADDED
+    upkeep?: '>' | '>>' | '>>>' | '|' | '<';
     sn_cost?: number | string;
     class_rank?: number;
     requirement?: string;
-    range?: 'Melee' | 'Ranged' | 'Melee/Ranged' | 'Self' | 'None';
+    range?: string;
     acc?: string;
     dmg?: string;
     eva?: string;
-    // Discipline/Class fields
-    discipline?: string;
-    archetype?: string;
-    paths?: string[];
-    // Other
+    category?: string;
+    subtype?: string;
+    req?: string;
+    effect?: string;
+    value?: number;
+    burden?: number;
+    ammo?: string;
+    season?: string;
+    ability_access?: string;
+    location?: string;
     [key: string]: any;
   };
 };

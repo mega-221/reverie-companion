@@ -2,12 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Force native browser elements (dropdowns, scrollbars) into dark mode */
-:root {
-  color-scheme: dark;
-}
-
-/* Custom Component Classes */
 @layer components {
   .sheet-panel {
     @apply bg-gray-800 border border-gray-700 rounded-xl shadow-sm;
@@ -20,8 +14,11 @@
   }
 }
 
-/* Specifically target the dropdown options to match the dark theme */
+:root {
+  color-scheme: dark;
+}
+
 select option {
-  background-color: #1f2937; /* bg-gray-800 */
-  color: #e5e7eb; /* text-gray-200 */
+  background-color: #1f2937;
+  color: #e5e7eb;
 }
