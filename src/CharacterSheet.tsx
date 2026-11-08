@@ -57,7 +57,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           const existing = migratedItems.find((i: any) => i.name === val);
           if (existing) return existing.id;
           const newId = crypto.randomUUID();
-          migratedItems.push({ id: newId, name: val, qty: 1 });
+          migratedItems.push({ id: newId, name: val, qty: 0 }); // qty 0 so it doesn't duplicate in backpack
           return newId;
         };
 
@@ -67,6 +67,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           mainHandMode: (rawEq.mainHandMode || (rawEq.mainHand ? '1H' : '')) as '1H' | '2H' | '',
           offHand: resolveEq(rawEq.offHand || ''),
           armour: resolveEq(rawEq.armour || ''),
+          extra: Array.isArray(rawEq.extra) ? rawEq.extra.map((id: string) => resolveEq(id)) : []
         };
 
         const safeData: CharacterData = {

@@ -19,6 +19,7 @@ export function defaultCharacterData(): CharacterData {
       mainHandMode: '',
       offHand: '',
       armour: '',
+      extra: [],
     },
     bonus: { vm: 0, sl: 0, dp: 0, eva: 0 },
     trackers: { vigor: 6, strain: 0, dp: 3, ap: 0, injuries: [] },

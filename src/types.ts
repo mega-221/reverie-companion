@@ -10,6 +10,7 @@ export type Character = {
 export type InventoryItem = {
   id: string;
   name: string;
+  customName?: string;
   qty: number;
   category?: string;
   subtype?: string;
@@ -42,6 +43,7 @@ export type CharacterData = {
     mainHandMode: '1H' | '2H' | '';
     offHand: string;
     armour: string;
+    extra: string[];
   };
   bonus: { vm: number; sl: number; dp: number; eva: number };
   trackers: {

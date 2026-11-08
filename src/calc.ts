@@ -23,20 +23,25 @@ export const calculateBurden = (d: CharacterData, getEntryByName: (name: string)
   const backpackBurden = d.items.reduce((sum, item) => {
     const db = getEntryByName(item.name);
     const burden = db?.data?.burden ?? item.burden ?? 0;
-    return sum + (burden * (item.qty || 1));
+    return sum + (burden * (item.qty ?? 1));
   }, 0);
 
-  const equippedBurden = (['mainHand', 'offHand', 'armour'] as const).reduce((sum, slot) => {
-    const itemId = d.equipment?.[slot];
-    if (!itemId) return sum;
+  const getEqBurden = (itemId: string) => {
+    if (!itemId) return 0;
     const inBackpack = d.items.find(i => i.id === itemId);
-    // Legacy pre-migration value (name, not UUID) — still look up by name
     const legacyName = !inBackpack && !itemId.includes('-') ? itemId : undefined;
     const db = inBackpack ? getEntryByName(inBackpack.name) : legacyName ? getEntryByName(legacyName) : undefined;
     const custom = inBackpack || d.possessions?.find(i => i.id === itemId);
-    const burden = db?.data?.burden ?? custom?.burden ?? 0;
-    return sum + burden;
+    return db?.data?.burden ?? custom?.burden ?? 0;
+  };
+
+  const baseEquipped = (['mainHand', 'offHand', 'armour'] as const).reduce((sum, slot) => {
+    return sum + getEqBurden(d.equipment?.[slot] || '');
   }, 0);
 
-  return backpackBurden + equippedBurden;
+  const extraEquipped = (d.equipment?.extra || []).reduce((sum, id) => {
+    return sum + getEqBurden(id);
+  }, 0);
+
+  return backpackBurden + baseEquipped + extraEquipped;
 };

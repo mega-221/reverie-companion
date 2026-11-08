@@ -11,7 +11,7 @@ export function equipItem(
   mode?: WeaponMode
 ): Partial<CharacterData> | null {
   const itemToEquip = data.items.find(i => i.id === itemId);
-  if (!itemToEquip) return null;
+  if (!itemToEquip || itemToEquip.qty <= 0) return null;
 
   const dbItem = getEntryByName(itemToEquip.name);
   const category = dbItem?.data?.category || itemToEquip.category || 'equipment';
@@ -24,20 +24,13 @@ export function equipItem(
 
   const returnToBackpack = (id: string) => {
     const idx = nextItems.findIndex(i => i.id === id);
-    if (idx >= 0) {
-      nextItems[idx] = { ...nextItems[idx], qty: nextItems[idx].qty + 1 };
-    }
+    if (idx >= 0) nextItems[idx] = { ...nextItems[idx], qty: nextItems[idx].qty + 1 };
   };
 
-  if (nextEquipment[slot]) {
-    returnToBackpack(nextEquipment[slot]);
-  }
+  if (nextEquipment[slot]) returnToBackpack(nextEquipment[slot]);
 
   const equipIdx = nextItems.findIndex(i => i.id === itemId);
-  if (equipIdx >= 0) {
-    nextItems[equipIdx] = { ...nextItems[equipIdx], qty: nextItems[equipIdx].qty - 1 };
-    if (nextItems[equipIdx].qty <= 0) nextItems.splice(equipIdx, 1);
-  }
+  if (equipIdx >= 0) nextItems[equipIdx] = { ...nextItems[equipIdx], qty: nextItems[equipIdx].qty - 1 };
 
   nextEquipment[slot] = itemId;
 
@@ -59,7 +52,8 @@ export function equipItem(
 
 export function unequipSlot(
   data: CharacterData,
-  slot: EquipmentSlot
+  slot: EquipmentSlot,
+  targetList: 'items' | 'possessions' = 'items'
 ): Partial<CharacterData> | null {
   const itemId = data.equipment[slot];
   if (!itemId) return null;
@@ -69,10 +63,90 @@ export function unequipSlot(
   if (slot === 'mainHand') nextEquipment.mainHandMode = '';
 
   let nextItems = [...data.items];
-  const idx = nextItems.findIndex(i => i.id === itemId);
-  if (idx >= 0) {
-    nextItems[idx] = { ...nextItems[idx], qty: nextItems[idx].qty + 1 };
+  let nextPossessions = [...data.possessions];
+
+  if (targetList === 'items') {
+    const idx = nextItems.findIndex(i => i.id === itemId);
+    if (idx >= 0) nextItems[idx] = { ...nextItems[idx], qty: nextItems[idx].qty + 1 };
+  } else {
+    const itemIndex = nextItems.findIndex(i => i.id === itemId);
+    if (itemIndex >= 0) {
+      const item = nextItems[itemIndex];
+      if (item.qty <= 0) nextItems.splice(itemIndex, 1);
+      const posIdx = nextPossessions.findIndex(i => i.id === itemId);
+      if (posIdx >= 0) nextPossessions[posIdx] = { ...nextPossessions[posIdx], qty: nextPossessions[posIdx].qty + 1 };
+      else nextPossessions.push({ ...item, qty: 1 });
+    }
   }
 
+  return { items: nextItems, possessions: nextPossessions, equipment: nextEquipment };
+}
+
+export function equipExtraItem(
+  data: CharacterData,
+  slotIndex: number,
+  itemId: string,
+  getEntryByName: (name: string) => CompendiumEntry | undefined
+): Partial<CharacterData> | null {
+  const itemToEquip = data.items.find(i => i.id === itemId);
+  if (!itemToEquip || itemToEquip.qty <= 0) return null;
+
+  const dbItem = getEntryByName(itemToEquip.name);
+  const req = dbItem?.data?.req || '';
+  const category = dbItem?.data?.category || itemToEquip.category || 'equipment';
+  const subtype = dbItem?.data?.subtype || itemToEquip.subtype || '';
+  
+  // Block melee weapons (but allow Eidoloscopes which are 0H)
+  if (category === 'weapon' && subtype !== 'Eidoloscope' && (req.includes('1H') || req.includes('2H'))) return null;
+
+  const nextEquipment: CharacterData['equipment'] = { ...data.equipment };
+  let nextItems = [...data.items];
+
+  if (!nextEquipment.extra) nextEquipment.extra = [];
+  while (nextEquipment.extra.length <= slotIndex) nextEquipment.extra.push('');
+
+  if (nextEquipment.extra[slotIndex]) {
+    const prevId = nextEquipment.extra[slotIndex];
+    const idx = nextItems.findIndex(i => i.id === prevId);
+    if (idx >= 0) nextItems[idx] = { ...nextItems[idx], qty: nextItems[idx].qty + 1 };
+  }
+
+  const equipIdx = nextItems.findIndex(i => i.id === itemId);
+  if (equipIdx >= 0) nextItems[equipIdx] = { ...nextItems[equipIdx], qty: nextItems[equipIdx].qty - 1 };
+
+  nextEquipment.extra[slotIndex] = itemId;
+
   return { items: nextItems, equipment: nextEquipment };
+}
+
+export function unequipExtraSlot(
+  data: CharacterData,
+  slotIndex: number,
+  targetList: 'items' | 'possessions' = 'items'
+): Partial<CharacterData> | null {
+  const itemId = data.equipment.extra?.[slotIndex];
+  if (!itemId) return null;
+
+  const nextEquipment: CharacterData['equipment'] = { ...data.equipment };
+  if (!nextEquipment.extra) nextEquipment.extra = [];
+  nextEquipment.extra[slotIndex] = '';
+
+  let nextItems = [...data.items];
+  let nextPossessions = [...data.possessions];
+
+  if (targetList === 'items') {
+    const idx = nextItems.findIndex(i => i.id === itemId);
+    if (idx >= 0) nextItems[idx] = { ...nextItems[idx], qty: nextItems[idx].qty + 1 };
+  } else {
+    const itemIndex = nextItems.findIndex(i => i.id === itemId);
+    if (itemIndex >= 0) {
+      const item = nextItems[itemIndex];
+      if (item.qty <= 0) nextItems.splice(itemIndex, 1);
+      const posIdx = nextPossessions.findIndex(i => i.id === itemId);
+      if (posIdx >= 0) nextPossessions[posIdx] = { ...nextPossessions[posIdx], qty: nextPossessions[posIdx].qty + 1 };
+      else nextPossessions.push({ ...item, qty: 1 });
+    }
+  }
+
+  return { items: nextItems, possessions: nextPossessions, equipment: nextEquipment };
 }
