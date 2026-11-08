@@ -22,3 +22,16 @@ select option {
   background-color: #1f2937;
   color: #e5e7eb;
 }
+
+@keyframes critical-heartbeat {
+  0%, 100% { opacity: 0.2; }
+  14% { opacity: 0.8; }
+  28% { opacity: 0.2; }
+  42% { opacity: 0.8; }
+  70% { opacity: 0.2; }
+}
+
+.critical-heartbeat {
+  animation: critical-heartbeat 1.8s infinite ease-in-out;
+}
+

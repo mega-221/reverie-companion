@@ -3,14 +3,15 @@ import type { Character } from '../../types';
 import { vigorMax, strainMax, dpMax } from '../../calc';
 
 export default function Header({ 
-  char, onBack, onSave, saving, saved, onNameSave 
+  char, onBack, onSave, saving, saved, onNameSave, showPulse
 }: { 
   char: Character, 
   onBack: () => void, 
   onSave: () => void, 
   saving: boolean, 
   saved: boolean, 
-  onNameSave: (name: string) => void 
+  onNameSave: (name: string) => void,
+  showPulse?: boolean
 }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
@@ -27,7 +28,7 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-red-950 text-white shadow-md border-b border-red-900 w-full">
+    <header className="sticky top-0 z-40 bg-red-950 text-white shadow-md border-b border-red-900 w-full transition-colors duration-1000">
       <div className="w-full px-4 py-3 flex justify-between items-center overflow-x-hidden">
         <div className="flex items-center gap-4 min-w-0">
           <button onClick={onBack} className="text-red-300 hover:text-white transition-colors text-sm font-bold uppercase tracking-wider flex items-center gap-2 shrink-0">
@@ -65,6 +66,16 @@ export default function Header({
         </div>
         
         <div className="flex items-center gap-6 shrink-0 ml-4">
+          
+          {/* Heart Attack Indicator */}
+          {showPulse && (
+            <div className="hidden md:flex items-center animate-pulse">
+              <span className="text-cyan-400 font-cinzel font-bold text-lg tracking-[0.2em] drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">
+                ~ Heart Attack ~
+              </span>
+            </div>
+          )}
+
           <div className="hidden md:flex gap-4 lg:gap-6 text-sm font-bold">
             <span title="Vigor">VG: {char.data.trackers.vigor}/{vigorMax(char.data)}</span>
             <span title="Strain">SN: {char.data.trackers.strain}/{strainMax(char.data)}</span>

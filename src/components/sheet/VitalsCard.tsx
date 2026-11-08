@@ -9,7 +9,7 @@ export default function VitalsCard({ char, updateTracker }: { char: Character, u
   ];
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-sm p-6 flex flex-col justify-evenly h-full gap-2">
+    <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-sm p-4 flex flex-col justify-evenly h-full divide-y divide-gray-700/50">
       {stats.map(({ label, key, current, max, color }) => {
         const isStrain = key === 'strain';
         const isVigor = key === 'vigor';
@@ -72,7 +72,7 @@ export default function VitalsCard({ char, updateTracker }: { char: Character, u
         const totalBars = hasTVG ? current : max;
 
         return (
-          <div key={key} className="flex flex-col items-center w-full gap-2">
+          <div key={key} className="flex flex-col items-center w-full gap-2 py-3">
             
             <span className={`font-bold uppercase text-lg transition-all duration-500 ease-out ${trackingClass} ${titleColor}`}>
               {label}
@@ -111,13 +111,25 @@ export default function VitalsCard({ char, updateTracker }: { char: Character, u
               })}
             </div>
 
-            <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm w-32 h-8 mt-1">
-              <button onClick={() => updateTracker(key, -1)} className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white rounded-l-lg font-bold shrink-0 transition-all duration-75 active:opacity-60">−</button>
-              <div className="flex-1 text-center font-bold text-sm text-white flex items-baseline justify-center gap-1">
-                <span>{current}</span>
-                <span className="text-[10px] text-gray-500 font-normal">/ {max}</span>
+            <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm w-32 h-9 mt-1 overflow-hidden">
+              <button 
+                onClick={() => updateTracker(key, -1)} 
+                className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white font-bold text-lg shrink-0 transition-colors duration-75"
+              >
+                −
+              </button>
+              
+              <div className="flex-1 text-center font-bold text-white flex items-baseline justify-center gap-1 select-none">
+                <span className="text-xl">{current}</span>
+                <span className="text-xs text-gray-500 font-normal">/ {max}</span>
               </div>
-              <button onClick={() => updateTracker(key, 1)} className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white rounded-r-lg font-bold shrink-0 transition-all duration-75 active:opacity-60">+</button>
+              
+              <button 
+                onClick={() => updateTracker(key, 1)} 
+                className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white font-bold text-lg shrink-0 transition-colors duration-75"
+              >
+                +
+              </button>
             </div>
 
           </div>

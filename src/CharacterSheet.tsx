@@ -30,6 +30,9 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('gameplay');
+  
+  // Heart attack pulse state
+  const [pulseState, setPulseState] = useState<'none' | 'active' | 'fading'>('none');
 
   const [levelUpTarget, setLevelUpTarget] = useState<LevelUpTarget | null>(null);
   const [isOriginModalOpen, setIsOriginModalOpen] = useState(false);
@@ -46,7 +49,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         if (!data) return;
         const fetchedChar = data as Character;
 
-        // --- Migrate items to have stable IDs ---
         const rawItems: any[] = Array.isArray(fetchedChar.data.items) ? fetchedChar.data.items : [];
         const migratedItems = rawItems.map((i: any) =>
           typeof i === 'string'
@@ -54,14 +56,13 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             : { ...i, id: i.id || crypto.randomUUID() }
         );
 
-        // --- Migrate equipment: was names, now IDs ---
         const resolveEq = (val: string): string => {
           if (!val) return '';
-          if (val.length > 30) return val; // already a UUID
+          if (val.length > 30) return val; 
           const existing = migratedItems.find((i: any) => i.name === val);
           if (existing) return existing.id;
           const newId = crypto.randomUUID();
-          migratedItems.push({ id: newId, name: val, qty: 0 }); // qty 0 so it doesn't duplicate in backpack
+          migratedItems.push({ id: newId, name: val, qty: 0 }); 
           return newId;
         };
 
@@ -129,12 +130,19 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
   if (!char) return <p className="text-gray-400 p-8 text-center font-cinzel text-xl h-screen flex items-center justify-center bg-gray-900">Loading character...</p>;
 
+  // --- Persistent Critical State ---
+  const baseStrainMax = 5 + (char.data.progression.tier - 1) + char.data.bonus.sl;
+  const isCritical = char.data.trackers.strain > baseStrainMax || char.data.trackers.vigor < 1;
+
+  // Filter stays active if critically wounded OR if the heart attack pulse is playing
+  const showFilter = isCritical || pulseState !== 'none';
+
   function patch(p: Partial<CharacterData>) {
     setChar(c => c && { ...c, data: { ...c.data, ...p } });
     setSaved(false);
   }
 
-  function updateTracker(key: 'vigor' | 'strain' | 'dp' | 'ap', amount: number) {
+  function updateTracker(key: 'vigor' | 'strain' | 'dp' | 'ap' | 'acc', amount: number) {
     if (!char) return;
     const current = char.data.trackers[key];
     let max = Infinity;
@@ -142,13 +150,38 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     
     if (key === 'vigor') {
       const baseMax = 5 + (char.data.progression.tier - 1) + char.data.bonus.vm;
-      max = baseMax * 2; // Allow TVG to exceed max
-      min = -baseMax; // Allow negative vigor
+      max = baseMax * 2; 
+      min = -baseMax; 
     }
     if (key === 'strain') max = (5 + (char.data.progression.tier - 1) + char.data.bonus.sl) * 2;
     if (key === 'dp') max = 2 + (char.data.progression.tier - 1) + char.data.bonus.dp;
     
     const nextVal = Math.max(min, Math.min(max, current + amount));
+    
+    // --- Heart Attack Trigger Logic ---
+    if (key === 'strain' && nextVal >= max) {
+      setPulseState('active');
+      const endurance = char.data.skills.Endurance || 0;
+      const targetVigor = 1 + endurance;
+      
+      // Don't heal the player if they are already below the threshold
+      const newVigor = char.data.trackers.vigor < targetVigor ? char.data.trackers.vigor : targetVigor;
+      const baseStrainMax = max / 2;
+      
+      patch({
+        trackers: {
+          ...char.data.trackers,
+          vigor: newVigor,
+          strain: baseStrainMax
+        }
+      });
+      
+      // 2 second shock, 1 second fade
+      setTimeout(() => setPulseState('fading'), 2000);
+      setTimeout(() => setPulseState('none'), 3000); 
+      return; 
+    }
+
     patch({ trackers: { ...char.data.trackers, [key]: nextVal } });
   }
 
@@ -300,85 +333,96 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const availableAttrPts = getMaxAttributePoints(char.data.progression.tier) - getSpentAttributePoints(char.data.attributes);
 
   return (
-    <div className="min-h-screen bg-gray-900 pb-20 font-sans text-gray-200">
-      <Header char={char} onBack={onBack} onSave={save} saving={saving} saved={saved} onNameSave={(name) => { setChar({ ...char, name }); handleNameSave(name); }} />
-      <main className="w-full px-4 sm:px-6 pt-6">
-        
-        {activeTab === 'gameplay' && (
-          <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200 items-start">
-            
-            {/* ROW 1 */}
-            <div className="lg:col-span-4 h-full">
-              <StatsCard char={char} updateTracker={updateTracker} patch={patch} />
-            </div>
-            <div className="lg:col-span-4 h-full">
-              <VitalsCard char={char} updateTracker={updateTracker} />
-            </div>
-            <div className="lg:col-span-4 h-full">
-              <CoreSkillsCard char={char} setLevelUpTarget={setLevelUpTarget} />
-            </div>
+    <>
+      {/* Vibrant Heart Attack Overlay (Sits outside the grayscale filter) */}
+      {pulseState !== 'none' && (
+        <div className={`fixed inset-0 z-[100] pointer-events-none backdrop-blur-[2px] bg-cyan-950/10 transition-opacity duration-1000 ease-in-out ${
+          pulseState === 'fading' ? 'opacity-0' : 'opacity-100'
+        }`}>
+          <div className="absolute inset-0 shadow-[inset_0_0_150px_rgba(34,211,238,0.5)] critical-heartbeat" />
+        </div>
+      )}
 
-            {/* ROW 2 */}
-            <div className="lg:col-span-4 h-full">
-              <LoadoutCard char={char} patch={patch} onOpenInventory={() => setIsInventoryModalOpen(true)} />
-            </div>
-            <div className="lg:col-span-4 h-full">
-              <InjuriesCard char={char} patch={patch} />
-            </div>
-            <div className="lg:col-span-4 h-full">
-              <SpecialSkillsCard char={char} patch={patch} setLevelUpTarget={setLevelUpTarget} setIsSpecialSkillModalOpen={setIsSpecialSkillModalOpen} setModalSpecialSkillIndex={setModalSpecialSkillIndex} setExpandedSpecialSkill={() => {}} />
-            </div>
-
-            {/* ROW 3 */}
-            <div className="lg:col-span-4 h-full">
-              <ClassSection char={char} patch={patch} setIsClassModalOpen={setIsClassModalOpen} />
-            </div>
-            <div className="lg:col-span-8">
-              <AbilitiesSection char={char} patch={patch} setModalAbilityIndex={setModalAbilityIndex} setIsAbilityModalOpen={setIsAbilityModalOpen} setModalDiscipline={() => {}} setExpandedModalAbility={() => {}} />
-            </div>
-
-          </div>
-        )}
-
-        {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} openOriginModal={() => setIsOriginModalOpen(true)} />}
-        
-        {activeTab === 'progression' && (
-          <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in duration-200">
-            <section className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm w-full">
-              <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">Progression</h2>
+      {/* Main Content Wrapper (Grapples the desaturation based on showFilter) */}
+      <div className={`min-h-screen bg-gray-900 pb-20 font-sans text-gray-200 transition-all duration-1000 ${showFilter ? 'grayscale-[60%] contrast-[1.1]' : ''}`}>
+        <Header char={char} onBack={onBack} onSave={save} saving={saving} saved={saved} onNameSave={(name) => { setChar({ ...char, name }); handleNameSave(name); }} />
+        <main className="w-full px-4 sm:px-6 pt-6 relative z-10">
+          
+          {activeTab === 'gameplay' && (
+            <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200 items-start">
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl">
-                <label className="flex flex-col text-sm font-bold text-gray-300">Tier
-                  <input type="number" min={1} max={6} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.tier} onChange={e => patch({ progression: { ...char.data.progression, tier: +e.target.value } })} />
-                </label>
-                
-                <label className="flex flex-col text-sm font-bold text-gray-300">Level
-                  <input type="number" min={1} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.level} onChange={e => patch({ progression: { ...char.data.progression, level: +e.target.value } })} />
-                </label>
-                
-                <label className="flex flex-col text-sm font-bold text-gray-300">XP
-                  <input type="number" min={0} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.xp} onChange={e => patch({ progression: { ...char.data.progression, xp: +e.target.value } })} />
-                </label>
+              <div className="lg:col-span-4 h-full">
+                <StatsCard char={char} updateTracker={updateTracker} patch={patch} />
+              </div>
+              <div className="lg:col-span-4 h-full">
+                <VitalsCard char={char} updateTracker={updateTracker} />
+              </div>
+              <div className="lg:col-span-4 h-full">
+                <CoreSkillsCard char={char} setLevelUpTarget={setLevelUpTarget} />
+              </div>
 
-                <div className="flex flex-col text-sm font-bold text-gray-300">
-                  <span>Attribute Points</span>
-                  <div className={`border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner text-center flex items-center justify-center h-[42px] ${availableAttrPts > 0 ? 'text-green-400' : 'text-gray-400'}`}>
-                    {availableAttrPts} <span className="text-gray-500 mx-1">/</span> {getMaxAttributePoints(char.data.progression.tier)}
+              <div className="lg:col-span-4 h-full">
+                <LoadoutCard char={char} patch={patch} onOpenInventory={() => setIsInventoryModalOpen(true)} />
+              </div>
+              <div className="lg:col-span-4 h-full">
+                <InjuriesCard char={char} patch={patch} />
+              </div>
+              <div className="lg:col-span-4 h-full">
+                <SpecialSkillsCard char={char} patch={patch} setLevelUpTarget={setLevelUpTarget} setIsSpecialSkillModalOpen={setIsSpecialSkillModalOpen} setModalSpecialSkillIndex={setModalSpecialSkillIndex} setExpandedSpecialSkill={() => {}} />
+              </div>
+
+              <div className="lg:col-span-4 h-full">
+                <ClassSection char={char} patch={patch} setIsClassModalOpen={setIsClassModalOpen} />
+              </div>
+              <div className="lg:col-span-8">
+                <AbilitiesSection char={char} patch={patch} setModalAbilityIndex={setModalAbilityIndex} setIsAbilityModalOpen={setIsAbilityModalOpen} setModalDiscipline={() => {}} setExpandedModalAbility={() => {}} />
+              </div>
+
+            </div>
+          )}
+
+          {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} openOriginModal={() => setIsOriginModalOpen(true)} />}
+          
+          {activeTab === 'progression' && (
+            <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in duration-200">
+              <section className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm w-full">
+                <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">Progression</h2>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl">
+                  <label className="flex flex-col text-sm font-bold text-gray-300">Tier
+                    <input type="number" min={1} max={6} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.tier} onChange={e => patch({ progression: { ...char.data.progression, tier: +e.target.value } })} />
+                  </label>
+                  
+                  <label className="flex flex-col text-sm font-bold text-gray-300">Level
+                    <input type="number" min={1} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.level} onChange={e => patch({ progression: { ...char.data.progression, level: +e.target.value } })} />
+                  </label>
+                  
+                  <label className="flex flex-col text-sm font-bold text-gray-300">XP
+                    <input type="number" min={0} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.xp} onChange={e => patch({ progression: { ...char.data.progression, xp: +e.target.value } })} />
+                  </label>
+
+                  <div className="flex flex-col text-sm font-bold text-gray-300">
+                    <span>Attribute Points</span>
+                    <div className={`border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner text-center flex items-center justify-center h-[42px] ${availableAttrPts > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                      {availableAttrPts} <span className="text-gray-500 mx-1">/</span> {getMaxAttributePoints(char.data.progression.tier)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </section>
-          </div>
-        )}
-      </main>
-      <Footer activeTab={activeTab} setActiveTab={setActiveTab} />
-      
-      <LevelUpModal char={char} levelUpTarget={levelUpTarget} setLevelUpTarget={setLevelUpTarget} handleAdvance={handleAdvance} handleRegress={handleRegress} />
-      <OriginModal char={char} isOpen={isOriginModalOpen} onClose={() => setIsOriginModalOpen(false)} applyOrigin={applyOrigin} />
-      <ClassModal char={char} isOpen={isClassModalOpen} onClose={() => setIsClassModalOpen(false)} patch={patch} />
-      <SpecialSkillModal char={char} isOpen={isSpecialSkillModalOpen} onClose={() => setIsSpecialSkillModalOpen(false)} patch={patch} modalIndex={modalSpecialSkillIndex} />
-      <AbilityModal char={char} isOpen={isAbilityModalOpen} onClose={() => setIsAbilityModalOpen(false)} patch={patch} modalIndex={modalAbilityIndex} />
-      <InventoryModal char={char} isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} patch={patch} />
-    </div>
+              </section>
+            </div>
+          )}
+        </main>
+        
+        <LevelUpModal char={char} levelUpTarget={levelUpTarget} setLevelUpTarget={setLevelUpTarget} handleAdvance={handleAdvance} handleRegress={handleRegress} />
+        <OriginModal char={char} isOpen={isOriginModalOpen} onClose={() => setIsOriginModalOpen(false)} applyOrigin={applyOrigin} />
+        <ClassModal char={char} isOpen={isClassModalOpen} onClose={() => setIsClassModalOpen(false)} patch={patch} />
+        <SpecialSkillModal char={char} isOpen={isSpecialSkillModalOpen} onClose={() => setIsSpecialSkillModalOpen(false)} patch={patch} modalIndex={modalSpecialSkillIndex} />
+        <AbilityModal char={char} isOpen={isAbilityModalOpen} onClose={() => setIsAbilityModalOpen(false)} patch={patch} modalIndex={modalAbilityIndex} />
+        <InventoryModal char={char} isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} patch={patch} />
+      </div>
+
+      {/* Footer moved OUTSIDE the filtered container so it remains visible and fixed */}
+      <Footer activeTab={activeTab} setActiveTab={setActiveTab} showFilter={showFilter} />
+    </>
   );
 }
