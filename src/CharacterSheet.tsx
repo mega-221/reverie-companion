@@ -5,6 +5,7 @@ import { useCompendium } from './CompendiumContext';
 import { 
   ORIGIN_EFFECTS, ORIGIN_CHOICES, CORE_SKILLS, SPECIAL_SKILL_ATTRIBUTES, 
   getMinSkillRank, SKILL_XP_COSTS, getMaxAttribute, SKILL_GROUPS, 
+  getMaxAttributePoints, getSpentAttributePoints,
   type Tab, type LevelUpTarget 
 } from './components/sheet/utils';
 
@@ -25,7 +26,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('gameplay');
 
-  // Modal states
   const [levelUpTarget, setLevelUpTarget] = useState<LevelUpTarget | null>(null);
   const [isOriginModalOpen, setIsOriginModalOpen] = useState(false);
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
@@ -40,30 +40,53 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         if (!data) return;
         const fetchedChar = data as Character;
         
-        // --- DATA SANITIZER (Prevents blank page crashes) ---
-        if (!fetchedChar.data.abilities) fetchedChar.data.abilities = [];
-        else if (fetchedChar.data.abilities.length > 0 && typeof fetchedChar.data.abilities[0] === 'string') {
-          fetchedChar.data.abilities = (fetchedChar.data.abilities as unknown as string[]).map(name => ({ name, equipped: true }));
-        }
-        
-        if (!fetchedChar.data.convictions) fetchedChar.data.convictions = [];
-        if (!fetchedChar.data.failings) fetchedChar.data.failings = [];
-        if (!fetchedChar.data.specialSkills) fetchedChar.data.specialSkills = [];
-        if (!fetchedChar.data.items) fetchedChar.data.items = [];
-        if (!fetchedChar.data.disciplines) fetchedChar.data.disciplines = [];
-        if (!fetchedChar.data.notes) fetchedChar.data.notes = '';
-        
-        if (!fetchedChar.data.trackers) fetchedChar.data.trackers = { vigor: 6, strain: 0, dp: 3, ap: 0, injuries: [] };
-        if (!fetchedChar.data.trackers.injuries) fetchedChar.data.trackers.injuries = [];
-        
-        if (!fetchedChar.data.identity) fetchedChar.data.identity = { origin: '', className: '', path: '', quote: '', inspirations: [], originChoices: {} };
-        if (!fetchedChar.data.identity.inspirations) fetchedChar.data.identity.inspirations = [];
-        if (!fetchedChar.data.identity.originChoices) fetchedChar.data.identity.originChoices = {};
-        
-        if (!fetchedChar.data.progression) fetchedChar.data.progression = { tier: 2, level: 5, xp: 0 };
-        if (!fetchedChar.data.bonus) fetchedChar.data.bonus = { vm: 0, sl: 0, dp: 0, eva: 0 };
-        
-        setChar(fetchedChar);
+        const safeData = {
+          ...fetchedChar.data,
+          identity: {
+            origin: fetchedChar.data.identity?.origin || '',
+            className: fetchedChar.data.identity?.className || '',
+            path: fetchedChar.data.identity?.path || '',
+            quote: fetchedChar.data.identity?.quote || '',
+            inspirations: fetchedChar.data.identity?.inspirations || [],
+            originChoices: fetchedChar.data.identity?.originChoices || {}
+          },
+          progression: { 
+            tier: fetchedChar.data.progression?.tier || 2, 
+            level: fetchedChar.data.progression?.level || 5, 
+            xp: fetchedChar.data.progression?.xp || 0 
+          },
+          attributes: { 
+            grt: fetchedChar.data.attributes?.grt || 1, 
+            ref: fetchedChar.data.attributes?.ref || 1, 
+            int: fetchedChar.data.attributes?.int || 1, 
+            psy: fetchedChar.data.attributes?.psy || 1 
+          },
+          bonus: { 
+            vm: fetchedChar.data.bonus?.vm || 0, 
+            sl: fetchedChar.data.bonus?.sl || 0, 
+            dp: fetchedChar.data.bonus?.dp || 0, 
+            eva: fetchedChar.data.bonus?.eva || 0 
+          },
+          trackers: {
+            vigor: fetchedChar.data.trackers?.vigor || 6, 
+            strain: fetchedChar.data.trackers?.strain || 0, 
+            dp: fetchedChar.data.trackers?.dp || 3, 
+            ap: fetchedChar.data.trackers?.ap || 0, 
+            injuries: fetchedChar.data.trackers?.injuries || []
+          },
+          abilities: Array.isArray(fetchedChar.data.abilities) 
+            ? fetchedChar.data.abilities.map((a: any) => typeof a === 'string' ? { name: a, equipped: true } : a)
+            : [],
+          convictions: fetchedChar.data.convictions || [],
+          failings: fetchedChar.data.failings || [],
+          specialSkills: fetchedChar.data.specialSkills || [],
+          items: fetchedChar.data.items || [],
+          disciplines: fetchedChar.data.disciplines || [],
+          skills: fetchedChar.data.skills || {},
+          notes: fetchedChar.data.notes || ''
+        };
+
+        setChar({ ...fetchedChar, data: safeData });
       });
   }, [id]);
 
@@ -159,20 +182,37 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const handleAdvance = () => {
     if (!char || !levelUpTarget) return;
     if (levelUpTarget.type === 'attribute') {
-      const current = char.data.attributes[levelUpTarget.key]; const max = getMaxAttribute(char.data.progression.tier);
-      if (current < max) patch({ attributes: { ...char.data.attributes, [levelUpTarget.key]: current + 1 } });
+      const current = char.data.attributes[levelUpTarget.key]; 
+      const max = getMaxAttribute(char.data.progression.tier);
+      const availablePts = getMaxAttributePoints(char.data.progression.tier) - getSpentAttributePoints(char.data.attributes);
+      
+      if (current < max && availablePts > 0) {
+        patch({ attributes: { ...char.data.attributes, [levelUpTarget.key]: current + 1 } });
+      }
     } else if (levelUpTarget.type === 'skill') {
       const current = char.data.skills[levelUpTarget.key] ?? 0;
       const attr = Object.keys(SKILL_GROUPS).find(a => (SKILL_GROUPS[a as keyof typeof SKILL_GROUPS].skills as readonly string[]).includes(levelUpTarget.key)) as keyof typeof char.data.attributes;
       const max = Math.min(8, char.data.attributes[attr] * 2);
       if (current < max) {
-        const cost = SKILL_XP_COSTS[current];
-        if (char.data.progression.xp >= cost) patch({ skills: { ...char.data.skills, [levelUpTarget.key]: current + 1 }, progression: { ...char.data.progression, xp: char.data.progression.xp - cost } });
+        let cost = SKILL_XP_COSTS[current];
+        const isInspired = char.data.identity.inspirations?.includes(levelUpTarget.key);
+        if (isInspired) cost = Math.max(0, cost - 1);
+
+        if (char.data.progression.xp >= cost) {
+          patch({ 
+            skills: { ...char.data.skills, [levelUpTarget.key]: current + 1 }, 
+            progression: { ...char.data.progression, xp: char.data.progression.xp - cost } 
+          });
+        }
       }
     } else if (levelUpTarget.type === 'specialSkill') {
-      const skill = char.data.specialSkills[levelUpTarget.index]; const max = Math.min(8, char.data.attributes[skill.attribute as keyof typeof char.data.attributes] * 2);
+      const skill = char.data.specialSkills[levelUpTarget.index]; 
+      const max = Math.min(8, char.data.attributes[skill.attribute as keyof typeof char.data.attributes] * 2);
       if (skill.rank < max) {
-        const cost = SKILL_XP_COSTS[skill.rank];
+        let cost = SKILL_XP_COSTS[skill.rank];
+        const isInspired = char.data.identity.inspirations?.includes(skill.name);
+        if (isInspired) cost = Math.max(0, cost - 1);
+
         if (char.data.progression.xp >= cost) {
           const next = [...char.data.specialSkills]; next[levelUpTarget.index] = { ...next[levelUpTarget.index], rank: skill.rank + 1 };
           patch({ specialSkills: next, progression: { ...char.data.progression, xp: char.data.progression.xp - cost } });
@@ -184,18 +224,36 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const handleRegress = () => {
     if (!char || !levelUpTarget) return;
     if (levelUpTarget.type === 'attribute') {
-      const current = char.data.attributes[levelUpTarget.key]; if (current > 1) patch({ attributes: { ...char.data.attributes, [levelUpTarget.key]: current - 1 } });
+      const current = char.data.attributes[levelUpTarget.key]; 
+      if (current > 1) patch({ attributes: { ...char.data.attributes, [levelUpTarget.key]: current - 1 } });
     } else if (levelUpTarget.type === 'skill') {
-      const current = char.data.skills[levelUpTarget.key] ?? 0; const min = getMinSkillRank(levelUpTarget.key, char);
-      if (current > min) patch({ skills: { ...char.data.skills, [levelUpTarget.key]: current - 1 }, progression: { ...char.data.progression, xp: char.data.progression.xp + SKILL_XP_COSTS[current - 1] } });
+      const current = char.data.skills[levelUpTarget.key] ?? 0; 
+      const min = getMinSkillRank(levelUpTarget.key, char);
+      if (current > min) {
+        let refund = SKILL_XP_COSTS[current - 1];
+        const isInspired = char.data.identity.inspirations?.includes(levelUpTarget.key);
+        if (isInspired) refund = Math.max(0, refund - 1);
+
+        patch({ 
+          skills: { ...char.data.skills, [levelUpTarget.key]: current - 1 }, 
+          progression: { ...char.data.progression, xp: char.data.progression.xp + refund } 
+        });
+      }
     } else if (levelUpTarget.type === 'specialSkill') {
-      const skill = char.data.specialSkills[levelUpTarget.index]; const min = getMinSkillRank(skill.name, char);
+      const skill = char.data.specialSkills[levelUpTarget.index]; 
+      const min = getMinSkillRank(skill.name, char);
       if (skill.rank > min) {
+        let refund = SKILL_XP_COSTS[skill.rank - 1];
+        const isInspired = char.data.identity.inspirations?.includes(skill.name);
+        if (isInspired) refund = Math.max(0, refund - 1);
+
         const next = [...char.data.specialSkills]; next[levelUpTarget.index] = { ...next[levelUpTarget.index], rank: skill.rank - 1 };
-        patch({ specialSkills: next, progression: { ...char.data.progression, xp: char.data.progression.xp + SKILL_XP_COSTS[skill.rank - 1] } });
+        patch({ specialSkills: next, progression: { ...char.data.progression, xp: char.data.progression.xp + refund } });
       }
     }
   };
+
+  const availableAttrPts = getMaxAttributePoints(char.data.progression.tier) - getSpentAttributePoints(char.data.attributes);
 
   return (
     <div className="min-h-screen bg-gray-900 pb-20 font-sans text-gray-200">
@@ -215,12 +273,28 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} />}
         {activeTab === 'progression' && (
           <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in duration-200">
-            <section className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm w-full">
+            <section className="sheet-panel p-6 w-full">
               <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">Progression</h2>
-              <div className="grid grid-cols-3 gap-6 max-w-xl">
-                <label className="flex flex-col text-sm font-bold text-gray-300">Tier<input type="number" min={1} max={6} className="border border-gray-600 bg-gray-900 p-2 rounded mt-1 font-normal shadow-sm focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.tier} onChange={e => patch({ progression: { ...char.data.progression, tier: +e.target.value } })} /></label>
-                <label className="flex flex-col text-sm font-bold text-gray-300">Level<input type="number" min={1} className="border border-gray-600 bg-gray-900 p-2 rounded mt-1 font-normal shadow-sm focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.level} onChange={e => patch({ progression: { ...char.data.progression, level: +e.target.value } })} /></label>
-                <label className="flex flex-col text-sm font-bold text-gray-300">XP<input type="number" min={0} className="border border-gray-600 bg-gray-900 p-2 rounded mt-1 font-normal shadow-sm focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.xp} onChange={e => patch({ progression: { ...char.data.progression, xp: +e.target.value } })} /></label>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl">
+                <label className="flex flex-col text-sm font-bold text-gray-300">Tier
+                  <input type="number" min={1} max={6} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.tier} onChange={e => patch({ progression: { ...char.data.progression, tier: +e.target.value } })} />
+                </label>
+                
+                <label className="flex flex-col text-sm font-bold text-gray-300">Level
+                  <input type="number" min={1} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.level} onChange={e => patch({ progression: { ...char.data.progression, level: +e.target.value } })} />
+                </label>
+                
+                <label className="flex flex-col text-sm font-bold text-gray-300">XP
+                  <input type="number" min={0} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.xp} onChange={e => patch({ progression: { ...char.data.progression, xp: +e.target.value } })} />
+                </label>
+
+                <div className="flex flex-col text-sm font-bold text-gray-300">
+                  <span>Attribute Points</span>
+                  <div className={`border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner text-center flex items-center justify-center h-[42px] ${availableAttrPts > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                    {availableAttrPts} <span className="text-gray-500 mx-1">/</span> {getMaxAttributePoints(char.data.progression.tier)}
+                  </div>
+                </div>
               </div>
             </section>
           </div>

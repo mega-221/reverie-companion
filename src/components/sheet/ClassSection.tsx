@@ -12,7 +12,7 @@ export default function ClassSection({ char, patch, setIsClassModalOpen }: { cha
   const classPassives = allClassFeatures.filter(a => a.data.feature_type === 'passive').sort((a,b) => (a.data.class_rank || 0) - (b.data.class_rank || 0));
 
   return (
-    <section className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm w-full flex flex-col gap-6">
+    <section className="sheet-panel p-6 w-full flex flex-col gap-6">
       <div>
         <SectionHeader title="Class & Path" />
         <div className="space-y-4 mb-4">
@@ -20,14 +20,18 @@ export default function ClassSection({ char, patch, setIsClassModalOpen }: { cha
             {selectedClassData ? (
               <span className="text-xs text-gray-400 italic tracking-widest mb-1">{selectedClassData.data.archetype}</span>
             ) : <div className="h-4 mb-1"></div>}
-            <div className="border border-gray-600 bg-gray-900 p-2.5 rounded-lg font-normal shadow-sm w-full font-bold text-gray-200 text-lg cursor-pointer flex justify-between items-center hover:border-gray-500 transition-colors" onClick={() => setIsClassModalOpen(true)}>
+            
+            {/* Updated Class Box */}
+            <div className="border border-gray-700 bg-gray-900 p-2.5 rounded-lg shadow-inner w-full font-bold text-gray-200 text-lg cursor-pointer flex justify-between items-center hover:border-gray-500 transition-colors" onClick={() => setIsClassModalOpen(true)}>
               <span>{char.data.identity.className || "— Select Class —"}</span>
               <span className="text-gray-500 text-sm">▼</span>
             </div>
           </div>
           <div className="flex flex-col">
             <span className="text-xs text-gray-400 italic tracking-widest h-4 mb-1">{char.data.identity.className ? 'Path' : '\u00A0'}</span>
-            <select className="border border-gray-600 bg-gray-900 p-2.5 rounded-lg font-normal shadow-sm disabled:opacity-50 focus:outline-none focus:border-red-500 w-full font-bold text-gray-200 text-lg" value={char.data.identity.path} disabled={!char.data.identity.className} onChange={e => patch({ identity: { ...char.data.identity, path: e.target.value } })}>
+            
+            {/* Updated Path Select */}
+            <select className="border border-gray-700 bg-gray-900 p-2.5 rounded-lg shadow-inner disabled:opacity-50 focus:outline-none focus:border-red-500 w-full font-bold text-gray-200 text-lg" value={char.data.identity.path} disabled={!char.data.identity.className} onChange={e => patch({ identity: { ...char.data.identity, path: e.target.value } })}>
               <option value="">— Select Path —</option>
               {(selectedClassData?.data?.paths || []).map((p: string) => <option key={p} value={p}>{p}</option>)}
             </select>
@@ -61,7 +65,8 @@ export default function ClassSection({ char, patch, setIsClassModalOpen }: { cha
         <div className="space-y-2">
           {charDisciplines.map((d: string, i: number) => (
             <div key={i} className="flex gap-2 items-center w-full">
-              <select className="border border-gray-600 bg-gray-900 p-2 rounded-lg font-normal shadow-sm focus:outline-none focus:border-red-500 flex-1 text-sm w-full text-gray-200" value={d} onChange={e => { const next = [...charDisciplines]; next[i] = e.target.value; patch({ disciplines: next }); }}>
+              {/* Updated Discipline Select */}
+              <select className="border border-gray-700 bg-gray-900 p-2 rounded-lg shadow-inner focus:outline-none focus:border-red-500 flex-1 text-sm w-full text-gray-200" value={d} onChange={e => { const next = [...charDisciplines]; next[i] = e.target.value; patch({ disciplines: next }); }}>
                 <option value="">— Select Discipline —</option>
                 {getDisciplines().map(disc => <option key={disc.id} value={disc.name}>{disc.name}</option>)}
               </select>

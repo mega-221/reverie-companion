@@ -6,8 +6,6 @@ import CharacterList from './CharacterList';
 import CharacterSheet from './CharacterSheet';
 import { CompendiumProvider } from './CompendiumContext';
 
-
-
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,8 +38,14 @@ export default function App() {
 
   return (
     <CompendiumProvider>
+      {/* Global Film Grain Overlay */}
+      <div 
+        className="pointer-events-none fixed inset-0 z-[9999] opacity-[0.03] mix-blend-screen"
+        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%222.5%22 numOctaves=%221%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}
+      />
+
       {selectedId ? (
-        <div className="w-full min-h-screen bg-gray-900 font-sans">
+        <div className="w-full min-h-screen font-sans">
           <CharacterSheet id={selectedId} onBack={() => setSelectedId(null)} />
         </div>
       ) : (

@@ -8,7 +8,6 @@ export default function CharacterList({
 }: { userId: string; onSelect: (id: string) => void }) {
   const [chars, setChars] = useState<Character[]>([]);
   
-  // Modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newCharName, setNewCharName] = useState('');
   const [newCharLevel, setNewCharLevel] = useState<number>(1);
@@ -30,16 +29,13 @@ export default function CharacterList({
     const safeLevel = Math.max(1, Math.min(24, newCharLevel));
     const tier = Math.ceil(safeLevel / 4);
     
-    // Override progression
     charData.progression.level = safeLevel;
     charData.progression.tier = tier;
     charData.progression.xp = safeLevel * 5;
     
-    // Adjust initial trackers based on the calculated tier
     const tierMod = tier - 1;
     charData.trackers.vigor = 5 + tierMod;
     charData.trackers.dp = 2 + tierMod;
-    // Strain always starts at 0, but its max is 5 + tierMod
     
     await supabase.from('characters').insert({ 
       name: newCharName.trim(), 
@@ -63,9 +59,7 @@ export default function CharacterList({
   return (
     <div className="mt-6 w-full max-w-3xl mx-auto">
       <div className="flex justify-between items-end mb-6 border-b border-gray-700 pb-4">
-        <h2 className="text-3xl font-cinzel font-bold text-gray-200">
-          Your Characters
-        </h2>
+        <h2 className="text-3xl font-cinzel font-bold text-gray-200">Your Characters</h2>
         <button 
           onClick={() => setIsCreateModalOpen(true)} 
           className="bg-red-900 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-red-800 transition-colors shadow-sm"
@@ -74,12 +68,12 @@ export default function CharacterList({
         </button>
       </div>
 
-      <ul className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-sm">
+      <ul className="sheet-panel overflow-hidden shadow-sm">
         {chars.length === 0 && (
           <li className="p-8 text-center text-gray-500 italic">No characters yet. Create one to begin.</li>
         )}
         {chars.map(c => (
-          <li key={c.id} className="flex justify-between items-center p-4 border-b border-gray-700/50 last:border-0 hover:bg-gray-700/30 transition-colors">
+          <li key={c.id} className="flex justify-between items-center p-4 border-b border-gray-700/50 last:border-0 hover:bg-white/5 transition-colors">
             <div className="flex flex-col">
               <button 
                 onClick={() => onSelect(c.id)} 
@@ -104,9 +98,9 @@ export default function CharacterList({
       {/* CREATE MODAL */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="sheet-panel shadow-2xl w-full max-w-md flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             
-            <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900 shrink-0">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
               <h2 className="font-cinzel font-bold text-xl text-gray-200">Create New Character</h2>
               <button onClick={() => setIsCreateModalOpen(false)} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
             </div>
@@ -117,7 +111,7 @@ export default function CharacterList({
                   Character Name
                   <input
                     type="text"
-                    className="border border-gray-600 bg-gray-900 p-3 rounded-lg mt-1 font-normal shadow-sm focus:outline-none focus:border-red-500 text-gray-200 text-lg"
+                    className="border border-gray-700 bg-black/40 p-3 rounded-lg mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200 text-lg"
                     placeholder="Enter name..."
                     value={newCharName}
                     onChange={(e) => setNewCharName(e.target.value)}
@@ -131,7 +125,7 @@ export default function CharacterList({
                     type="number"
                     min={1}
                     max={24}
-                    className="border border-gray-600 bg-gray-900 p-3 rounded-lg mt-1 font-normal shadow-sm focus:outline-none focus:border-red-500 text-gray-200 text-lg text-center"
+                    className="border border-gray-700 bg-black/40 p-3 rounded-lg mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200 text-lg text-center"
                     value={newCharLevel}
                     onChange={(e) => setNewCharLevel(+e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
@@ -150,7 +144,7 @@ export default function CharacterList({
                   onClick={handleCreate}
                   disabled={!newCharName.trim() || creating}
                   className={`flex-1 py-3 rounded-lg font-bold text-sm border shadow-sm transition-colors flex items-center justify-center
-                    ${!newCharName.trim() || creating ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed' : 'bg-red-950/40 text-red-300 border-red-900 hover:bg-red-900/60'}`}
+                    ${!newCharName.trim() || creating ? 'bg-black/20 text-gray-600 border-gray-700 cursor-not-allowed' : 'bg-red-950/40 text-red-300 border-red-900 hover:bg-red-900/60'}`}
                 >
                   {creating ? 'Creating...' : 'Create Character'}
                 </button>

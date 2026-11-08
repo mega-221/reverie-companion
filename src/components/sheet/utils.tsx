@@ -174,3 +174,9 @@ export const ResourceBar = ({ current, max, color, overLimitColor }: { current: 
     </div>
   );
 };
+
+export const getMaxAttributePoints = (tier: number) => Math.max(0, tier - 1);
+
+export const getSpentAttributePoints = (attributes: { grt: number, ref: number, int: number, psy: number }) => {
+  return (attributes.grt - 1) + (attributes.ref - 1) + (attributes.int - 1) + (attributes.psy - 1);
+};

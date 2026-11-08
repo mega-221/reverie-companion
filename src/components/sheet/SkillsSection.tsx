@@ -26,7 +26,7 @@ export default function SkillsSection({
           const group = SKILL_GROUPS[attr];
           const attrVal = char.data.attributes[attr];
           return (
-            <div key={attr} className="bg-gray-800 border border-gray-700 rounded-xl p-5 shadow-sm flex flex-col min-w-0">
+            <div key={attr} className="sheet-panel p-5 flex flex-col min-w-0">
               <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-3">
                 <Tooltip text={ATTRIBUTE_DESCRIPTIONS[attr]} className="w-fit">
                   <span className={`text-2xl font-cinzel first-letter:font-cinzelDeco uppercase tracking-widest ${group.color}`}>{ATTRIBUTE_NAMES[attr]}</span>
@@ -52,7 +52,7 @@ export default function SkillsSection({
                       </div>
                       <div className="flex items-center gap-1 shrink-0 ml-2">
                         <span className="text-gray-500 font-bold text-xs">+</span>
-                        <button onClick={() => setLevelUpTarget({ type: 'skill', key: skill })} className="border border-gray-600 bg-gray-900 p-1 w-10 text-center rounded shadow-sm focus:outline-none font-bold text-white hover:border-red-500 hover:bg-gray-800 transition-colors">
+                        <button onClick={() => setLevelUpTarget({ type: 'skill', key: skill })} className="border border-gray-700 bg-black/40 p-1 w-10 text-center rounded shadow-inner focus:outline-none font-bold text-white hover:border-red-500 transition-colors">
                           {Math.max(originMin, currentSkill)}
                         </button>
                         <span className="text-gray-500 text-xs font-bold w-5 text-right">/ {maxSkill}</span>
@@ -66,7 +66,7 @@ export default function SkillsSection({
         })}
       </div>
 
-      <div className="lg:col-span-1 bg-gray-800 border border-gray-700 rounded-xl p-5 shadow-sm h-fit">
+      <div className="lg:col-span-1 sheet-panel p-5 h-fit">
         <SectionHeader title="Special Skills" />
         <div className="space-y-2">
           {char.data.specialSkills.map((s: any, i: number) => {
@@ -78,7 +78,7 @@ export default function SkillsSection({
             const isInspired = char.data.identity.inspirations?.includes(s.name);
 
             return (
-              <div key={i} className="flex items-center gap-1 w-full bg-gray-900 border border-gray-700 rounded-lg p-1">
+              <div key={i} className="flex items-center gap-1 w-full bg-black/20 border border-gray-700 rounded-lg p-1">
                 <div className="flex-1 min-w-0 flex items-center pl-1">
                   <div className={`bg-transparent border-none text-sm text-gray-200 flex justify-between items-center flex-1 min-w-0 ${originMin > 0 ? 'cursor-not-allowed' : 'cursor-pointer'}`} onClick={() => { if (originMin > 0) return; setModalSpecialSkillIndex(i); setExpandedSpecialSkill(null); setIsSpecialSkillModalOpen(true); }}>
                     <Tooltip text={SPECIAL_SKILL_DESCRIPTIONS[s.name] || ''} className="w-full">
@@ -107,7 +107,7 @@ export default function SkillsSection({
             );
           })}
           {char.data.specialSkills.length < 5 && (
-            <button className="border border-dashed border-gray-600 px-4 py-2 text-sm rounded-lg hover:bg-gray-700 w-full text-gray-400 font-medium mt-2 transition-colors" onClick={() => patch({ specialSkills: [...char.data.specialSkills, { name: '', rank: 0, attribute: 'grt' }] })}>+ add special skill</button>
+            <button className="border border-dashed border-gray-600 px-4 py-2 text-sm rounded-lg hover:bg-white/5 w-full text-gray-400 font-medium mt-2 transition-colors" onClick={() => patch({ specialSkills: [...char.data.specialSkills, { name: '', rank: 0, attribute: 'grt' }] })}>+ add special skill</button>
           )}
         </div>
       </div>
