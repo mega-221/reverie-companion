@@ -6,6 +6,8 @@ import CharacterList from './CharacterList';
 import CharacterSheet from './CharacterSheet';
 import { CompendiumProvider } from './CompendiumContext';
 
+
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
