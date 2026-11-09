@@ -73,8 +73,8 @@ export default function AbilitiesSection({
     if (!speedData) return null;
     return (
       <>
-        <div className="relative group inline-flex items-center">
-          <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 cursor-help">
+        <div className="relative group inline-flex items-center shrink-0">
+          <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 cursor-help whitespace-nowrap">
             {speedData.speedLabel}
           </span>
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
@@ -83,8 +83,8 @@ export default function AbilitiesSection({
           </div>
         </div>
         {speedData.upkeepLabel && (
-          <div className="relative group inline-flex items-center">
-            <span className="bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50 cursor-help">
+          <div className="relative group inline-flex items-center shrink-0">
+            <span className="bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50 cursor-help whitespace-nowrap">
               {speedData.upkeepLabel}
             </span>
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
@@ -98,17 +98,16 @@ export default function AbilitiesSection({
   };
 
   return (
-    <section className="sheet-panel p-6 w-full lg:col-span-2">
-      <div className="flex justify-between items-end mb-4 border-b border-gray-700 pb-2">
-        <div className="flex gap-4">
-          <button onClick={() => setActiveAbilityTab('discipline')} className={`text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'discipline' ? 'text-gray-200 border-b-2 border-red-500 pb-2 -mb-[10px]' : 'text-gray-500 hover:text-gray-300 pb-2'}`}>Learned Abilities</button>
-          <button onClick={() => setActiveAbilityTab('basic')} className={`text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'basic' ? 'text-gray-200 border-b-2 border-red-500 pb-2 -mb-[10px]' : 'text-gray-500 hover:text-gray-300 pb-2'}`}>Basic Abilities</button>
+    <section className="sheet-panel p-4 w-full h-full flex flex-col lg:col-span-2">
+      <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
+        <div className="flex gap-6 items-center">
+          <button onClick={() => setActiveAbilityTab('discipline')} className={`text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'discipline' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Learned Abilities</button>
+          <button onClick={() => setActiveAbilityTab('basic')} className={`text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'basic' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Basic Abilities</button>
         </div>
-        {activeAbilityTab === 'discipline' && <span className="text-xs text-gray-300 font-bold bg-gray-900 px-2 py-0.5 rounded border border-gray-700">Active: {equippedAbilities}/6</span>}
       </div>
       
       {activeAbilityTab === 'discipline' && (
-        <div className="space-y-6">
+        <div className="space-y-6 flex-1 overflow-y-auto pr-1">
           {classActives.length > 0 && (
             <div>
               <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Class Abilities</div>
@@ -119,15 +118,25 @@ export default function AbilitiesSection({
                   const speedData = ab.data.speed ? getSpeedData(ab.data.speed, ab.data.upkeep) : null;
                   return (
                     <div key={ab.id} className={`bg-gray-900 border border-gray-700 rounded-lg transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''} ${isLocked ? 'opacity-50 grayscale' : ''}`}>
-                      <div className={`flex flex-wrap gap-3 items-center p-2 select-none transition-colors cursor-pointer hover:bg-gray-800/50 ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'}`} onClick={() => setExpandedClassAbility(isExpanded ? null : ab.id)}>
-                        <div className="w-full sm:w-[240px] shrink-0 bg-gray-800 border border-gray-600 rounded-md py-1.5 px-2 text-sm font-bold text-gray-200 flex justify-between items-center ml-1"><span className="truncate">{ab.name}</span></div>
-                        <div className="flex flex-wrap gap-1.5 items-center mr-2 flex-1">
-                          {ab.data.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
-                          {renderSpeedTags(speedData)}
-                          {ab.data.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">{ab.data.range}</span>}
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${isLocked ? 'bg-gray-800 text-gray-500 border-gray-600' : 'bg-gray-800 text-gray-300 border-gray-600'}`}>{isLocked ? `Rank ${ab.data.class_rank} Req` : 'Class'}</span>
+                      <div className={`flex flex-col sm:flex-row sm:items-center p-2 select-none transition-colors cursor-pointer hover:bg-gray-800/50 ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'} gap-2`} onClick={() => setExpandedClassAbility(isExpanded ? null : ab.id)}>
+                        
+                        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                          <div className="w-full sm:w-[240px] shrink-0 bg-gray-800 border border-gray-600 rounded-md py-1.5 px-2 text-sm font-bold text-gray-200 flex justify-between items-center sm:ml-1"><span className="truncate">{ab.name}</span></div>
                         </div>
-                        <div className="flex items-center shrink-0 ml-auto"><span className="px-2 text-gray-500 hover:text-white font-bold">{isExpanded ? '▲' : '▼'}</span></div>
+
+                        <div className="flex items-center justify-between w-full sm:flex-1 min-w-0 gap-2">
+                          <div className={`flex gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
+                            {ab.data.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
+                            {renderSpeedTags(speedData)}
+                            {ab.data.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{ab.data.range}</span>}
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap ${isLocked ? 'bg-gray-800 text-gray-500 border-gray-600' : 'bg-gray-800 text-gray-300 border-gray-600'}`}>{isLocked ? `Rank ${ab.data.class_rank} Req` : 'Class'}</span>
+                          </div>
+                          
+                          <div className="flex items-center shrink-0 border-l border-gray-700 pl-2">
+                            <span className="px-2 text-gray-500 hover:text-white font-bold">{isExpanded ? '▲' : '▼'}</span>
+                          </div>
+                        </div>
+
                       </div>
                       {isExpanded && (
                         <div className="p-4 border-t border-gray-800 bg-black/40 text-sm text-gray-300 rounded-b-lg">
@@ -147,7 +156,10 @@ export default function AbilitiesSection({
           )}
 
           <div>
-            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Discipline Abilities</div>
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Discipline Abilities</div>
+              <span className="text-[10px] text-gray-300 font-bold bg-gray-900 px-2 py-0.5 rounded border border-gray-700">Active: {equippedAbilities}/6</span>
+            </div>
             <div className="space-y-2">
               {char.data.abilities.map((a: any, i: number) => {
                 const compendiumEntry = getEntryByName(a.name);
@@ -164,62 +176,105 @@ export default function AbilitiesSection({
                     onDrop={(e) => handleDrop(e, i)}
                   >
                     <div 
-                      className={`flex flex-wrap gap-2 items-center p-2 select-none transition-colors cursor-pointer hover:bg-gray-800/50 ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'}`} 
+                      className={`flex flex-col sm:flex-row sm:items-center p-2 select-none transition-colors cursor-pointer hover:bg-gray-800/50 ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'} gap-2`} 
                       onClick={() => setExpandedAbility(isExpanded ? null : i)}
                     >
-                      <div 
-                        draggable={!isLocked} 
-                        onDragStart={(e) => handleDragStart(e, i)} 
-                        onDragEnd={() => { setDraggedAbilityIndex(null); setDragOverAbilityIndex(null); }} 
-                        className={`px-1 shrink-0 ${isLocked ? 'cursor-not-allowed text-gray-600' : 'cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-300'}`} 
-                        onClick={(e) => e.stopPropagation()} 
-                        title={isLocked ? "Locked by Rank" : "Drag to reorder"}
-                      >
-                        <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor"><path d="M4 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm8-12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" /></svg>
-                      </div>
-                      <input 
-                        type="checkbox" 
-                        className={`w-5 h-5 shrink-0 ml-1 ${isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer accent-red-600'}`} 
-                        checked={!isLocked && a.equipped} 
-                        disabled={isLocked || (!a.equipped && equippedAbilities >= 6)} 
-                        onClick={(e) => e.stopPropagation()} 
-                        onChange={e => { const next = [...char.data.abilities]; next[i] = { ...next[i], equipped: e.target.checked }; patch({ abilities: next }); }} 
-                      />
-                      <div 
-                        className={`w-full sm:w-[240px] shrink-0 bg-gray-800 border border-gray-600 rounded-md py-1.5 px-2 text-sm font-bold text-gray-200 flex justify-between items-center ml-1 cursor-pointer hover:border-gray-500 transition-colors`} 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setModalAbilityIndex(i); 
-                          setModalDiscipline(''); 
-                          setExpandedModalAbility(null); 
-                          setIsAbilityModalOpen(true); 
-                        }}
-                      >
-                        <span className="truncate">{a.name || "— Select Ability —"}</span>
-                        <span className="text-gray-500 text-[10px]">▼</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 items-center mr-2 flex-1">
-                        {compendiumEntry?.data?.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getTypeStyle(compendiumEntry.data.type)}`}>{compendiumEntry.data.type}</span>}
-                        {renderSpeedTags(speedData)}
-                        {compendiumEntry?.data?.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">{compendiumEntry.data.range}</span>}
+                      
+                      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                        <div className={`flex-1 sm:w-[240px] shrink-0 bg-gray-800 border border-gray-600 rounded-md py-1.5 px-2 text-sm font-bold text-gray-200 flex justify-between items-center sm:ml-1`}>
+                          <span className="truncate">{a.name || "— Select Ability —"}</span>
+                        </div>
                         
-                        {compendiumEntry?.data?.class_rank !== undefined && (
-                          <span className={`bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${isLocked ? 'text-gray-500 border-gray-600' : 'text-gray-300 border-gray-600'}`}>
-                            {isLocked ? `Rank ${compendiumEntry.data.class_rank} Req` : `Rank ${compendiumEntry.data.class_rank}`}
-                          </span>
-                        )}
-                        
-                        {compendiumEntry?.data?.source && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">{compendiumEntry.data.source}</span>}
+                        {/* Mobile Drag & Check */}
+                        <div className="flex sm:hidden items-center gap-2 shrink-0">
+                          <div 
+                            draggable={!isLocked} 
+                            onDragStart={(e) => handleDragStart(e, i)} 
+                            onDragEnd={() => { setDraggedAbilityIndex(null); setDragOverAbilityIndex(null); }} 
+                            className={`px-1 shrink-0 ${isLocked ? 'cursor-not-allowed text-gray-600' : 'cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-300'}`} 
+                            onClick={(e) => e.stopPropagation()} 
+                            title={isLocked ? "Locked by Rank" : "Drag to reorder"}
+                          >
+                            <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor"><path d="M4 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm8-12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" /></svg>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            className={`w-5 h-5 shrink-0 ${isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer accent-red-600'}`} 
+                            checked={!isLocked && a.equipped} 
+                            disabled={isLocked || (!a.equipped && equippedAbilities >= 6)} 
+                            onClick={(e) => e.stopPropagation()} 
+                            onChange={e => { const next = [...char.data.abilities]; next[i] = { ...next[i], equipped: e.target.checked }; patch({ abilities: next }); }} 
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center shrink-0 ml-auto">
-                        <span className="px-2 text-gray-500 hover:text-white font-bold">{isExpanded ? '▲' : '▼'}</span>
-                        <button 
-                          className="px-2 text-red-500 font-bold text-lg hover:text-red-400 border-l border-gray-700 pl-3" 
-                          onClick={(e) => { e.stopPropagation(); patch({ abilities: char.data.abilities.filter((_: any, j: number) => j !== i) }); }}
-                        >
-                          ×
-                        </button>
+
+                      <div className="flex items-center justify-between w-full sm:flex-1 min-w-0 gap-2">
+                        <div className={`flex gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
+                          {compendiumEntry?.data?.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${getTypeStyle(compendiumEntry.data.type)}`}>{compendiumEntry.data.type}</span>}
+                          {renderSpeedTags(speedData)}
+                          {compendiumEntry?.data?.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{compendiumEntry.data.range}</span>}
+                          
+                          {compendiumEntry?.data?.class_rank !== undefined && (
+                            <span className={`bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap ${isLocked ? 'text-gray-500 border-gray-600' : 'text-gray-300 border-gray-600'}`}>
+                              {isLocked ? `Rank ${compendiumEntry.data.class_rank} Req` : `Rank ${compendiumEntry.data.class_rank}`}
+                            </span>
+                          )}
+                          
+                          {compendiumEntry?.data?.source && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{compendiumEntry.data.source}</span>}
+                        </div>
+
+                        <div className="flex items-center shrink-0 border-l border-gray-700 pl-2">
+                          <span className="px-2 text-gray-500 hover:text-white font-bold">{isExpanded ? '▲' : '▼'}</span>
+                          <button 
+                            className="px-1 text-gray-400 hover:text-white font-bold text-sm transition-colors" 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setModalAbilityIndex(i); 
+                              setModalDiscipline(''); 
+                              setExpandedModalAbility(null); 
+                              setIsAbilityModalOpen(true); 
+                            }}
+                            title="Swap Ability"
+                          >
+                            ✎
+                          </button>
+                          <button 
+                            className="px-1 text-red-500 font-bold text-lg hover:text-red-400 transition-colors" 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              if (confirm('Are you sure you want to delete this ability?')) {
+                                patch({ abilities: char.data.abilities.filter((_: any, j: number) => j !== i) }); 
+                              }
+                            }}
+                            title="Remove Ability"
+                          >
+                            ×
+                          </button>
+                          
+                          {/* Desktop Drag & Check */}
+                          <div className="hidden sm:flex items-center gap-2 ml-2">
+                            <div 
+                              draggable={!isLocked} 
+                              onDragStart={(e) => handleDragStart(e, i)} 
+                              onDragEnd={() => { setDraggedAbilityIndex(null); setDragOverAbilityIndex(null); }} 
+                              className={`px-1 shrink-0 ${isLocked ? 'cursor-not-allowed text-gray-600' : 'cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-300'}`} 
+                              onClick={(e) => e.stopPropagation()} 
+                              title={isLocked ? "Locked by Rank" : "Drag to reorder"}
+                            >
+                              <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor"><path d="M4 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm8-12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" /></svg>
+                            </div>
+                            <input 
+                              type="checkbox" 
+                              className={`w-5 h-5 shrink-0 ${isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer accent-red-600'}`} 
+                              checked={!isLocked && a.equipped} 
+                              disabled={isLocked || (!a.equipped && equippedAbilities >= 6)} 
+                              onClick={(e) => e.stopPropagation()} 
+                              onChange={e => { const next = [...char.data.abilities]; next[i] = { ...next[i], equipped: e.target.checked }; patch({ abilities: next }); }} 
+                            />
+                          </div>
+                        </div>
                       </div>
+
                     </div>
                     {isExpanded && compendiumEntry && (
                       <div className="p-4 border-t border-gray-800 bg-black/40 text-sm text-gray-300 rounded-b-lg">
@@ -234,28 +289,43 @@ export default function AbilitiesSection({
                   </div>
                 );
               })}
-              <button className="border border-dashed border-gray-600 px-4 py-2 text-sm rounded-lg hover:bg-gray-700 w-full mt-2 text-gray-400 font-medium transition-colors" onClick={() => patch({ abilities: [...char.data.abilities, { name: '', equipped: false }] })}>+ add ability</button>
+              <button className="border border-dashed border-gray-600 px-4 py-2 text-sm rounded-lg hover:bg-gray-700 w-full mt-2 text-gray-400 font-medium transition-colors" onClick={() => {
+                setModalAbilityIndex(char.data.abilities.length);
+                setModalDiscipline('');
+                setExpandedModalAbility(null);
+                setIsAbilityModalOpen(true);
+              }}>+ add ability</button>
             </div>
           </div>
         </div>
       )}
 
       {activeAbilityTab === 'basic' && (
-        <div className="space-y-2">
+        <div className="space-y-2 flex-1 overflow-y-auto pr-1">
           {basicAbilities.map((ab) => {
             const isExpanded = expandedBasicAbility === ab.id;
             const speedData = ab.data.speed ? getSpeedData(ab.data.speed, ab.data.upkeep) : null;
             return (
               <div key={ab.id} className={`bg-gray-900 border border-gray-700 rounded-lg transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''}`}>
-                <div className={`flex flex-wrap gap-3 items-center p-2 cursor-pointer select-none hover:bg-gray-800/50 transition-colors ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'}`} onClick={() => setExpandedBasicAbility(isExpanded ? null : ab.id)}>
-                  <div className="w-full sm:w-[240px] shrink-0 bg-gray-800 border border-gray-600 rounded-md py-1.5 px-2 text-sm font-bold text-gray-200 flex justify-between items-center ml-1"><span className="truncate">{ab.name}</span></div>
-                  <div className="flex flex-wrap gap-1.5 items-center mr-2 flex-1">
-                    {ab.data.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
-                    {renderSpeedTags(speedData)}
-                    {ab.data.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">{ab.data.range}</span>}
-                    <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">Basic</span>
+                <div className={`flex flex-col sm:flex-row sm:items-center p-2 cursor-pointer select-none hover:bg-gray-800/50 transition-colors ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'} gap-2`} onClick={() => setExpandedBasicAbility(isExpanded ? null : ab.id)}>
+                  
+                  <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                    <div className="w-full sm:w-[240px] shrink-0 bg-gray-800 border border-gray-600 rounded-md py-1.5 px-2 text-sm font-bold text-gray-200 flex justify-between items-center sm:ml-1"><span className="truncate">{ab.name}</span></div>
                   </div>
-                  <div className="flex items-center shrink-0 ml-auto"><span className="px-2 text-gray-500 hover:text-white font-bold">{isExpanded ? '▲' : '▼'}</span></div>
+                  
+                  <div className="flex items-center justify-between w-full sm:flex-1 min-w-0 gap-2">
+                    <div className={`flex gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
+                      {ab.data.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
+                      {renderSpeedTags(speedData)}
+                      {ab.data.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{ab.data.range}</span>}
+                      <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">Basic</span>
+                    </div>
+
+                    <div className="flex items-center shrink-0 border-l border-gray-700 pl-2">
+                      <span className="px-2 text-gray-500 hover:text-white font-bold">{isExpanded ? '▲' : '▼'}</span>
+                    </div>
+                  </div>
+
                 </div>
                 {isExpanded && (
                   <div className="p-4 border-t border-gray-800 bg-black/40 text-sm text-gray-300 rounded-b-lg">

@@ -12,6 +12,8 @@ import { getAttributeInjuryPenalty } from '../../calc';
 const MODAL_BG = "sheet-modal animate-in zoom-in-95 duration-200";
 
 export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdvance, handleRegress }: any) {
+  const { getEntryByName } = useCompendium();
+  
   if (!levelUpTarget) return null;
 
   let title = ''; 
@@ -58,7 +60,11 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
     title = skill.name || 'Special Skill';
     description = SPECIAL_SKILL_DESCRIPTIONS[skill.name] || '';
     currentRank = skill.rank;
-    const attr = skill.attribute as keyof typeof char.data.attributes;
+    
+    // Look up the actual attribute from the compendium to ensure correct penalty calculation
+    const compendiumAttr = getEntryByName(skill.name)?.data?.attribute;
+    const attr = (compendiumAttr || skill.attribute || 'grt') as keyof typeof char.data.attributes;
+    
     maxRank = Math.min(8, char.data.attributes[attr] * 2);
     minRank = getMinSkillRank(skill.name, char);
     baseCost = currentRank < 8 ? SKILL_XP_COSTS[currentRank] : 0;
@@ -67,7 +73,7 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
     isMaxed = currentRank >= maxRank;
     isMinned = currentRank <= minRank;
 
-    injuryPenalty = getAttributeInjuryPenalty(char.data.trackers.injuries, String(skill.attribute).toUpperCase());
+    injuryPenalty = getAttributeInjuryPenalty(char.data.trackers.injuries, String(attr).toUpperCase());
   }
 
   const isAdvanceDisabled = 
@@ -94,7 +100,6 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
             
             {injuryPenalty > 0 && (
               <div className="text-xs text-red-400 font-bold bg-red-950/40 px-2 py-1 rounded border border-red-900/50 mb-2 text-center">
-                {/* Removed Math.max(0, ...) */}
                 Effective Rank: {currentRank - injuryPenalty} <br/>
                 <span className="text-[10px] font-normal text-red-300">(-{injuryPenalty} from Injuries)</span>
               </div>
@@ -312,7 +317,28 @@ export function SpecialSkillModal({ char, isOpen, onClose, patch, modalIndex }: 
                             <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">
                               {s.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
                             </div>
-                            <button onClick={() => { if (modalIndex !== null) { const next = [...char.data.specialSkills]; next[modalIndex] = { ...next[modalIndex], name: s.name }; patch({ specialSkills: next }); } onClose(); setExpandedSpecialSkill(null); }} className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors">Confirm Selection</button>
+                            <button onClick={() => { 
+                              if (modalIndex !== null) { 
+                                const next = [...char.data.specialSkills]; 
+                                if (modalIndex >= next.length) {
+                                  next.push({ 
+                                    name: s.name, 
+                                    rank: 0, 
+                                    attribute: s.data.attribute || 'grt' 
+                                  });
+                                } else {
+                                  next[modalIndex] = { 
+                                    ...next[modalIndex], 
+                                    name: s.name,
+                                    rank: next[modalIndex].rank ?? 0,
+                                    attribute: s.data.attribute || 'grt'
+                                  }; 
+                                }
+                                patch({ specialSkills: next }); 
+                              } 
+                              onClose(); 
+                              setExpandedSpecialSkill(null); 
+                            }} className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors">Confirm Selection</button>
                           </div>
                         )}
                       </div>
@@ -400,7 +426,19 @@ export function AbilityModal({ char, isOpen, onClose, patch, modalIndex }: any) 
                               {ab.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
                             </div>
                             {hasDiscipline ? (
-                              <button onClick={() => { if (modalIndex !== null) { const next = [...char.data.abilities]; next[modalIndex] = { ...next[modalIndex], name: ab.name }; patch({ abilities: next }); } onClose(); setExpandedModalAbility(null); }} className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors">Confirm Selection</button>
+                              <button onClick={() => { 
+                                if (modalIndex !== null) { 
+                                  const next = [...char.data.abilities]; 
+                                  if (modalIndex >= next.length) {
+                                    next.push({ name: ab.name, equipped: false });
+                                  } else {
+                                    next[modalIndex] = { ...next[modalIndex], name: ab.name };
+                                  }
+                                  patch({ abilities: next }); 
+                                } 
+                                onClose(); 
+                                setExpandedModalAbility(null); 
+                              }} className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors">Confirm Selection</button>
                             ) : (
                               <Tooltip text="You must have this discipline to select this ability." noBorder><button disabled className="w-full py-2 bg-gray-700 text-gray-500 font-bold text-sm rounded cursor-not-allowed">Requires Discipline</button></Tooltip>
                             )}
@@ -413,6 +451,86 @@ export function AbilityModal({ char, isOpen, onClose, patch, modalIndex }: any) 
               </div>
             ));
           })()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function PathModal({ char, isOpen, onClose, patch, classData }: any) {
+  if (!isOpen || !classData) return null;
+
+  const paths = classData.data.paths || [];
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className={`${MODAL_BG} max-w-3xl`}>
+        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
+          <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Path</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+        </div>
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-black/10">
+          {paths.map((path: string) => {
+            return (
+              <div key={path} className="bg-gray-900 border border-gray-700 rounded-lg p-5 flex flex-col justify-between shadow-sm">
+                <div>
+                  <h3 className="text-xl font-cinzel text-red-400 font-bold mb-3">{path}</h3>
+                </div>
+                <button 
+                  onClick={() => { patch({ identity: { ...char.data.identity, path } }); onClose(); }} 
+                  className="w-full py-2.5 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded shadow-sm transition-colors mt-auto"
+                >
+                  Select {path}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function DisciplineModal({ char, isOpen, onClose, patch, modalIndex }: any) {
+  const { getDisciplines } = useCompendium();
+  const [expanded, setExpanded] = useState<string | null>(null);
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
+        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
+          <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Discipline</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {getDisciplines().map((d: any) => {
+            const isExpanded = expanded === d.id;
+            return (
+              <div key={d.id} className={`bg-black/20 border border-gray-700 rounded-lg overflow-hidden transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''}`}>
+                <button onClick={() => setExpanded(isExpanded ? null : d.id)} className="w-full text-left p-3 hover:bg-white/5 transition-colors flex justify-between items-center group">
+                  <span className="font-bold text-gray-200 group-hover:text-white">{d.name}</span>
+                  <span className="text-gray-500 text-[10px]">{isExpanded ? '▲' : '▼'}</span>
+                </button>
+                {isExpanded && (
+                  <div className="p-4 border-t border-gray-700 bg-black/40">
+                    <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">
+                      {d.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                    </div>
+                    <button onClick={() => {
+                      if (modalIndex !== null) {
+                        const next = [...char.data.disciplines];
+                        if (modalIndex >= next.length) next.push(d.name);
+                        else next[modalIndex] = d.name;
+                        patch({ disciplines: next });
+                      }
+                      onClose(); setExpanded(null);
+                    }} className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors">Confirm Selection</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

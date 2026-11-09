@@ -15,7 +15,7 @@ import AbilitiesSection from './components/sheet/AbilitiesSection';
 import NarrativeSection from './components/sheet/NarrativeSection';
 import Footer from './components/sheet/Footer';
 import InventoryModal from './components/sheet/InventoryModal';
-import { LevelUpModal, OriginModal, ClassModal, SpecialSkillModal, AbilityModal } from './components/sheet/Modals';
+import { LevelUpModal, OriginModal, ClassModal, SpecialSkillModal, AbilityModal, PathModal, DisciplineModal } from './components/sheet/Modals';
 
 import StatsCard from './components/sheet/StatsCard';
 import VitalsCard from './components/sheet/VitalsCard';
@@ -25,7 +25,7 @@ import InjuriesCard from './components/sheet/InjuriesCard';
 import SpecialSkillsCard from './components/sheet/SpecialSkillsCard';
 
 export default function CharacterSheet({ id, onBack }: { id: string, onBack: () => void }) {
-  const { getAbilities } = useCompendium();
+  const { getAbilities, getEntryByName } = useCompendium();
   const [char, setChar] = useState<Character | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -37,6 +37,9 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const [levelUpTarget, setLevelUpTarget] = useState<LevelUpTarget | null>(null);
   const [isOriginModalOpen, setIsOriginModalOpen] = useState(false);
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
+  const [isPathModalOpen, setIsPathModalOpen] = useState(false);
+  const [isDisciplineModalOpen, setIsDisciplineModalOpen] = useState(false);
+  const [modalDisciplineIndex, setModalDisciplineIndex] = useState<number | null>(null);
   const [isSpecialSkillModalOpen, setIsSpecialSkillModalOpen] = useState(false);
   const [modalSpecialSkillIndex, setModalSpecialSkillIndex] = useState<number | null>(null);
   const [isAbilityModalOpen, setIsAbilityModalOpen] = useState(false);
@@ -359,30 +362,37 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           {activeTab === 'gameplay' && (
             <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200 items-start">
               
-              <div className="lg:col-span-4 h-full">
+              <div className="lg:col-span-4 h-full order-1 lg:order-none">
                 <StatsCard char={char} updateTracker={updateTracker} patch={patch} />
               </div>
-              <div className="lg:col-span-4 h-full">
+              <div className="lg:col-span-4 h-full order-2 lg:order-none">
                 <VitalsCard char={char} updateTracker={updateTracker} />
               </div>
-              <div className="lg:col-span-4 h-full">
+              <div className="lg:col-span-4 h-full order-3 lg:order-none">
                 <CoreSkillsCard char={char} setLevelUpTarget={setLevelUpTarget} />
               </div>
 
-              <div className="lg:col-span-4 h-full">
+              <div className="lg:col-span-4 h-full order-6 lg:order-none">
                 <LoadoutCard char={char} patch={patch} onOpenInventory={() => setIsInventoryModalOpen(true)} />
               </div>
-              <div className="lg:col-span-4 h-full">
+              <div className="lg:col-span-4 h-full order-5 lg:order-none">
                 <InjuriesCard char={char} patch={patch} />
               </div>
-              <div className="lg:col-span-4 h-full">
+              <div className="lg:col-span-4 h-full order-4 lg:order-none">
                 <SpecialSkillsCard char={char} patch={patch} setLevelUpTarget={setLevelUpTarget} setIsSpecialSkillModalOpen={setIsSpecialSkillModalOpen} setModalSpecialSkillIndex={setModalSpecialSkillIndex} setExpandedSpecialSkill={() => {}} />
               </div>
 
-              <div className="lg:col-span-4 h-full">
-                <ClassSection char={char} patch={patch} setIsClassModalOpen={setIsClassModalOpen} />
+              <div className="lg:col-span-4 h-full order-7 lg:order-none">
+                <ClassSection 
+                  char={char} 
+                  patch={patch} 
+                  setIsClassModalOpen={setIsClassModalOpen} 
+                  setIsPathModalOpen={setIsPathModalOpen} 
+                  setIsDisciplineModalOpen={setIsDisciplineModalOpen} 
+                  setModalDisciplineIndex={setModalDisciplineIndex} 
+                />
               </div>
-              <div className="lg:col-span-8">
+              <div className="lg:col-span-8 order-8 lg:order-none">
                 <AbilitiesSection char={char} patch={patch} setModalAbilityIndex={setModalAbilityIndex} setIsAbilityModalOpen={setIsAbilityModalOpen} setModalDiscipline={() => {}} setExpandedModalAbility={() => {}} />
               </div>
 
@@ -427,6 +437,9 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         <SpecialSkillModal char={char} isOpen={isSpecialSkillModalOpen} onClose={() => setIsSpecialSkillModalOpen(false)} patch={patch} modalIndex={modalSpecialSkillIndex} />
         <AbilityModal char={char} isOpen={isAbilityModalOpen} onClose={() => setIsAbilityModalOpen(false)} patch={patch} modalIndex={modalAbilityIndex} />
         <InventoryModal char={char} isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} patch={patch} />
+        
+        <PathModal char={char} isOpen={isPathModalOpen} onClose={() => setIsPathModalOpen(false)} patch={patch} classData={getEntryByName(char.data.identity.className)} />
+        <DisciplineModal char={char} isOpen={isDisciplineModalOpen} onClose={() => setIsDisciplineModalOpen(false)} patch={patch} modalIndex={modalDisciplineIndex} />
       </div>
 
       {/* Footer moved OUTSIDE the filtered container so it remains visible and fixed */}

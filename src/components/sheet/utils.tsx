@@ -46,7 +46,7 @@ export const SPECIAL_SKILL_DESCRIPTIONS: Record<string, string> = {
 };
 
 export const SPECIAL_SKILL_ATTRIBUTES: Record<string, 'grt' | 'ref' | 'int' | 'psy'> = {
-  Carry: 'grt', Discipline: 'grt', Stance: 'grt', Armour: 'grt',
+  Carry: 'grt', Discipline: 'grt', Stance: 'grt',
   Interface: 'ref', Pilot: 'ref', Scout: 'ref',
   Engineering: 'int', Lore: 'int', Medicine: 'int',
   Authority: 'psy', Deception: 'psy', Whisper: 'psy'
@@ -67,7 +67,7 @@ export const ORIGIN_CHOICES: Record<string, OriginChoice[]> = {
 
 export type OriginEffect = { inspiration?: string[]; starting?: Record<string, number>; specialAbilities?: string[] };
 export const ORIGIN_EFFECTS: Record<string, OriginEffect> = {
-  'Commoner': {}, 'Merchant': { inspiration: ['Persuasion', 'Knowledge'], starting: { 'Lore': 2 } }, 'Warrior': { inspiration: ['Athletics'], starting: { 'Armour': 2, 'Stance': 2 } }, 'Brigand': { inspiration: ['Dexterity', 'Stealth'], starting: { 'Interface': 2 } },
+  'Commoner': {}, 'Merchant': { inspiration: ['Persuasion', 'Knowledge'], starting: { 'Lore': 2 } }, 'Warrior': { inspiration: ['Athletics'], starting: { 'Carry': 2, 'Stance': 2 } }, 'Brigand': { inspiration: ['Dexterity', 'Stealth'], starting: { 'Interface': 2 } },
   'Scholar': { inspiration: ['Knowledge'], starting: { 'Lore': 3 } }, 'Seeker': { inspiration: ['Willpower'] }, 'Artisan': { inspiration: ['Reasoning', 'Knowledge'], starting: { 'Carry': 2, 'Engineering': 2 } }, 'City Bureaucrat': { inspiration: ['Intuition', 'Persuasion'], starting: { 'Deception': 2 } },
   'Memorialist': { inspiration: ['Intuition', 'Perception'], starting: { 'Lore': 2 } }, 'Fogborn': { inspiration: ['Survival'], starting: { 'Whisper': 2, 'Lore': 2 } }, 'Stormrider': { inspiration: ['Survival', 'Dexterity'], starting: { 'Pilot': 2 } }, 'Ravineborn': { inspiration: ['Endurance', 'Willpower'], starting: { 'Carry': 2 } },
   'Sky Raider': { inspiration: ['Brawling'], starting: { 'Stance': 2, 'Pilot': 2 } }, 'Wastelander': { inspiration: ['Survival', 'Endurance'], starting: { 'Carry': 2 } }, 'Steam Artificer': { inspiration: ['Reasoning'], starting: { 'Engineering': 2, 'Lore': 2 } }, 'Woodlands Survivor': { inspiration: ['Perception', 'Survival'], starting: { 'Whisper': 2 } },
@@ -142,9 +142,22 @@ export const SectionHeader = ({ title }: { title: string }) => (
   </h2>
 );
 
-export const Tooltip = ({ text, children, className = "w-full", noBorder = false }: { text: string, children: React.ReactNode, className?: string, noBorder?: boolean }) => {
+export const Tooltip = ({ 
+  text, children, className = "w-full", noBorder = false, disabled = false 
+}: { 
+  text: string, children: React.ReactNode, className?: string, noBorder?: boolean, disabled?: boolean 
+}) => {
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [show, setShow] = useState(false);
+  
+  if (disabled) {
+    return (
+      <div className={`inline-flex items-center ${className}`}>
+        <div className={`truncate w-full ${!noBorder ? 'border-b border-dotted border-gray-500' : ''}`}>{children}</div>
+      </div>
+    );
+  }
+
   const handleMouseEnter = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = Math.max(140, Math.min(window.innerWidth - 140, rect.left + rect.width / 2));

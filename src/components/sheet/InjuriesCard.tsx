@@ -83,7 +83,7 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
   const displayedInjuries = char.data.trackers.injuries.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
 
   return (
-    <div className="sheet-panel p-4 h-full flex flex-col">
+    <div className="sheet-panel p-4 flex flex-col h-full">
       
       {/* Header */}
       <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
@@ -105,13 +105,13 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
         </div>
       </div>
       
-      {/* Content Area with Overlay */}
-      <div className="flex-1 relative min-h-[160px]">
+      {/* Content Area with CSS Grid Overlay */}
+      <div className="grid grid-cols-1 w-full flex-1 sm:min-h-[160px]">
         
         {/* Background Layer: List of Injuries */}
-        <div className="absolute inset-0 flex flex-col">
+        <div className="col-start-1 row-start-1 flex flex-col w-full">
           {char.data.trackers.injuries.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center pb-8">
+            <div className="flex items-center justify-center flex-1 min-h-[84px]">
               <p className="text-gray-500 italic text-base">Your body is intact.</p>
             </div>
           ) : (
@@ -178,7 +178,7 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
 
         {/* Foreground Overlay: Expanded Form */}
         {expandedInjury !== null && (
-          <div className="absolute inset-0 bg-gray-800 border border-gray-600 rounded-lg p-4 flex flex-col justify-between shadow-2xl z-10 animate-in fade-in duration-200">
+          <div className="col-start-1 row-start-1 w-full bg-gray-800 border border-gray-600 rounded-lg p-4 flex flex-col justify-between shadow-2xl z-10 animate-in fade-in duration-200">
              
              <div className="flex flex-col gap-4">
                <div className="flex justify-between items-center gap-2 shrink-0">
@@ -227,17 +227,17 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
                </div>
                
                {/* Severity & Treatment */}
-               <div className="grid grid-cols-2 gap-4 items-end shrink-0">
-                  <div className="flex flex-col gap-2">
+               <div className="flex gap-4 items-end shrink-0 w-full">
+                  <div className="flex flex-col gap-2 w-24 shrink-0">
                     <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Severity</span>
                     <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm h-9">
-                      <button onClick={() => changeSeverity(expandedInjury, -1)} className="w-10 h-full flex items-center justify-center hover:bg-gray-800 text-gray-400 hover:text-white font-bold transition-colors">−</button>
+                      <button onClick={() => changeSeverity(expandedInjury, -1)} className="w-8 h-full flex items-center justify-center hover:bg-gray-800 text-gray-400 hover:text-white font-bold transition-colors">−</button>
                       <div className="flex-1 text-center font-bold text-base text-white">{char.data.trackers.injuries[expandedInjury].severity}</div>
-                      <button onClick={() => changeSeverity(expandedInjury, 1)} className="w-10 h-full flex items-center justify-center hover:bg-gray-800 text-gray-400 hover:text-white font-bold transition-colors">+</button>
+                      <button onClick={() => changeSeverity(expandedInjury, 1)} className="w-8 h-full flex items-center justify-center hover:bg-gray-800 text-gray-400 hover:text-white font-bold transition-colors">+</button>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 flex-1 min-w-0">
                     <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Treatment</span>
                     <div className="flex gap-1.5 h-9">
                       {['none', 'survival', 'medicine'].map(t => (
@@ -259,7 +259,7 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
              </div>
              
              {/* Footer & Done */}
-             <div className="flex justify-between items-center pt-3 border-t border-gray-700/50 shrink-0">
+             <div className="flex justify-between items-center pt-3 border-t border-gray-700/50 mt-4 shrink-0">
                <span className="text-sm font-bold text-red-400">
                  {char.data.trackers.injuries[expandedInjury].weeksLeft} week{char.data.trackers.injuries[expandedInjury].weeksLeft !== 1 ? 's' : ''} left
                </span>

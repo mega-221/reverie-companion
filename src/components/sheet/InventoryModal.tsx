@@ -369,64 +369,66 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 px-6 pt-2 border-b border-gray-700 shrink-0 bg-black/10 h-[46px]">
-          <button 
-            onClick={() => setMainTab('backpack')} 
-            onDragOver={(e) => e.preventDefault()}
-            onDragEnter={() => setDragOverSlot('tab-backpack')}
-            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverSlot(null); }}
-            onDrop={(e) => handleDropOnTab(e, 'items')}
-            className="relative inline-flex outline-none h-full items-center"
-          >
-            <span className={`px-4 py-1.5 rounded-md font-bold transition-all duration-75 pointer-events-none ${mainTab === 'backpack' ? 'text-red-400' : 'text-gray-500 hover:text-gray-300'} ${dragOverSlot === 'tab-backpack' ? 'bg-red-900/60 ring-2 ring-red-500 text-red-200' : ''}`}>
-              Backpack
-            </span>
-            {mainTab === 'backpack' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 rounded-full" />
-            )}
-          </button>
+        <div className="border-b border-gray-700 shrink-0 bg-black/10 overflow-x-auto">
+          <div className="flex items-center gap-3 px-6 pt-2 h-[46px] min-w-max">
+            <button 
+              onClick={() => setMainTab('backpack')} 
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={() => setDragOverSlot('tab-backpack')}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverSlot(null); }}
+              onDrop={(e) => handleDropOnTab(e, 'items')}
+              className="relative inline-flex outline-none h-full items-center"
+            >
+              <span className={`px-4 py-1.5 rounded-md font-bold transition-all duration-75 pointer-events-none ${mainTab === 'backpack' ? 'text-red-400' : 'text-gray-500 hover:text-gray-300'} ${dragOverSlot === 'tab-backpack' ? 'bg-red-900/60 ring-2 ring-red-500 text-red-200' : ''}`}>
+                Backpack
+              </span>
+              {mainTab === 'backpack' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 rounded-full" />
+              )}
+            </button>
 
-          <button 
-            onClick={() => setMainTab('possessions')} 
-            onDragOver={(e) => e.preventDefault()}
-            onDragEnter={() => setDragOverSlot('tab-possessions')}
-            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverSlot(null); }}
-            onDrop={(e) => handleDropOnTab(e, 'possessions')}
-            className="relative inline-flex outline-none h-full items-center"
-          >
-            <span className={`px-4 py-1.5 rounded-md font-bold transition-all duration-75 pointer-events-none ${mainTab === 'possessions' ? 'text-red-400' : 'text-gray-500 hover:text-gray-300'} ${dragOverSlot === 'tab-possessions' ? 'bg-red-900/60 ring-2 ring-red-500 text-red-200' : ''}`}>
-              Possessions
-            </span>
-            {mainTab === 'possessions' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 rounded-full" />
-            )}
-          </button>
+            <button 
+              onClick={() => setMainTab('possessions')} 
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={() => setDragOverSlot('tab-possessions')}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverSlot(null); }}
+              onDrop={(e) => handleDropOnTab(e, 'possessions')}
+              className="relative inline-flex outline-none h-full items-center"
+            >
+              <span className={`px-4 py-1.5 rounded-md font-bold transition-all duration-75 pointer-events-none ${mainTab === 'possessions' ? 'text-red-400' : 'text-gray-500 hover:text-gray-300'} ${dragOverSlot === 'tab-possessions' ? 'bg-red-900/60 ring-2 ring-red-500 text-red-200' : ''}`}>
+                Possessions
+              </span>
+              {mainTab === 'possessions' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 rounded-full" />
+              )}
+            </button>
 
-          <div className="w-px h-6 bg-gray-600 mx-2 self-center" />
+            <div className="w-px h-6 bg-gray-600 mx-2 self-center" />
 
-          <button 
-            onClick={() => setMainTab('database')} 
-            className="relative inline-flex outline-none h-full items-center"
-          >
-            <span className={`px-4 py-1.5 rounded-md font-bold transition-all duration-75 pointer-events-none ${mainTab === 'database' ? 'text-red-400' : 'text-gray-500 hover:text-gray-300'}`}>
-              Add Items
-            </span>
-            {mainTab === 'database' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 rounded-full" />
-            )}
-          </button>
+            <button 
+              onClick={() => setMainTab('database')} 
+              className="relative inline-flex outline-none h-full items-center"
+            >
+              <span className={`px-4 py-1.5 rounded-md font-bold transition-all duration-75 pointer-events-none ${mainTab === 'database' ? 'text-red-400' : 'text-gray-500 hover:text-gray-300'}`}>
+                Add Items
+              </span>
+              {mainTab === 'database' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 rounded-full" />
+              )}
+            </button>
 
-          <button 
-            onClick={() => setMainTab('custom')} 
-            className="relative inline-flex outline-none h-full items-center"
-          >
-            <span className={`px-4 py-1.5 rounded-md font-bold transition-all duration-75 pointer-events-none ${mainTab === 'custom' ? 'text-red-400' : 'text-gray-500 hover:text-gray-300'}`}>
-              Create Custom
-            </span>
-            {mainTab === 'custom' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 rounded-full" />
-            )}
-          </button>
+            <button 
+              onClick={() => setMainTab('custom')} 
+              className="relative inline-flex outline-none h-full items-center"
+            >
+              <span className={`px-4 py-1.5 rounded-md font-bold transition-all duration-75 pointer-events-none ${mainTab === 'custom' ? 'text-red-400' : 'text-gray-500 hover:text-gray-300'}`}>
+                Create Custom
+              </span>
+              {mainTab === 'custom' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 rounded-full" />
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
