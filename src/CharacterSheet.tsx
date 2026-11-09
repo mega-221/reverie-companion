@@ -108,7 +108,15 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             dp: fetchedChar.data.trackers?.dp ?? 3,
             ap: fetchedChar.data.trackers?.ap ?? 0,
             acc: fetchedChar.data.trackers?.acc ?? 0,
-            injuries: fetchedChar.data.trackers?.injuries || []
+            injuries: (fetchedChar.data.trackers?.injuries || []).map((inj: any) => ({
+              name: inj.name || inj.part || 'Unknown Injury',
+              affectedAttributes: Array.isArray(inj.affectedAttributes) 
+                ? inj.affectedAttributes 
+                : (inj.affectedAttributes ? inj.affectedAttributes.split(',').map((s:string) => s.trim()) : []),
+              severity: inj.severity ?? 1,
+              treatment: inj.treatment || 'none',
+              weeksLeft: inj.weeksLeft ?? (inj.severity ?? 1) * 4
+            }))
           },
           equipment: migratedEq,
           abilities: Array.isArray(fetchedChar.data.abilities)

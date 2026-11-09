@@ -48,7 +48,13 @@ export type CharacterData = {
   bonus: { vm: number; sl: number; dp: number; eva: number };
   trackers: {
     vigor: number; strain: number; dp: number; ap: number; acc: number;
-    injuries: { severity: number; part: string; weeksLeft: number }[];
+    injuries: { 
+      name: string; 
+      affectedAttributes: string[]; 
+      severity: number; 
+      treatment: 'none' | 'survival' | 'medicine'; 
+      weeksLeft: number; 
+    }[];
   };
   notes: string;
 };

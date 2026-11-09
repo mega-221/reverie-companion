@@ -101,8 +101,8 @@ export default function AbilitiesSection({
     <section className="sheet-panel p-6 w-full lg:col-span-2">
       <div className="flex justify-between items-end mb-4 border-b border-gray-700 pb-2">
         <div className="flex gap-4">
-          <button onClick={() => setActiveAbilityTab('discipline')} className={`font-bold text-xl font-cinzel first-letter:font-cinzelDeco transition-colors ${activeAbilityTab === 'discipline' ? 'text-gray-200 border-b-2 border-red-500 pb-2 -mb-[10px]' : 'text-gray-500 hover:text-gray-300 pb-2'}`}>Learned Abilities</button>
-          <button onClick={() => setActiveAbilityTab('basic')} className={`font-bold text-xl font-cinzel first-letter:font-cinzelDeco transition-colors ${activeAbilityTab === 'basic' ? 'text-gray-200 border-b-2 border-red-500 pb-2 -mb-[10px]' : 'text-gray-500 hover:text-gray-300 pb-2'}`}>Basic Abilities</button>
+          <button onClick={() => setActiveAbilityTab('discipline')} className={`text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'discipline' ? 'text-gray-200 border-b-2 border-red-500 pb-2 -mb-[10px]' : 'text-gray-500 hover:text-gray-300 pb-2'}`}>Learned Abilities</button>
+          <button onClick={() => setActiveAbilityTab('basic')} className={`text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'basic' ? 'text-gray-200 border-b-2 border-red-500 pb-2 -mb-[10px]' : 'text-gray-500 hover:text-gray-300 pb-2'}`}>Basic Abilities</button>
         </div>
         {activeAbilityTab === 'discipline' && <span className="text-xs text-gray-300 font-bold bg-gray-900 px-2 py-0.5 rounded border border-gray-700">Active: {equippedAbilities}/6</span>}
       </div>

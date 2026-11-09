@@ -1,5 +1,4 @@
 import type { CharacterData } from './types';
-
 export const vigorMax  = (d: CharacterData) => 5 + (d.progression.tier - 1) + d.bonus.vm;
 export const strainMax = (d: CharacterData) => 5 + (d.progression.tier - 1) + d.bonus.sl;
 export const dpMax     = (d: CharacterData) => 2 + (d.progression.tier - 1) + d.bonus.dp;
@@ -45,3 +44,9 @@ export const calculateBurden = (d: CharacterData, getEntryByName: (name: string)
 
   return backpackBurden + baseEquipped + extraEquipped;
 };
+
+export function getAttributeInjuryPenalty(injuries: CharacterData['trackers']['injuries'], attribute: string): number {
+  return injuries
+    .filter(inj => inj.affectedAttributes.includes(attribute.toUpperCase()))
+    .reduce((sum, inj) => sum + inj.severity, 0);
+}

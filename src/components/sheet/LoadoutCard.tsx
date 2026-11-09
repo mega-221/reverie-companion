@@ -175,9 +175,9 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
 
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-sm p-5 flex flex-col h-full overflow-hidden">
-      <div className="border-b border-gray-700 pb-2 mb-2 shrink-0 flex justify-between items-center">
+      <div className="border-b border-gray-700 pb-3 mb-3 shrink-0 flex justify-between items-center">
         <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Loadout</h2>
-        <button onClick={onOpenInventory} className="text-[10px] font-bold text-gray-400 hover:text-white bg-black/40 px-2 py-1 rounded border border-gray-600 transition-all duration-75 active:opacity-60">
+        <button onClick={onOpenInventory} className="text-xs font-bold text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-1.5 rounded transition-colors active:opacity-60">
           Open Inventory
         </button>
       </div>

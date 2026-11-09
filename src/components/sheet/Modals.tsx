@@ -7,14 +7,26 @@ import {
   getSpeedData, getTypeStyle, getMaxAttribute, getMinSkillRank, Tooltip,
   getMaxAttributePoints, getSpentAttributePoints
 } from './utils';
+import { getAttributeInjuryPenalty } from '../../calc';
 
 const MODAL_BG = "sheet-modal animate-in zoom-in-95 duration-200";
 
 export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdvance, handleRegress }: any) {
   if (!levelUpTarget) return null;
 
-  let title = ''; let description = ''; let currentRank = 0; let maxRank = 0; let minRank = 0; let xpCost = 0; let baseCost = 0; let isMaxed = false; let isMinned = false; let isInspired = false;
-  let availableAttrPts = 0; let isOutOfAttrPts = false;
+  let title = ''; 
+  let description = ''; 
+  let currentRank = 0; 
+  let maxRank = 0; 
+  let minRank = 0; 
+  let xpCost = 0; 
+  let baseCost = 0; 
+  let isMaxed = false; 
+  let isMinned = false; 
+  let isInspired = false;
+  let availableAttrPts = 0; 
+  let isOutOfAttrPts = false;
+  let injuryPenalty = 0;
 
   if (levelUpTarget.type === 'attribute') {
     title = `${ATTRIBUTE_NAMES[levelUpTarget.key as keyof typeof ATTRIBUTE_NAMES]}`;
@@ -39,6 +51,8 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
     xpCost = isInspired ? Math.max(0, baseCost - 1) : baseCost;
     isMaxed = currentRank >= maxRank;
     isMinned = currentRank <= minRank;
+
+    injuryPenalty = getAttributeInjuryPenalty(char.data.trackers.injuries, String(attr).toUpperCase());
   } else if (levelUpTarget.type === 'specialSkill') {
     const skill = char.data.specialSkills[levelUpTarget.index];
     title = skill.name || 'Special Skill';
@@ -52,6 +66,8 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
     xpCost = isInspired ? Math.max(0, baseCost - 1) : baseCost;
     isMaxed = currentRank >= maxRank;
     isMinned = currentRank <= minRank;
+
+    injuryPenalty = getAttributeInjuryPenalty(char.data.trackers.injuries, String(skill.attribute).toUpperCase());
   }
 
   const isAdvanceDisabled = 
@@ -76,6 +92,14 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
             <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Current Rank</div>
             <div className="text-3xl font-bold text-white mb-2">{currentRank} <span className="text-lg text-gray-500 font-normal">/ {maxRank}</span></div>
             
+            {injuryPenalty > 0 && (
+              <div className="text-xs text-red-400 font-bold bg-red-950/40 px-2 py-1 rounded border border-red-900/50 mb-2 text-center">
+                {/* Removed Math.max(0, ...) */}
+                Effective Rank: {currentRank - injuryPenalty} <br/>
+                <span className="text-[10px] font-normal text-red-300">(-{injuryPenalty} from Injuries)</span>
+              </div>
+            )}
+
             {levelUpTarget.type !== 'attribute' && (
               isMaxed ? (
                 <div className="text-xs text-blue-400 font-bold bg-blue-900/30 px-2 py-1 rounded">Maximum Rank Reached</div>
@@ -235,7 +259,6 @@ export function ClassModal({ char, isOpen, onClose, patch }: any) {
             let classes = getClasses().filter((c: any) => c.data.archetype === archetype);
             if (classes.length === 0) return null;
 
-            // Enforce alphabetical sorting for all classes in the archetype
             classes = classes.sort((a: any, b: any) => a.name.localeCompare(b.name));
 
             return (

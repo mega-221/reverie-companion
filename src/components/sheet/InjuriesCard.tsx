@@ -1,93 +1,278 @@
+import { useState } from 'react';
 import type { Character } from '../../types';
-import { SectionHeader } from './utils';
+import { SKILL_GROUPS } from './utils';
+
+const CORE_ATTRIBUTES = ['grt', 'ref', 'int', 'psy'] as const;
+const ITEMS_PER_PAGE = 3;
 
 export default function InjuriesCard({ char, patch }: { char: Character, patch: any }) {
+  const [expandedInjury, setExpandedInjury] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
+
+  const getWeeksPerSeverity = (treatment: string) => {
+    if (treatment === 'survival') return 2;
+    if (treatment === 'medicine') return 1;
+    return 4;
+  };
+
+  const updateInjury = (index: number, updates: Partial<Character['data']['trackers']['injuries'][0]>) => {
+    const newInjuries = [...char.data.trackers.injuries];
+    const inj = { ...newInjuries[index], ...updates };
+    
+    if (updates.severity !== undefined || updates.treatment !== undefined) {
+      const weeksPerSev = getWeeksPerSeverity(inj.treatment);
+      inj.weeksLeft = inj.severity * weeksPerSev;
+    }
+    
+    newInjuries[index] = inj;
+    patch({ trackers: { ...char.data.trackers, injuries: newInjuries } });
+  };
+
+  const changeSeverity = (index: number, delta: number) => {
+    const inj = char.data.trackers.injuries[index];
+    const newSev = Math.max(1, inj.severity + delta);
+    updateInjury(index, { severity: newSev });
+  };
+
+  const tickDownAll = () => {
+    if (!confirm('Tick down a week of healing for ALL injuries?')) return;
+    
+    const newInjuries: typeof char.data.trackers.injuries = [];
+    
+    char.data.trackers.injuries.forEach(inj => {
+      const weeksPerSev = getWeeksPerSeverity(inj.treatment);
+      const newWeeks = inj.weeksLeft - 1;
+      
+      if (newWeeks > 0) {
+        newInjuries.push({
+          ...inj,
+          weeksLeft: newWeeks,
+          severity: Math.ceil(newWeeks / weeksPerSev)
+        });
+      }
+    });
+    
+    patch({ trackers: { ...char.data.trackers, injuries: newInjuries } });
+    setExpandedInjury(null);
+    setPage(0); 
+  };
+
+  const addInjury = () => {
+    const newInjuries = [...char.data.trackers.injuries, { 
+      name: 'New Injury', 
+      affectedAttributes: [], 
+      severity: 1, 
+      treatment: 'none' as const, 
+      weeksLeft: 4 
+    }];
+    patch({ trackers: { ...char.data.trackers, injuries: newInjuries } });
+    setExpandedInjury(newInjuries.length - 1); 
+    setPage(Math.floor((newInjuries.length - 1) / ITEMS_PER_PAGE)); 
+  };
+
+  const deleteInjury = (index: number) => {
+    if (!confirm('Are you sure you want to delete this injury?')) return;
+    
+    patch({ trackers: { ...char.data.trackers, injuries: char.data.trackers.injuries.filter((_, j) => j !== index) } });
+    setExpandedInjury(null);
+    const remainingPages = Math.ceil((char.data.trackers.injuries.length - 1) / ITEMS_PER_PAGE);
+    if (page >= remainingPages && page > 0) setPage(page - 1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(char.data.trackers.injuries.length / ITEMS_PER_PAGE));
+  const displayedInjuries = char.data.trackers.injuries.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
+
   return (
-    <div className="w-full h-full">
-      <section className="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-sm w-full h-full flex flex-col">
-        <SectionHeader title="Injuries" />
-        <div className="overflow-x-auto rounded-xl border border-gray-700 shadow-sm w-full bg-black/20 flex-1">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-black/40 text-gray-400 text-xs uppercase tracking-wider border-b border-gray-700">
-                <th className="p-2 font-bold">Injury Name</th>
-                <th className="p-2 font-bold w-16 text-center whitespace-nowrap">Sev</th>
-                <th className="p-2 font-bold w-16 text-center whitespace-nowrap">Weeks</th>
-                <th className="p-2 w-8"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {char.data.trackers.injuries.map((inj, i) => (
-                <tr key={i} className="hover:bg-white/5 border-b border-gray-700/50 last:border-0">
-                  <td className="p-1">
-                    <input 
-                      className="w-full bg-transparent focus:outline-none p-1 text-sm text-gray-200" 
-                      placeholder="Injury..." 
-                      value={inj.part} 
-                      onChange={e => { 
-                        const n = [...char.data.trackers.injuries]; 
-                        n[i] = { ...n[i], part: e.target.value }; 
-                        patch({ trackers: { ...char.data.trackers, injuries: n } }); 
-                      }} 
-                    />
-                  </td>
-                  <td className="p-1 text-center">
-                    <input 
-                      type="number" 
-                      className="w-10 border border-gray-700 rounded p-1 text-center bg-black/40 shadow-inner focus:outline-none focus:border-red-500 text-gray-200 text-sm" 
-                      title="Severity" 
-                      value={inj.severity} 
-                      onChange={e => { 
-                        const n = [...char.data.trackers.injuries]; 
-                        n[i] = { ...n[i], severity: +e.target.value }; 
-                        patch({ trackers: { ...char.data.trackers, injuries: n } }); 
-                      }} 
-                    />
-                  </td>
-                  <td className="p-1 text-center">
-                    <input 
-                      type="number" 
-                      className="w-10 border border-gray-700 rounded p-1 text-center bg-black/40 shadow-inner focus:outline-none focus:border-red-500 text-gray-200 text-sm" 
-                      title="Weeks" 
-                      value={inj.weeksLeft} 
-                      onChange={e => { 
-                        const n = [...char.data.trackers.injuries]; 
-                        n[i] = { ...n[i], weeksLeft: +e.target.value }; 
-                        patch({ trackers: { ...char.data.trackers, injuries: n } }); 
-                      }} 
-                    />
-                  </td>
-                  <td className="p-1 text-center">
-                    <button 
-                      className="text-red-500 font-bold text-lg hover:text-red-400" 
-                      onClick={() => { 
-                        const n = char.data.trackers.injuries.filter((_, j) => j !== i); 
-                        patch({ trackers: { ...char.data.trackers, injuries: n } }); 
-                      }}
-                    >
-                      ×
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {char.data.trackers.injuries.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="p-6 text-center text-gray-500 italic text-sm">No active injuries.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+    <div className="sheet-panel p-4 h-full flex flex-col">
+      
+      {/* Header */}
+      <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
+        <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Injuries</h2>
+        <div className="flex gap-2">
+          <button 
+            onClick={tickDownAll} 
+            disabled={char.data.trackers.injuries.length === 0}
+            className="text-xs font-bold text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-900 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Heal Week
+          </button>
+          <button 
+            onClick={addInjury} 
+            className="text-xs font-bold text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-1.5 rounded transition-colors"
+          >
+            Add Injury
+          </button>
         </div>
-        <button 
-          className="mt-3 border border-dashed border-gray-600 px-4 py-2 text-xs rounded-lg hover:bg-white/5 font-bold text-gray-300 shadow-sm transition-colors shrink-0" 
-          onClick={() => { 
-            const n = [...char.data.trackers.injuries, { part: '', severity: 1, weeksLeft: 0 }]; 
-            patch({ trackers: { ...char.data.trackers, injuries: n } }); 
-          }}
-        >
-          + Add Injury
-        </button>
-      </section>
+      </div>
+      
+      {/* Content Area with Overlay */}
+      <div className="flex-1 relative min-h-[160px]">
+        
+        {/* Background Layer: List of Injuries */}
+        <div className="absolute inset-0 flex flex-col">
+          {char.data.trackers.injuries.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center pb-8">
+              <p className="text-gray-500 italic text-base">Your body is intact.</p>
+            </div>
+          ) : (
+            <div className="flex-1 space-y-3">
+              {displayedInjuries.map((inj, i) => {
+                const actualIndex = page * ITEMS_PER_PAGE + i;
+                return (
+                  <div 
+                    key={actualIndex} 
+                    onClick={() => setExpandedInjury(actualIndex)}
+                    className="bg-black/20 border border-gray-700 hover:border-gray-500 rounded-lg p-3 flex justify-between items-center cursor-pointer transition-colors group"
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-base font-bold text-gray-200 truncate group-hover:text-white transition-colors">{inj.name || 'Unnamed Injury'}</span>
+                      <div className="flex gap-1.5 mt-1.5">
+                        {inj.affectedAttributes.map(attr => {
+                          const key = attr.toLowerCase() as keyof typeof SKILL_GROUPS;
+                          const group = SKILL_GROUPS[key];
+                          if (!group) return null;
+                          return (
+                            <span key={attr} className={`text-[10px] font-bold uppercase ${group.color} border border-current px-1.5 py-0.5 rounded opacity-80`}>
+                              {attr}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 shrink-0 ml-3">
+                      <div className="text-right">
+                        <span className="block text-sm font-bold text-red-400 leading-none mb-1">{inj.weeksLeft}w left</span>
+                        <span className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sev {inj.severity}</span>
+                      </div>
+                      <span className="text-gray-500 text-xs">▼</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center pt-2 mt-auto border-t border-gray-700/50 shrink-0">
+              <button 
+                onClick={() => setPage(p => Math.max(0, p - 1))} 
+                disabled={page === 0}
+                className="text-gray-400 hover:text-white disabled:opacity-30 disabled:hover:text-gray-400 px-2 py-1 text-xs font-bold transition-colors"
+              >
+                ← Prev
+              </button>
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                Page {page + 1} of {totalPages}
+              </span>
+              <button 
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} 
+                disabled={page === totalPages - 1}
+                className="text-gray-400 hover:text-white disabled:opacity-30 disabled:hover:text-gray-400 px-2 py-1 text-xs font-bold transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Foreground Overlay: Expanded Form */}
+        {expandedInjury !== null && (
+          <div className="absolute inset-0 bg-gray-800 border border-gray-600 rounded-lg p-4 flex flex-col justify-between shadow-2xl z-10 animate-in fade-in duration-200">
+             
+             <div className="flex flex-col gap-4">
+               <div className="flex justify-between items-center gap-2 shrink-0">
+                 <input 
+                   value={char.data.trackers.injuries[expandedInjury].name} 
+                   placeholder="Injury name..." 
+                   className="bg-transparent text-lg font-bold text-gray-100 focus:outline-none flex-1 border-b border-gray-700 focus:border-red-500 transition-colors pb-1" 
+                   onChange={e => updateInjury(expandedInjury, { name: e.target.value })} 
+                 />
+                 <button 
+                   onClick={() => deleteInjury(expandedInjury)} 
+                   className="text-red-500 hover:text-red-400 font-bold text-xl leading-none px-2 shrink-0 bg-red-950/30 rounded"
+                   title="Delete Injury"
+                 >
+                   ×
+                 </button>
+               </div>
+               
+               {/* Attributes Checkboxes */}
+               <div className="flex flex-col gap-2 shrink-0">
+                 <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Affected Attributes</span>
+                 <div className="flex gap-2 w-full">
+                   {CORE_ATTRIBUTES.map(attr => {
+                     const isChecked = char.data.trackers.injuries[expandedInjury].affectedAttributes.includes(attr.toUpperCase());
+                     const group = SKILL_GROUPS[attr];
+                     return (
+                       <button
+                         key={attr}
+                         onClick={() => {
+                           const next = isChecked 
+                             ? char.data.trackers.injuries[expandedInjury].affectedAttributes.filter(a => a !== attr.toUpperCase()) 
+                             : [...char.data.trackers.injuries[expandedInjury].affectedAttributes, attr.toUpperCase()];
+                           updateInjury(expandedInjury, { affectedAttributes: next });
+                         }}
+                         className={`flex-1 py-1.5 text-xs font-bold uppercase rounded border transition-colors ${
+                           isChecked 
+                             ? `${group.color} border-current bg-black/40 shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]` 
+                             : 'bg-gray-900 border-gray-700 text-gray-600 hover:bg-gray-800 hover:text-gray-400'
+                         }`}
+                       >
+                         {attr}
+                       </button>
+                     );
+                   })}
+                 </div>
+               </div>
+               
+               {/* Severity & Treatment */}
+               <div className="grid grid-cols-2 gap-4 items-end shrink-0">
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Severity</span>
+                    <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm h-9">
+                      <button onClick={() => changeSeverity(expandedInjury, -1)} className="w-10 h-full flex items-center justify-center hover:bg-gray-800 text-gray-400 hover:text-white font-bold transition-colors">−</button>
+                      <div className="flex-1 text-center font-bold text-base text-white">{char.data.trackers.injuries[expandedInjury].severity}</div>
+                      <button onClick={() => changeSeverity(expandedInjury, 1)} className="w-10 h-full flex items-center justify-center hover:bg-gray-800 text-gray-400 hover:text-white font-bold transition-colors">+</button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Treatment</span>
+                    <div className="flex gap-1.5 h-9">
+                      {['none', 'survival', 'medicine'].map(t => (
+                        <button 
+                          key={t}
+                          onClick={() => updateInjury(expandedInjury, { treatment: t as any })} 
+                          className={`flex-1 text-[10px] font-bold uppercase rounded-lg border transition-colors ${
+                            char.data.trackers.injuries[expandedInjury].treatment === t
+                              ? 'bg-gray-700 border-gray-500 text-white shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]'
+                              : 'bg-gray-900 border-gray-700 text-gray-500 hover:bg-gray-800'
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+               </div>
+             </div>
+             
+             {/* Footer & Done */}
+             <div className="flex justify-between items-center pt-3 border-t border-gray-700/50 shrink-0">
+               <span className="text-sm font-bold text-red-400">
+                 {char.data.trackers.injuries[expandedInjury].weeksLeft} week{char.data.trackers.injuries[expandedInjury].weeksLeft !== 1 ? 's' : ''} left
+               </span>
+               <button 
+                 onClick={() => setExpandedInjury(null)} 
+                 className="bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white text-xs font-bold px-6 py-1.5 rounded-lg transition-colors shadow-sm"
+               >
+                 Done
+               </button>
+             </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

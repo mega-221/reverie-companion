@@ -4,6 +4,7 @@ import {
   CORE_SKILL_DESCRIPTIONS, Tooltip, getMinSkillRank, 
   type LevelUpTarget 
 } from './utils';
+import { getAttributeInjuryPenalty } from '../../calc';
 
 export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Character, setLevelUpTarget: (t: LevelUpTarget) => void }) {
   return (
@@ -11,11 +12,20 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
       {(Object.keys(SKILL_GROUPS) as Array<keyof typeof SKILL_GROUPS>).map(attr => {
         const group = SKILL_GROUPS[attr];
         const attrVal = char.data.attributes[attr];
+        const injuryPenalty = getAttributeInjuryPenalty(char.data.trackers.injuries, attr.toUpperCase());
+
+        // Gather injuries affecting this attribute for the tooltip
+        const affectingInjuries = char.data.trackers.injuries.filter(inj => 
+          inj.affectedAttributes.includes(attr.toUpperCase())
+        );
+        const penaltyTooltip = affectingInjuries
+          .map(inj => `${inj.name} (-${inj.severity})`)
+          .join(' • ');
+
         return (
-          <div key={attr} className="sheet-panel p-5 flex flex-col h-full min-w-0">
+          <div key={attr} className="sheet-panel p-4 flex flex-col h-full min-w-0">
             
-            <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-4 shrink-0">
-              {/* Removed underline from Attribute Title via noBorder */}
+            <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
               <Tooltip text={ATTRIBUTE_DESCRIPTIONS[attr]} className="w-fit" noBorder>
                 <span className={`text-3xl font-cinzel first-letter:font-cinzelDeco uppercase tracking-widest ${group.color}`}>
                   {ATTRIBUTE_NAMES[attr]}
@@ -35,10 +45,14 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
                 const currentSkill = char.data.skills[skill] ?? 0;
                 const isInspired = char.data.identity.inspirations?.includes(skill);
                 
+                // Apply penalty to the displayed rank
+                const baseRank = Math.max(originMin, currentSkill);
+                // Remove the Math.max(0, ...) so it can go negative
+                const effectiveRank = baseRank - injuryPenalty; 
+                
                 return (
                   <div key={skill} className="flex justify-between items-center text-base w-full">
                     <div className="flex items-center gap-2 min-w-0">
-                      {/* Removed underline from Skill Name via noBorder */}
                       <Tooltip text={CORE_SKILL_DESCRIPTIONS[skill]} className="w-fit" noBorder>
                         <span className="font-medium text-gray-200 truncate">{skill}</span>
                       </Tooltip>
@@ -46,11 +60,33 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
                       {isInspired && <Tooltip text={`Inspiration: ${char.data.identity.origin}`} noBorder className="w-fit shrink-0"><span className="text-yellow-500 text-sm cursor-help">★</span></Tooltip>}
                       {originMin > 0 && <Tooltip text={`Minimum bound: ${originMin} (from Origin)`} noBorder className="w-fit shrink-0"><span className="text-gray-500 text-xs cursor-help">🔒</span></Tooltip>}
                     </div>
+                    
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       <span className="text-gray-500 font-bold text-sm">+</span>
-                      <button onClick={() => setLevelUpTarget({ type: 'skill', key: skill })} className="border border-gray-700 bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base text-white hover:border-red-500 transition-colors">
-                        {Math.max(originMin, currentSkill)}
-                      </button>
+                      
+                      {/* Wrap the button in a tooltip if there's a penalty */}
+                      {injuryPenalty > 0 ? (
+                        <Tooltip 
+                          text={`Base: ${baseRank} • Penalty: -${injuryPenalty}\nFrom: ${penaltyTooltip}`} 
+                          noBorder 
+                          className="w-fit"
+                        >
+                          <button 
+                            onClick={() => setLevelUpTarget({ type: 'skill', key: skill })} 
+                            className="border bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base hover:border-red-500 transition-colors text-red-500 border-red-900"
+                          >
+                            {effectiveRank}
+                          </button>
+                        </Tooltip>
+                      ) : (
+                        <button 
+                          onClick={() => setLevelUpTarget({ type: 'skill', key: skill })} 
+                          className="border bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base hover:border-red-500 transition-colors text-white border-gray-700"
+                        >
+                          {effectiveRank}
+                        </button>
+                      )}
+                      
                       <span className="text-gray-500 text-xs font-bold w-5 text-right">/ {maxSkill}</span>
                     </div>
                   </div>

@@ -28,7 +28,7 @@ export default function AuthForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a1c21] to-[#0f1013] flex flex-col items-center justify-center p-4 font-sans text-gray-200">
+    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4 font-sans text-gray-200">
       
       <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-300">
         
@@ -45,8 +45,8 @@ export default function AuthForm() {
           </p>
         </div>
 
-        {/* Form Panel */}
-        <div className="bg-gradient-to-b from-[#262930] to-[#1a1c21] border border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+        {/* Form Panel - Updated to match sheet-panel styling */}
+        <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-sm overflow-hidden">
           <div className="p-8 flex flex-col gap-5">
             
             <h2 className="text-xl font-cinzel font-bold text-gray-200 border-b border-gray-700 pb-3 mb-2">
