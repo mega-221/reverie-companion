@@ -166,7 +166,7 @@ export default function StatsCard({ char, patch }: { char: Character, updateTrac
         <div className="flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
           <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
             <span className="hidden sm:inline">Armour</span>
-            <span className="sm:hidden">ARM</span>
+            <span className="sm:hidden">AP</span>
           </span>
           <span className="font-bold text-lg sm:text-xl text-white leading-none">{char.data.trackers.ap}</span>
         </div>

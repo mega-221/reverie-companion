@@ -23,6 +23,8 @@ select option {
   color: #e5e7eb;
 }
 
+/* --- CORE GLOBAL ANIMATIONS --- */
+
 @keyframes critical-heartbeat {
   0%, 100% { opacity: 0.2; }
   14% { opacity: 0.8; }
@@ -35,3 +37,78 @@ select option {
   animation: critical-heartbeat 1.8s infinite ease-in-out;
 }
 
+/* --- CONVICTION & FAILING ANIMATIONS --- */
+
+/* Rank 1 (Both): Drift */
+@keyframes drift {
+  0% { transform: translateX(-15%) scale(1.1); }
+  50% { transform: translateX(15%) scale(1.1); }
+  100% { transform: translateX(-15%) scale(1.1); }
+}
+
+/* Rank 2 (Conviction): Breathing Mist (Top Left) */
+@keyframes breathe-tl {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+@keyframes breathe-centre {
+  0%, 100% { transform: scale(1); opacity: 0.15; }
+  50% { transform: scale(1.3); opacity: 0.5; }
+}
+
+/* Rank 3 (Conviction): Embers */
+@keyframes floatUp {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  20% { opacity: 0.8; }
+  100% { transform: translateY(-500px) scale(0.5); opacity: 0; }
+}
+
+@keyframes floatCyan {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  20% { opacity: 0.8; }
+  100% { transform: translateY(-500px) scale(0.5); opacity: 0; }
+}
+
+/* Rank 2 (Failing): Vignette Pulse */
+@keyframes vignette-pulse {
+  0%, 100% { box-shadow: inset 0 0 40px 5px rgba(0,0,0,0.6); }
+  50% { box-shadow: inset 0 0 80px 20px rgba(0,0,0,0.95); }
+}
+
+/* Rank 3 (Failing): Weak Pulsing Aura */
+@keyframes aura-pulse-weak {
+  0%, 100% { box-shadow: inset 0 0 15px 0px rgba(239, 68, 68, 0.1); }
+  50% { box-shadow: inset 0 0 30px 5px rgba(239, 68, 68, 0.3); }
+}
+
+@keyframes crisis-tremor {
+  0%, 15%, 100% { transform: translate(0, 0); }
+  
+  /* Twitch 1 */
+  15.5% { transform: translate(-1px, 1px); }
+  16% { transform: translate(1px, -1px); }
+  16.5% { transform: translate(0, 0); }
+  
+  /* Twitch 2 */
+  43.5% { transform: translate(1px, 1px); }
+  44% { transform: translate(-1px, -1px); }
+  44.5% { transform: translate(0, 0); }
+  
+  /* Twitch 3 */
+  78.5% { transform: translate(-1px, -1px); }
+  79% { transform: translate(1px, 1px); }
+  79.5% { transform: translate(0, 0); }
+}
+
+@keyframes rise-silt {
+  0%, 100% { transform: translateY(100%); opacity: 0.8; }
+  50% { transform: translateY(60%); opacity: 1; }
+}
+
+@keyframes fallAsh {
+  0% { transform: translateY(-20px) translateX(0px) rotate(0deg); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(350px) translateX(30px) rotate(180deg); opacity: 0; }
+}

@@ -78,6 +78,18 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           extra: Array.isArray(rawEq.extra) ? rawEq.extra.map((id: string) => resolveEq(id)) : []
         };
 
+        // --- Journal Migration ---
+        const oldNotes = fetchedChar.data.notes || '';
+        let migratedJournal = fetchedChar.data.journal || [];
+        if (oldNotes && migratedJournal.length === 0) {
+          migratedJournal = [{ 
+            id: crypto.randomUUID(), 
+            date: new Date().toISOString(), 
+            title: 'Imported Notes', 
+            content: oldNotes 
+          }];
+        }
+
         const safeData: CharacterData = {
           ...fetchedChar.data,
           identity: {
@@ -132,7 +144,9 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           possessions: (fetchedChar.data.possessions || []).map((i: any) => ({ ...i, id: i.id || crypto.randomUUID() })),
           disciplines: fetchedChar.data.disciplines || [],
           skills: fetchedChar.data.skills || {},
-          notes: fetchedChar.data.notes || ''
+          journal: migratedJournal,
+          relationships: fetchedChar.data.relationships || [],
+          notes: oldNotes
         };
 
         setChar({ ...fetchedChar, data: safeData });

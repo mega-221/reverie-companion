@@ -57,6 +57,10 @@ export type CharacterData = {
     }[];
   };
   notes: string;
+    journal: { id: string; date: string; title: string; content: string; }[];
+  relationships: { id: string; name: string; role: string; status: string; }[];
+  // keep notes: string for backwards compatibility during migration, or remove it if you handle it fully. 
+  // I recommend keeping it in the type but not using it in the UI.
 };
 
 export type CompendiumEntry = {
