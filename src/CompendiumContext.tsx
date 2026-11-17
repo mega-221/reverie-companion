@@ -11,6 +11,7 @@ type CompendiumContextType = {
   getSpecialSkills: () => CompendiumEntry[];
   getConvictions: () => CompendiumEntry[];
   getFailings: () => CompendiumEntry[];
+  getAspects: () => CompendiumEntry[];
   getEntryByName: (name: string) => CompendiumEntry | undefined;
 };
 
@@ -33,13 +34,14 @@ export function CompendiumProvider({ children }: { children: React.ReactNode }) 
   const getSpecialSkills = () => entries.filter(e => e.type === 'special_skill');
   const getConvictions = () => entries.filter(e => e.type === 'conviction');
   const getFailings = () => entries.filter(e => e.type === 'failing');
+  const getAspects = () => entries.filter(e => e.type === 'aspect');
   
   const getEntryByName = (name: string) => entries.find(e => e.name === name);
 
   return (
     <CompendiumContext.Provider value={{ 
       entries, loading, getDisciplines, getAbilities, getClasses, 
-      getSpecialSkills, getConvictions, getFailings, getEntryByName 
+      getSpecialSkills, getConvictions, getFailings, getAspects, getEntryByName 
     }}>
       {children}
     </CompendiumContext.Provider>

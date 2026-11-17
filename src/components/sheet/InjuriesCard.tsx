@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Character } from '../../types';
 import { SKILL_GROUPS } from './utils';
+import { useConfirm } from './ConfirmDialog';
 
 const CORE_ATTRIBUTES = ['grt', 'ref', 'int', 'psy'] as const;
 const ITEMS_PER_PAGE = 3;
@@ -8,6 +9,7 @@ const ITEMS_PER_PAGE = 3;
 export default function InjuriesCard({ char, patch }: { char: Character, patch: any }) {
   const [expandedInjury, setExpandedInjury] = useState<number | null>(null);
   const [page, setPage] = useState(0);
+  const { askConfirm, confirmDialog } = useConfirm();
 
   const getWeeksPerSeverity = (treatment: string) => {
     if (treatment === 'survival') return 2;
@@ -34,8 +36,14 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
     updateInjury(index, { severity: newSev });
   };
 
-  const tickDownAll = () => {
-    if (!confirm('Tick down a week of healing for ALL injuries?')) return;
+  const tickDownAll = async () => {
+    const ok = await askConfirm({
+      title: 'Heal Week',
+      message: 'Tick down a week of healing for ALL injuries?',
+      confirmLabel: 'Heal Week',
+      tone: 'neutral',
+    });
+    if (!ok) return;
     
     const newInjuries: typeof char.data.trackers.injuries = [];
     
@@ -70,8 +78,14 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
     setPage(Math.floor((newInjuries.length - 1) / ITEMS_PER_PAGE)); 
   };
 
-  const deleteInjury = (index: number) => {
-    if (!confirm('Are you sure you want to delete this injury?')) return;
+  const deleteInjury = async (index: number) => {
+    const ok = await askConfirm({
+      title: 'Delete Injury',
+      message: 'Are you sure you want to delete this injury?',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
     
     patch({ trackers: { ...char.data.trackers, injuries: char.data.trackers.injuries.filter((_, j) => j !== index) } });
     setExpandedInjury(null);
@@ -84,6 +98,7 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
 
   return (
     <div className="sheet-panel p-4 flex flex-col h-full">
+      {confirmDialog}
       
       {/* Header */}
       <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">

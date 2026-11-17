@@ -137,6 +137,13 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             : [],
           convictions: fetchedChar.data.convictions || [],
           failings: fetchedChar.data.failings || [],
+          aspects: Array.isArray(fetchedChar.data.aspects)
+            ? fetchedChar.data.aspects.map((a: any) =>
+                typeof a === 'string'
+                  ? { id: crypto.randomUUID(), name: a, abandoned: false }
+                  : { id: a?.id || crypto.randomUUID(), name: a?.name || '', abandoned: Boolean(a?.abandoned) }
+              )
+            : [],
           specialSkills: fetchedChar.data.specialSkills || [],
           items: migratedItems,
           possessions: (fetchedChar.data.possessions || []).map((i: any) => ({ ...i, id: i.id || crypto.randomUUID() })),

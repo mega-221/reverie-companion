@@ -14,6 +14,100 @@
   }
 }
 
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .animate-deck-in-next {
+    animation: cardDeckInNext 380ms ease-in-out both;
+  }
+  .animate-deck-out-next {
+    animation: cardDeckOutNext 380ms ease-in-out forwards;
+  }
+  .animate-deck-in-prev {
+    animation: cardDeckInPrev 380ms ease-in-out both;
+  }
+  .animate-deck-out-prev {
+    animation: cardDeckOutPrev 380ms ease-in-out forwards;
+  }
+}
+
+@keyframes cardDeckInNext {
+  0% {
+    opacity: 0.15;
+    z-index: 10;
+    transform: perspective(1100px) translateX(10%) translateZ(-160px) rotateY(8deg) scale(0.82);
+  }
+  48% {
+    opacity: 0.88;
+    z-index: 20;
+    transform: perspective(1100px) translateX(40%) translateZ(-60px) rotateY(24deg) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    z-index: 20;
+    transform: perspective(1100px) translateX(0) translateZ(0) rotateY(0deg) scale(1);
+  }
+}
+
+@keyframes cardDeckOutNext {
+  0% {
+    opacity: 1;
+    z-index: 20;
+    transform: perspective(1100px) translateX(0) translateZ(0) rotateY(0deg) scale(1);
+  }
+  48% {
+    opacity: 0.78;
+    z-index: 15;
+    transform: perspective(1100px) translateX(-40%) translateZ(-60px) rotateY(-24deg) scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    z-index: 10;
+    transform: perspective(1100px) translateX(-10%) translateZ(-160px) rotateY(-8deg) scale(0.82);
+  }
+}
+
+@keyframes cardDeckInPrev {
+  0% {
+    opacity: 0.15;
+    z-index: 10;
+    transform: perspective(1100px) translateX(-10%) translateZ(-160px) rotateY(-8deg) scale(0.82);
+  }
+  48% {
+    opacity: 0.88;
+    z-index: 20;
+    transform: perspective(1100px) translateX(-40%) translateZ(-60px) rotateY(-24deg) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    z-index: 20;
+    transform: perspective(1100px) translateX(0) translateZ(0) rotateY(0deg) scale(1);
+  }
+}
+
+@keyframes cardDeckOutPrev {
+  0% {
+    opacity: 1;
+    z-index: 20;
+    transform: perspective(1100px) translateX(0) translateZ(0) rotateY(0deg) scale(1);
+  }
+  48% {
+    opacity: 0.78;
+    z-index: 15;
+    transform: perspective(1100px) translateX(40%) translateZ(-60px) rotateY(24deg) scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    z-index: 10;
+    transform: perspective(1100px) translateX(10%) translateZ(-160px) rotateY(8deg) scale(0.82);
+  }
+}
+
 :root {
   color-scheme: dark;
 }

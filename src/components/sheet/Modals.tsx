@@ -168,6 +168,7 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
   const [modalOriginPlane, setModalOriginPlane] = useState<string>('Generic');
   const [expandedOrigin, setExpandedOrigin] = useState<string | null>(null);
   const [tempChoices, setTempChoices] = useState<Record<string, string>>({});
+  const [choiceError, setChoiceError] = useState<string | null>(null);
   
   if (!isOpen) return null;
   const allOrigins = entries.filter(e => e.type === 'origin');
@@ -175,6 +176,7 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
 
   const handleOpen = (originId: string, originName: string) => {
     setExpandedOrigin(expandedOrigin === originId ? null : originId);
+    setChoiceError(null);
     if (char.data.identity.origin !== originName) setTempChoices({});
   };
 
@@ -221,7 +223,7 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
                           return (
                             <div key={choice.id}>
                               <label className="block text-xs font-bold text-red-400 mb-1">{choice.label}</label>
-                              <select className="w-full bg-black/40 border border-gray-700 rounded p-2 text-sm text-gray-200 focus:outline-none focus:border-red-500 shadow-inner" value={selectedValue || ''} onChange={(e) => setTempChoices({ ...tempChoices, [choice.id]: e.target.value })}>
+                              <select className="w-full bg-black/40 border border-gray-700 rounded p-2 text-sm text-gray-200 focus:outline-none focus:border-red-500 shadow-inner" value={selectedValue || ''} onChange={(e) => { setTempChoices({ ...tempChoices, [choice.id]: e.target.value }); setChoiceError(null); }}>
                                 <option value="">— Select —</option>
                                 {choice.options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
                               </select>
@@ -231,8 +233,14 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
                         })}
                       </div>
                     )}
+                    {choiceError && (
+                      <div className="mb-3 bg-red-950/40 border border-red-900 text-red-300 text-xs font-bold px-3 py-2 rounded">
+                        {choiceError}
+                      </div>
+                    )}
                     <button onClick={() => {
-                      if (choices) { const missing = choices.find((c: any) => !tempChoices[c.id]); if (missing) { alert('Please make a selection for all choices.'); return; } }
+                      if (choices) { const missing = choices.find((c: any) => !tempChoices[c.id]); if (missing) { setChoiceError('Please make a selection for all choices.'); return; } }
+                      setChoiceError(null);
                       applyOrigin(origin.name, tempChoices); onClose(); setExpandedOrigin(null); setTempChoices({});
                     }} className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors">Confirm Selection</button>
                   </div>

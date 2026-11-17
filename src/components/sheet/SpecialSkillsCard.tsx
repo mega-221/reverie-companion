@@ -6,6 +6,7 @@ import {
   type LevelUpTarget 
 } from './utils';
 import { getAttributeInjuryPenalty } from '../../calc';
+import { useConfirm } from './ConfirmDialog';
 
 export default function SpecialSkillsCard({ 
   char, setLevelUpTarget, setIsSpecialSkillModalOpen, setModalSpecialSkillIndex, setExpandedSpecialSkill, patch 
@@ -18,10 +19,17 @@ export default function SpecialSkillsCard({
   patch: (p: any) => void 
 }) {
   const { getEntryByName } = useCompendium();
+  const { askConfirm, confirmDialog } = useConfirm();
   const hasOrigin = !!char.data.identity.origin;
 
-  const handleDelete = (index: number, skillName: string, rank: number) => {
-    if (!confirm('Are you sure you want to delete this special skill? Any invested XP will be refunded.')) return;
+  const handleDelete = async (index: number, skillName: string, rank: number) => {
+    const ok = await askConfirm({
+      title: 'Remove Special Skill',
+      message: `Are you sure you want to delete ${skillName || 'this special skill'}? Any invested XP will be refunded.`,
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    });
+    if (!ok) return;
 
     let refund = 0;
     const isInsp = char.data.identity.inspirations?.includes(skillName);
@@ -39,6 +47,7 @@ export default function SpecialSkillsCard({
 
   return (
     <div className="relative h-full">
+      {confirmDialog}
       
       {/* Origin Missing Overlay */}
       {!hasOrigin && (

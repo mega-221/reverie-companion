@@ -1,17 +1,19 @@
 import type { Character } from '../../types';
 import { useCompendium } from '../../CompendiumContext';
+import { useConfirm } from './ConfirmDialog';
 
 export default function ClassSection({ 
   char, patch, setIsClassModalOpen, setIsPathModalOpen, setIsDisciplineModalOpen, setModalDisciplineIndex 
 }: { 
   char: Character, 
   patch: any, 
-  setIsClassModalOpen: (b: boolean) => void,
-  setIsPathModalOpen: (b: boolean) => void,
-  setIsDisciplineModalOpen: (b: boolean) => void,
-  setModalDisciplineIndex: (i: number) => void
+  setIsClassModalOpen: (b: boolean) => void, 
+  setIsPathModalOpen: (b: boolean) => void, 
+  setIsDisciplineModalOpen: (b: boolean) => void, 
+  setModalDisciplineIndex: (i: number) => void 
 }) {
   const { getAbilities } = useCompendium();
+  const { askConfirm, confirmDialog } = useConfirm();
   const charDisciplines = char.data.disciplines || [];
   
   const classRank = Math.max(0, Math.min(4, char.data.progression.tier - 1));
@@ -20,6 +22,7 @@ export default function ClassSection({
 
   return (
     <section className="sheet-panel p-4 w-full flex flex-col h-full gap-4">
+      {confirmDialog}
       <div className="flex justify-between items-center border-b border-gray-700 pb-3 shrink-0">
         <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Class & Path</h2>
       </div>
@@ -43,8 +46,14 @@ export default function ClassSection({
             </button>
             {char.data.identity.className && (
               <button 
-                onClick={() => {
-                  if (confirm('Are you sure you want to remove your Class? This will also remove your Path.')) {
+                onClick={async () => {
+                  const ok = await askConfirm({
+                    title: 'Remove Class',
+                    message: 'Are you sure you want to remove your Class? This will also remove your Path.',
+                    confirmLabel: 'Remove',
+                    tone: 'danger',
+                  });
+                  if (ok) {
                     patch({ identity: { ...char.data.identity, className: '', path: '' } });
                   }
                 }} 
@@ -76,8 +85,14 @@ export default function ClassSection({
             </button>
             {char.data.identity.path && char.data.identity.className && (
               <button 
-                onClick={() => {
-                  if (confirm('Are you sure you want to remove your Path?')) {
+                onClick={async () => {
+                  const ok = await askConfirm({
+                    title: 'Remove Path',
+                    message: 'Are you sure you want to remove your Path?',
+                    confirmLabel: 'Remove',
+                    tone: 'danger',
+                  });
+                  if (ok) {
                     patch({ identity: { ...char.data.identity, path: '' } });
                   }
                 }} 
@@ -134,8 +149,14 @@ export default function ClassSection({
                 </button>
                 <button 
                   className="text-red-500 font-bold px-1 text-sm hover:text-red-400 transition-colors" 
-                  onClick={() => {
-                    if (confirm('Are you sure you want to delete this discipline?')) {
+                  onClick={async () => {
+                    const ok = await askConfirm({
+                      title: 'Remove Discipline',
+                      message: `Are you sure you want to delete ${d || 'this discipline'}?`,
+                      confirmLabel: 'Remove',
+                      tone: 'danger',
+                    });
+                    if (ok) {
                       patch({ disciplines: charDisciplines.filter((_: any, j: number) => j !== i) });
                     }
                   }}

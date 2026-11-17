@@ -1,8 +1,11 @@
-import { useState } from 'react';
-import type { Character } from '../../../types';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import type { Character, CompendiumEntry } from '../../../types';
 import { useCompendium } from '../../../CompendiumContext';
-import { SEASONS } from '../utils';
 import { dpMax } from '../../../calc';
+import { useConfirm } from '../ConfirmDialog';
+
+const SELECT_SEASON_ORDER = ['Halice', 'Vamor', 'Bruma', 'Trumst'] as const;
 
 const NOISE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
 
@@ -100,9 +103,15 @@ function DedicateModal({ char, patch, index, onClose }: { char: Character, patch
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="sheet-modal animate-in zoom-in-95 duration-200 max-w-sm">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="sheet-modal animate-in zoom-in-95 duration-200 max-w-sm"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <h2 className="font-cinzel font-bold text-xl text-gray-200 truncate pr-2">Dedicate to {conviction.name}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2 shrink-0">×</button>
@@ -150,16 +159,653 @@ function DedicateModal({ char, patch, index, onClose }: { char: Character, patch
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
+  );
+}
+
+function ReflectModal({ char, patch, index, onClose }: { char: Character, patch: any, index: number, onClose: () => void }) {
+  const failingIndex = char.data.failings.findIndex(f => f.convictionIndex === index);
+  const failing = failingIndex >= 0 ? char.data.failings[failingIndex] : null;
+  if (!failing) return null;
+
+  const currentRank = failing.rank;
+  const maxRank = 4;
+  const cost = dpMax(char.data);
+  const availableDp = char.data.trackers.dp;
+
+  const isMaxed = currentRank >= maxRank;
+  const isMinned = currentRank <= 0;
+  const canAfford = availableDp >= cost;
+  const canLower = !isMinned && canAfford;
+  const canDeepen = !isMaxed;
+
+  const lowerRank = () => {
+    if (!canLower) return;
+    const next = [...char.data.failings];
+    next[failingIndex] = { ...next[failingIndex], rank: currentRank - 1 };
+    patch({
+      failings: next,
+      trackers: { ...char.data.trackers, dp: availableDp - cost }
+    });
+  };
+
+  const deepenRank = () => {
+    if (!canDeepen) return;
+    const next = [...char.data.failings];
+    next[failingIndex] = { ...next[failingIndex], rank: currentRank + 1 };
+    patch({ failings: next });
+  };
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="sheet-modal animate-in zoom-in-95 duration-200 max-w-sm"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
+          <h2 className="font-cinzel font-bold text-xl text-gray-200 truncate pr-2">Reflect on {failing.name}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2 shrink-0">×</button>
+        </div>
+        <div className="p-5 flex flex-col gap-4">
+          <div className="bg-black/20 rounded-lg p-3 border border-gray-700 flex flex-col items-center justify-center shadow-inner">
+            <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Current Rank</div>
+            <div className="text-3xl font-bold text-white mb-2">{currentRank} <span className="text-lg text-gray-500 font-normal">/ {maxRank}</span></div>
+
+            <div className="mt-1 mb-2">
+              <RankPips rank={currentRank} type="failing" />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              {isMinned ? (
+                <div className="text-xs text-gray-400 font-bold bg-gray-800 px-2 py-1 rounded">Minimum Rank Reached</div>
+              ) : (
+                <div className="text-xs text-cyan-400 font-bold bg-cyan-900/30 px-2 py-1 rounded">
+                  Lower Rank Cost: {cost} DP
+                </div>
+              )}
+              {!isMaxed && (
+                <div className="text-xs text-red-400 font-bold bg-red-950/40 border border-red-900/40 px-2 py-1 rounded">
+                  Deepen: Free (0 DP)
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 w-full mt-2">
+            <button
+              onClick={lowerRank}
+              disabled={!canLower}
+              className={`flex-1 py-3 rounded-lg font-bold text-sm border shadow-sm transition-colors flex items-center justify-center gap-2 ${!canLower ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed' : 'bg-cyan-950/40 text-cyan-300 border-cyan-900 hover:bg-cyan-900/60'}`}
+            >
+              <span>←</span> Reflect
+            </button>
+            <button
+              onClick={deepenRank}
+              disabled={!canDeepen}
+              className={`flex-1 py-3 rounded-lg font-bold text-sm border shadow-sm transition-colors flex items-center justify-center gap-2 ${!canDeepen ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed' : 'bg-red-950/40 text-red-300 border-red-900 hover:bg-red-900/60'}`}
+            >
+              Deepen <span>→</span>
+            </button>
+          </div>
+
+          <div className="flex justify-between items-center text-sm font-bold text-gray-400 mt-2 bg-black/20 p-2 rounded">
+            <span>Available DP:</span>
+            <span className={canAfford && !isMinned ? "text-cyan-400" : "text-gray-400"}>
+              {availableDp} / {dpMax(char.data)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function CrisisModal({ char, patch, onClose }: { char: Character, patch: any, onClose: () => void }) {
+  const { getFailings, getEntryByName } = useCompendium();
+  const compendiumFailings = getFailings();
+
+  const [selectedSlot, setSelectedSlot] = useState<number>(0);
+  const [selectedManifestName, setSelectedManifestName] = useState<string>(() => compendiumFailings[0]?.name ?? '');
+  const charAspects = (char.data.aspects || []).filter(a => a.name && !a.abandoned);
+  const [selectedAspectToAbandon, setSelectedAspectToAbandon] = useState<string>(() => charAspects[0]?.name ?? '');
+  const [abandonedAspectNote, setAbandonedAspectNote] = useState('');
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const maxDp = dpMax(char.data);
+  const availableDp = char.data.trackers.dp;
+  const canSpendMaxDp = availableDp >= maxDp;
+
+  const hasSlots = char.data.convictions.length > 0;
+  const safeSlot = hasSlots ? Math.min(selectedSlot, char.data.convictions.length - 1) : -1;
+  const selectedConv = safeSlot >= 0 ? char.data.convictions[safeSlot] : undefined;
+  const selectedSeasonColor = getSeasonHex(selectedConv?.season);
+  const canLowerConviction = Boolean(selectedConv?.name) && (selectedConv?.rank ?? 0) > 0;
+
+  const existingFailingIdx = safeSlot >= 0 ? char.data.failings.findIndex(f => f.convictionIndex === safeSlot) : -1;
+  const existingFailing = existingFailingIdx >= 0 ? char.data.failings[existingFailingIdx] : undefined;
+  const hasExistingNamedFailing = Boolean(existingFailing?.name);
+  const canIncreaseExistingFailing = hasExistingNamedFailing && (existingFailing?.rank ?? 0) < 4;
+  const canManifestNewFailing = hasSlots && !hasExistingNamedFailing && Boolean(selectedManifestName);
+  const canIncreaseFailingAction = hasExistingNamedFailing ? canIncreaseExistingFailing : canManifestNewFailing;
+
+  const handleLowerConviction = () => {
+    if (!canLowerConviction || safeSlot < 0) return;
+    const next = [...char.data.convictions];
+    next[safeSlot] = { ...next[safeSlot], rank: next[safeSlot].rank - 1 };
+    patch({ convictions: next });
+    onClose();
+  };
+
+  const handleIncreaseFailing = () => {
+    if (safeSlot < 0) return;
+    if (hasExistingNamedFailing) {
+      if (!canIncreaseExistingFailing) return;
+      const next = [...char.data.failings];
+      next[existingFailingIdx] = { ...next[existingFailingIdx], rank: next[existingFailingIdx].rank + 1 };
+      patch({ failings: next });
+      onClose();
+      return;
+    }
+
+    if (!selectedManifestName) return;
+    const compendiumItem = getEntryByName(selectedManifestName);
+    const statement = compendiumItem?.data?.statement || '';
+    if (existingFailingIdx >= 0) {
+      const next = [...char.data.failings];
+      next[existingFailingIdx] = { ...next[existingFailingIdx], name: selectedManifestName, rank: 1, statement };
+      patch({ failings: next });
+    } else {
+      patch({
+        failings: [...char.data.failings, { name: selectedManifestName, rank: 1, convictionIndex: safeSlot, statement }]
+      });
+    }
+    onClose();
+  };
+
+  const handleSpendMaxDp = () => {
+    if (!canSpendMaxDp) return;
+    patch({
+      trackers: { ...char.data.trackers, dp: Math.max(0, availableDp - maxDp) }
+    });
+    onClose();
+  };
+
+  const handleAbandonAspect = () => {
+    if (charAspects.length > 0 && selectedAspectToAbandon) {
+      patch({
+        aspects: (char.data.aspects || []).map(a =>
+          a.name === selectedAspectToAbandon ? { ...a, abandoned: true } : a
+        )
+      });
+    }
+    onClose();
+  };
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="sheet-modal animate-in zoom-in-95 duration-200 max-w-2xl w-full max-h-[90vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-2.5 h-2.5 rotate-45 bg-red-500 shadow-[0_0_8px_#ef4444] shrink-0" />
+            <h2 className="font-cinzel font-bold text-xl text-gray-100 truncate">Resolve Crisis</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2 shrink-0" aria-label="Close">×</button>
+        </div>
+
+        <div className="p-5 overflow-y-auto space-y-4">
+          <div className="bg-red-950/20 border border-red-900/50 rounded-lg p-3.5 text-sm text-gray-300 space-y-1.5">
+            <div className="text-xs font-cinzel font-bold uppercase tracking-widest text-red-400">Crisis</div>
+            <p className="font-serif italic leading-relaxed text-gray-300">
+              The mental breaking point that occurs as a consequence of intense psychological stress.
+            </p>
+          </div>
+
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            Choose a way to cope with the crisis...
+          </div>
+
+          {/* Card Slot Selector */}
+          {hasSlots ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {char.data.convictions.map((conv, idx) => {
+                const fail = char.data.failings.find(f => f.convictionIndex === idx);
+                const isSelected = idx === safeSlot;
+                const sColor = getSeasonHex(conv?.season);
+                const convName = conv?.name || 'No Conviction';
+                const failName = fail?.name || 'No Failing';
+
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedSlot(idx)}
+                    className={`text-left rounded-lg p-3 border transition-all flex flex-col gap-2.5 ${
+                      isSelected
+                        ? 'bg-red-950/25 border-red-500/80 shadow-[0_0_15px_rgba(220,38,38,0.15)]'
+                        : 'bg-black/25 border-gray-700 hover:border-gray-500 hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                        Card {idx + 1}
+                      </span>
+                      {isSelected && (
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-red-400">
+                          Selected
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className={`text-xs font-bold truncate ${conv?.name ? 'text-gray-100' : 'text-gray-500 italic'}`}>
+                        {convName}
+                      </div>
+                      <div className="flex justify-start">
+                        <RankPips rank={conv?.name ? conv.rank : 0} type="conviction" color={sColor} />
+                      </div>
+                    </div>
+
+                    <div className="border-t border-gray-800 pt-2 space-y-1">
+                      <div className={`text-xs font-bold truncate ${fail?.name ? 'text-red-300' : 'text-gray-500 italic'}`}>
+                        {failName}
+                      </div>
+                      <div className="flex justify-start">
+                        <RankPips rank={fail?.name ? fail.rank : 0} type="failing" />
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-black/20 border border-gray-800 rounded-lg p-3 text-xs text-gray-500 italic">
+              No conviction cards available yet. Add a card slot first to lower a conviction or increase a failing.
+            </div>
+          )}
+
+          {/* 4 Coping Options */}
+          <div className="space-y-2.5">
+            {/* Option 1: Lower Conviction */}
+            <div className="bg-black/25 border border-gray-700 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="min-w-0 flex flex-col gap-1.5">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                  1. Violated Conviction
+                </div>
+                {selectedConv?.name ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-cinzel font-bold text-gray-100 truncate">
+                      {selectedConv.name}
+                    </span>
+                    <RankPips rank={selectedConv.rank} type="conviction" color={selectedSeasonColor} />
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-500 italic">No conviction on this card</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleLowerConviction}
+                disabled={!canLowerConviction}
+                className="px-3.5 py-2 rounded text-xs font-bold bg-red-950/60 hover:bg-red-900/70 disabled:opacity-40 text-red-200 border border-red-800/70 transition-colors whitespace-nowrap shrink-0"
+              >
+                Lower Conviction
+              </button>
+            </div>
+
+            {/* Option 2: Increase Failing */}
+            <div className="bg-black/25 border border-gray-700 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="min-w-0 flex-1 flex flex-col gap-1.5">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                  2. Failing
+                </div>
+                {hasExistingNamedFailing && existingFailing ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-cinzel font-bold text-red-300 truncate">
+                      {existingFailing.name}
+                    </span>
+                    <RankPips rank={existingFailing.rank} type="failing" />
+                  </div>
+                ) : hasSlots ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <select
+                      value={selectedManifestName}
+                      onChange={e => setSelectedManifestName(e.target.value)}
+                      className="bg-gray-900 border border-gray-700 rounded px-2.5 py-1 text-xs text-gray-200 focus:outline-none focus:border-red-500 max-w-xs"
+                      aria-label="Select failing to manifest"
+                    >
+                      {compendiumFailings.length === 0 ? (
+                        <option value="">No failings in compendium</option>
+                      ) : (
+                        compendiumFailings.map(f => (
+                          <option key={f.id} value={f.name}>{f.name}</option>
+                        ))
+                      )}
+                    </select>
+                    <RankPips rank={0} type="failing" />
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-500 italic">No card slot selected</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleIncreaseFailing}
+                disabled={!canIncreaseFailingAction}
+                className="px-3.5 py-2 rounded text-xs font-bold bg-red-950/60 hover:bg-red-900/70 disabled:opacity-40 text-red-200 border border-red-800/70 transition-colors whitespace-nowrap shrink-0"
+              >
+                Increase Failing
+              </button>
+            </div>
+
+            {/* Option 3: Spend Destiny Point Maximum */}
+            <div className="bg-black/25 border border-gray-700 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-gray-200">3. Spend your destiny point maximum</div>
+                <div className="text-xs text-gray-400 mt-0.5 tabular-nums">
+                  Requires <span className="text-cyan-400 font-bold">{maxDp} DP</span> · Available: <span className={canSpendMaxDp ? 'text-cyan-400 font-bold' : 'text-red-400 font-bold'}>{availableDp} / {maxDp}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleSpendMaxDp}
+                disabled={!canSpendMaxDp}
+                className="px-3.5 py-2 rounded text-xs font-bold bg-cyan-950/50 hover:bg-cyan-900/60 disabled:opacity-40 text-cyan-200 border border-cyan-800/70 transition-colors whitespace-nowrap shrink-0"
+              >
+                Spend {maxDp} DP
+              </button>
+            </div>
+
+            {/* Option 4: Abandon an Aspect */}
+            <div className="bg-black/25 border border-gray-700 rounded-lg px-4 py-3 flex flex-col gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-bold text-gray-200">4. Abandon an aspect</div>
+                  <p className="text-[11px] text-gray-500 italic mt-0.5">
+                    {charAspects.length > 0
+                      ? 'Select an active aspect to mark as Abandoned.'
+                      : 'No active aspects on sheet; confirm here if resolving manually.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAbandonAspect}
+                  className="px-3.5 py-2 rounded text-xs font-bold bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-600 transition-colors whitespace-nowrap shrink-0"
+                >
+                  Abandon Aspect
+                </button>
+              </div>
+              {charAspects.length > 0 ? (
+                <select
+                  value={selectedAspectToAbandon}
+                  onChange={e => setSelectedAspectToAbandon(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-red-500"
+                  aria-label="Select aspect to abandon"
+                >
+                  {charAspects.map((a, idx) => (
+                    <option key={a.id || idx} value={a.name}>{a.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={abandonedAspectNote}
+                  onChange={e => setAbandonedAspectNote(e.target.value)}
+                  placeholder="Optional aspect name (for your own reference)..."
+                  className="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-1.5 text-xs text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-red-500"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end items-center px-5 py-3.5 border-t border-gray-700 bg-black/20 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded text-xs font-bold text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 border border-gray-600 transition-colors"
+          >
+            This was a mistake
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function SeasonCompendiumPickerModal({
+  title,
+  entries,
+  currentName,
+  onSelect,
+  onClose,
+}: {
+  title: string;
+  entries: CompendiumEntry[];
+  currentName?: string;
+  onSelect: (entry: CompendiumEntry) => void;
+  onClose: () => void;
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const normalizedSeason = (s?: string) => (s || '').trim().toLowerCase();
+
+  const groupedSeasons = SELECT_SEASON_ORDER.map(season => ({
+    season,
+    items: entries
+      .filter(e => normalizedSeason(e.data?.season) === season.toLowerCase())
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  })).filter(group => group.items.length > 0);
+
+  const uncategorized = entries
+    .filter(e => !SELECT_SEASON_ORDER.some(s => s.toLowerCase() === normalizedSeason(e.data?.season)))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[220] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="sheet-modal animate-in zoom-in-95 duration-200 max-w-2xl max-h-[85vh] w-full"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
+          <h2 className="font-cinzel font-bold text-xl text-gray-200">{title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2" aria-label="Close">×</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {groupedSeasons.map(({ season, items }) => {
+            const seasonColor = getSeasonHex(season);
+            return (
+              <div key={season}>
+                <div
+                  className="bg-black/20 text-xs font-bold uppercase tracking-widest py-2 border-b border-gray-700 mb-2 px-2 rounded-t"
+                  style={{ color: seasonColor }}
+                >
+                  {season}
+                </div>
+                <div className="space-y-2">
+                  {items.map(entry => {
+                    const isExpanded = expandedId === entry.id;
+                    const isCurrent = currentName === entry.name;
+                    const bodyText = entry.data?.statement || entry.data?.description || '';
+
+                    return (
+                      <div
+                        key={entry.id}
+                        className={`bg-black/20 border rounded-lg overflow-hidden transition-all duration-200 ${
+                          isExpanded
+                            ? 'ring-1 ring-red-900 shadow-md border-gray-600'
+                            : isCurrent
+                            ? 'border-red-700/70'
+                            : 'border-gray-700'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                          className="w-full text-left p-3 hover:bg-white/5 transition-colors flex justify-between items-center gap-3 group"
+                        >
+                          <span className="font-bold text-gray-200 group-hover:text-white truncate">{entry.name}</span>
+                          <span
+                            className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0"
+                            style={{ color: seasonColor, borderColor: `${seasonColor}80` }}
+                          >
+                            {season}
+                          </span>
+                        </button>
+                        {isExpanded && (
+                          <div className="p-4 border-t border-gray-700 bg-black/40">
+                            {bodyText && (
+                              <div
+                                className="text-sm italic text-gray-200 mb-4 border-l-2 pl-2"
+                                style={{ borderColor: seasonColor }}
+                              >
+                                {bodyText.split(/\r?\n|\\n/).map((line: string, idx: number) => (
+                                  <span key={idx} className="block mb-1 last:mb-0">{line}</span>
+                                ))}
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onSelect(entry);
+                                onClose();
+                              }}
+                              className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors"
+                            >
+                              Confirm Selection
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {uncategorized.length > 0 && (
+            <div>
+              <div className="bg-black/20 text-xs font-bold uppercase tracking-widest py-2 border-b border-gray-700 mb-2 px-2 rounded-t text-gray-400">
+                General
+              </div>
+              <div className="space-y-2">
+                {uncategorized.map(entry => {
+                  const isExpanded = expandedId === entry.id;
+                  const isCurrent = currentName === entry.name;
+                  const bodyText = entry.data?.statement || entry.data?.description || '';
+
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`bg-black/20 border rounded-lg overflow-hidden transition-all duration-200 ${
+                        isExpanded
+                          ? 'ring-1 ring-red-900 shadow-md border-gray-600'
+                          : isCurrent
+                          ? 'border-red-700/70'
+                          : 'border-gray-700'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                        className="w-full text-left p-3 hover:bg-white/5 transition-colors flex justify-between items-center gap-3 group"
+                      >
+                        <span className="font-bold text-gray-200 group-hover:text-white truncate">{entry.name}</span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-gray-600 text-gray-400 shrink-0">
+                          {entry.type === 'failing' ? 'Failing' : 'Conviction'}
+                        </span>
+                      </button>
+                      {isExpanded && (
+                        <div className="p-4 border-t border-gray-700 bg-black/40">
+                          {bodyText && (
+                            <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-600 pl-2">
+                              {bodyText.split(/\r?\n|\\n/).map((line: string, idx: number) => (
+                                <span key={idx} className="block mb-1 last:mb-0">{line}</span>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onSelect(entry);
+                              onClose();
+                            }}
+                            className="w-full py-2 bg-red-900 hover:bg-red-800 text-white font-bold text-sm rounded transition-colors"
+                          >
+                            Confirm Selection
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
 export default function ConvictionsCard({ char, patch }: { char: Character, patch: any }) {
   const { getConvictions, getFailings, getEntryByName } = useCompendium();
+  const { askConfirm, confirmDialog } = useConfirm();
 
   const [cardRotations, setCardRotations] = useState<Record<number, number>>({});
   const [editingCard, setEditingCard] = useState<number | null>(null);
   const [dedicatingCard, setDedicatingCard] = useState<number | null>(null);
+  const [reflectingCard, setReflectingCard] = useState<number | null>(null);
+  const [isCrisisOpen, setIsCrisisOpen] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<{ type: 'conviction' | 'failing'; index: number } | null>(null);
+  const [mobileIndex, setMobileIndex] = useState(0);
+  const [leavingIndex, setLeavingIndex] = useState<number | null>(null);
+  const [slideDir, setSlideDir] = useState<'next' | 'prev' | null>(null);
+  const touchStartX = useRef<number | null>(null);
+
+  const convCount = char.data.convictions.length;
+  const safeMobileIndex = convCount > 0 ? Math.min(mobileIndex, convCount - 1) : 0;
+
+  const stepMobileCard = (delta: -1 | 1) => {
+    if (convCount <= 1) return;
+    const current = Math.min(mobileIndex, convCount - 1);
+    const nextIndex = (current + delta + convCount) % convCount;
+    setLeavingIndex(current);
+    setSlideDir(delta > 0 ? 'next' : 'prev');
+    setMobileIndex(nextIndex);
+  };
 
   const toggleFlip = (index: number) => {
     setCardRotations(prev => ({ ...prev, [index]: (prev[index] || 0) + 180 }));
@@ -172,9 +818,15 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
     patch({ convictions: [...char.data.convictions, { season: 'Vamor', name: '', statement: '', rank: 1 }] });
   };
 
-  const deleteCard = (index: number, hasConv: boolean, hasFail: boolean) => {
-    const summary = hasConv && hasFail ? 'the conviction and its linked failing' : hasConv ? 'the conviction' : 'the failing';
-    if (!confirm(`Erase ${summary}? This cannot be undone and no DP or other resources are refunded.`)) return;
+  const deleteCard = async (index: number, hasConv: boolean, hasFail: boolean) => {
+    const summary = hasConv && hasFail ? 'the conviction and its failing' : hasConv ? 'the conviction' : 'the failing';
+    const ok = await askConfirm({
+      title: 'Erase Card',
+      message: `Erase ${summary}? This cannot be undone and no DP or other resources are refunded.`,
+      confirmLabel: 'Erase',
+      tone: 'danger',
+    });
+    if (!ok) return;
 
     const newConvs = char.data.convictions.filter((_, idx) => idx !== index);
     const newFails = char.data.failings
@@ -186,15 +838,24 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
   };
 
   return (
-    <section className="sheet-panel p-5 w-full">
-      <div className="flex justify-between items-end mb-6 border-b border-gray-700 pb-2">
+    <section className="sheet-panel p-3.5 sm:p-5 w-full">
+      {confirmDialog}
+      <div className="flex flex-wrap justify-between items-end mb-4 sm:mb-6 border-b border-gray-700 pb-2 gap-3">
         <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Convictions & Failings</h2>
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">The Philosophical Core</span>
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
+            type="button"
+            onClick={() => setIsCrisisOpen(true)}
+            className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded border transition-colors text-red-400 border-red-900/70 bg-red-950/30 hover:bg-red-900/50 hover:text-red-300 whitespace-nowrap shrink-0"
+            title="Resolve a mental breaking point or crisis"
+          >
+            Resolve Crisis
+          </button>
+          <button
+            type="button"
             onClick={addConviction}
             disabled={!canAddConviction}
-            className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded border transition-colors ${canAddConviction ? 'text-cyan-400 border-cyan-800 hover:bg-cyan-950/40 hover:text-cyan-300' : 'text-gray-600 border-gray-700 cursor-not-allowed'}`}
+            className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded border transition-colors whitespace-nowrap shrink-0 ${canAddConviction ? 'text-cyan-400 border-cyan-800 hover:bg-cyan-950/40 hover:text-cyan-300' : 'text-gray-600 border-gray-700 cursor-not-allowed'}`}
             title={canAddConviction ? 'Add new conviction slot' : 'All slots filled'}
           >
             + Add
@@ -202,19 +863,33 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
         </div>
       </div>
 
-      {char.data.convictions.length === 0 && (
-        <div className="flex justify-center items-center py-16 text-cyan-800/60 italic text-sm">
+      {char.data.convictions.length === 0 ? (
+        <div className="flex justify-center items-center py-16 px-4 text-center text-cyan-800/60 italic text-sm">
           No convictions yet. Click "+ Add" above to begin.
         </div>
-      )}
-
-      <div className="flex justify-evenly w-full">
+      ) : (
+      <div
+        onTouchStart={(e) => {
+          touchStartX.current = e.touches[0]?.clientX ?? null;
+        }}
+        onTouchEnd={(e) => {
+          if (touchStartX.current === null) return;
+          const dx = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+          touchStartX.current = null;
+          if (Math.abs(dx) > 45) {
+            stepMobileCard(dx < 0 ? 1 : -1);
+          }
+        }}
+        className="relative flex flex-wrap justify-center sm:justify-evenly gap-6 w-full py-11 sm:py-10 overflow-visible"
+      >
         {char.data.convictions.map((conviction, i) => {
           const failing = char.data.failings.find(f => f.convictionIndex === i);
 
           const rotation = cardRotations[i] || 0;
           const isFlipped = (rotation / 180) % 2 !== 0;
           const isEditing = editingCard === i;
+          const isMobileActive = i === safeMobileIndex;
+          const isMobileLeaving = slideDir !== null && i === leavingIndex && i !== safeMobileIndex;
 
           const hasConv = !!conviction?.name;
           const hasFail = !!(failing && failing.name);
@@ -231,7 +906,32 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
           else if (!hasFail) emptySubtitle = "The mind is stable";
 
           return (
-            <div key={i} className="[perspective:1000px] w-[320px] shrink-0 aspect-[2.5/3.5] relative">
+            <div
+              key={i}
+              onAnimationEnd={(e) => {
+                if (e.target === e.currentTarget && isMobileActive) {
+                  setSlideDir(null);
+                  setLeavingIndex(null);
+                }
+              }}
+              className={`[perspective:1000px] w-[300px] sm:w-[320px] shrink-0 aspect-[2.5/3.5] ${
+                isMobileActive
+                  ? `block relative ${
+                      slideDir === 'next'
+                        ? 'animate-deck-in-next sm:animate-none'
+                        : slideDir === 'prev'
+                        ? 'animate-deck-in-prev sm:animate-none'
+                        : ''
+                    }`
+                  : isMobileLeaving
+                  ? `block absolute top-11 inset-x-0 mx-auto pointer-events-none sm:static sm:pointer-events-auto ${
+                      slideDir === 'next'
+                        ? 'animate-deck-out-next sm:animate-none'
+                        : 'animate-deck-out-prev sm:animate-none'
+                    }`
+                  : 'hidden sm:block relative'
+              }`}
+            >
               <div
                 className="relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d]"
                 style={{ transform: `rotateY(${rotation}deg)` }}
@@ -313,11 +1013,11 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                       <button onClick={() => toggleFlip(i)} className={`justify-self-end ${hasConv ? 'text-gray-400 hover:text-white' : 'text-cyan-700 hover:text-cyan-300'} transition-colors`} title="Flip to Failing"><FlipIcon /></button>
                     </div>
 
-                    <div className="flex-1 flex flex-col items-center relative px-6 pb-6 w-full pt-4 z-20">
+                    <div className="flex-1 flex flex-col items-center relative px-4 sm:px-6 pb-6 w-full pt-4 z-20">
                       {hasConv ? (
                         <div className="flex flex-col items-center w-full relative">
                           <div className="w-full flex justify-center items-center h-16 mb-4">
-                            <h3 className="text-2xl text-white uppercase tracking-[0.2em] drop-shadow-md leading-tight relative z-20">{conviction?.name}</h3>
+                            <h3 className="text-2xl text-white uppercase tracking-[0.2em] drop-shadow-md leading-tight text-center relative z-20">{conviction?.name}</h3>
                           </div>
 
                           <div className="flex justify-center w-full relative z-20">
@@ -422,11 +1122,11 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                       <button onClick={() => toggleFlip(i)} className={`justify-self-end ${hasFail ? 'text-red-500 hover:text-red-400' : 'text-cyan-700 hover:text-cyan-300'} transition-colors`} title="Flip to Conviction"><FlipIcon /></button>
                     </div>
 
-                    <div className="flex-1 flex flex-col items-center relative px-6 pb-6 w-full pt-4 z-20">
+                    <div className="flex-1 flex flex-col items-center relative px-4 sm:px-6 pb-6 w-full pt-4 z-20">
                       {hasFail && failing ? (
                         <div className="flex flex-col items-center w-full relative">
                           <div className="w-full flex justify-center items-center h-16 mb-4 relative z-20">
-                            <h3 className="bg-white text-black mix-blend-screen font-bold uppercase tracking-[0.2em] text-xl leading-tight px-4 py-2 select-none inline-block shadow-sm">
+                            <h3 className="bg-white text-black mix-blend-screen font-bold uppercase tracking-[0.2em] text-xl leading-tight px-4 py-2 select-none inline-block shadow-sm text-center">
                               {failing.name}
                             </h3>
                           </div>
@@ -457,8 +1157,12 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                             <RankPips rank={failRank} type="failing" />
                           </div>
                         </div>
-                        <button className="w-full text-[10px] uppercase tracking-widest py-2 rounded transition-colors bg-red-950/40 hover:bg-red-900/60 border border-red-900/50 text-red-400">
-                          Resolve Crisis
+                        <button
+                          type="button"
+                          onClick={() => setReflectingCard(i)}
+                          className="w-full text-[10px] uppercase tracking-widest py-2 rounded transition-colors bg-red-950/40 hover:bg-red-900/60 border border-red-900/50 text-red-400"
+                        >
+                          Reflect
                         </button>
                       </div>
                     )}
@@ -471,54 +1175,94 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
               {/* EDIT OVERLAY */}
               {isEditing && (
                 <div className="absolute inset-0 z-50 bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar animate-in fade-in duration-200">
-                  <div className="flex justify-between items-center mb-2 border-b border-gray-700 pb-2 shrink-0">
-                    <span className="text-xs font-bold text-gray-400 uppercase">Edit Slot {i + 1}</span>
+                  <div className="flex justify-between items-center mb-1 border-b border-gray-700 pb-2 shrink-0">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Edit Card {i + 1}</span>
                     <button onClick={() => setEditingCard(null)} className="text-green-500 hover:text-green-400 text-sm font-bold">Done</button>
                   </div>
 
-                  <div className="flex flex-col gap-2 shrink-0">
-                    <label className="text-[10px] text-gray-500 font-bold uppercase">Conviction</label>
-                    <div className="flex gap-2">
-                      <select className="border border-gray-700 bg-black/40 p-1.5 rounded text-xs shadow-inner focus:outline-none text-gray-200 shrink-0" value={conviction?.season || 'Vamor'} onChange={e => {
-                        const next = [...char.data.convictions]; next[i] = { ...next[i], season: e.target.value, name: '', statement: '' }; patch({ convictions: next });
-                      }}>
-                        {SEASONS.map(s => <option key={s}>{s}</option>)}
-                      </select>
-                      <select className="border border-gray-700 bg-black/40 p-1.5 rounded text-xs shadow-inner focus:outline-none text-gray-200 flex-1 min-w-0" value={conviction?.name || ''} onChange={e => {
-                        const newName = e.target.value;
-                        const compendiumItem = getEntryByName(newName);
-                        const next = [...char.data.convictions];
-                        next[i] = { ...next[i], name: newName, statement: compendiumItem?.data?.statement || '' };
-                        patch({ convictions: next });
-                      }}>
-                        <option value="">— Select —</option>
-                        {getConvictions().filter(c => c.data.season === (conviction?.season || 'Vamor')).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                      </select>
-                    </div>
+                  {/* Conviction Selector */}
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Conviction</label>
+                    {hasConv ? (
+                      <div className="flex items-center justify-between gap-2 bg-black/30 border border-gray-700 rounded-lg px-3 py-2.5">
+                        <div className="min-w-0 flex-1 flex items-center gap-2">
+                          <span
+                            className="w-2 h-2 rotate-45 shrink-0"
+                            style={{ backgroundColor: seasonColor, boxShadow: `0 0 6px ${seasonColor}` }}
+                          />
+                          <span className="text-sm font-bold text-gray-100 truncate">{conviction.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1 border-l border-gray-700 pl-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setPickerTarget({ type: 'conviction', index: i })}
+                            className="text-gray-400 hover:text-white text-xs px-1 transition-colors"
+                            title="Change Conviction"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = [...char.data.convictions];
+                              next[i] = { ...next[i], name: '', statement: '' };
+                              patch({ convictions: next });
+                            }}
+                            className="text-red-500 hover:text-red-400 font-bold px-1 text-sm leading-none transition-colors"
+                            title="Clear Conviction"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setPickerTarget({ type: 'conviction', index: i })}
+                        className="w-full py-2.5 px-3 border border-dashed border-gray-600 hover:border-gray-400 hover:bg-white/5 rounded-lg text-gray-400 hover:text-gray-200 font-medium text-sm flex items-center justify-center transition-colors"
+                      >
+                        + Select Conviction
+                      </button>
+                    )}
                   </div>
 
-                  <div className="flex flex-col gap-2 shrink-0 mt-2">
-                    <label className="text-[10px] text-gray-500 font-bold uppercase">Linked Failing</label>
-                    <select className="border border-gray-700 bg-black/40 p-1.5 rounded text-xs shadow-inner w-full focus:outline-none text-gray-200" value={failing?.name || ''} onChange={e => {
-                      const newName = e.target.value;
-                      if (!newName) {
-                         patch({ failings: char.data.failings.filter(f => f.convictionIndex !== i) });
-                         return;
-                      }
-                      const compendiumItem = getEntryByName(newName);
-                      const existingFailingIndex = char.data.failings.findIndex(f => f.convictionIndex === i);
-
-                      if (existingFailingIndex >= 0) {
-                        const next = [...char.data.failings];
-                        next[existingFailingIndex] = { ...next[existingFailingIndex], name: newName, statement: compendiumItem?.data?.statement || '' };
-                        patch({ failings: next });
-                      } else {
-                        patch({ failings: [...char.data.failings, { name: newName, rank: 1, convictionIndex: i, statement: compendiumItem?.data?.statement || '' }] });
-                      }
-                    }}>
-                      <option value="">— None —</option>
-                      {getFailings().map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                    </select>
+                  {/* Failing Selector */}
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Failing</label>
+                    {hasFail && failing ? (
+                      <div className="flex items-center justify-between gap-2 bg-black/30 border border-gray-700 rounded-lg px-3 py-2.5">
+                        <div className="min-w-0 flex-1 flex items-center gap-2">
+                          <span className="w-2 h-2 rotate-45 bg-red-500 shadow-[0_0_6px_#d93838] shrink-0" />
+                          <span className="text-sm font-bold text-red-200 truncate">{failing.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1 border-l border-gray-700 pl-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setPickerTarget({ type: 'failing', index: i })}
+                            className="text-gray-400 hover:text-white text-xs px-1 transition-colors"
+                            title="Change Failing"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => patch({ failings: char.data.failings.filter(f => f.convictionIndex !== i) })}
+                            className="text-red-500 hover:text-red-400 font-bold px-1 text-sm leading-none transition-colors"
+                            title="Remove Failing"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setPickerTarget({ type: 'failing', index: i })}
+                        className="w-full py-2.5 px-3 border border-dashed border-gray-600 hover:border-gray-400 hover:bg-white/5 rounded-lg text-gray-400 hover:text-gray-200 font-medium text-sm flex items-center justify-center transition-colors"
+                      >
+                        + Select Failing
+                      </button>
+                    )}
                   </div>
 
                   <button
@@ -534,6 +1278,28 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
           );
         })}
       </div>
+      )}
+
+      {convCount > 1 && (
+        <div className="sm:hidden flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => stepMobileCard(-1)}
+            className="px-4 py-1.5 rounded bg-black/35 border border-gray-700 text-sm font-bold text-gray-300 hover:text-white active:bg-white/10 transition-colors"
+            aria-label="Previous conviction card"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={() => stepMobileCard(1)}
+            className="px-4 py-1.5 rounded bg-black/35 border border-gray-700 text-sm font-bold text-gray-300 hover:text-white active:bg-white/10 transition-colors"
+            aria-label="Next conviction card"
+          >
+            ›
+          </button>
+        </div>
+      )}
 
       {dedicatingCard !== null && (
         <DedicateModal
@@ -541,6 +1307,61 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
           patch={patch}
           index={dedicatingCard}
           onClose={() => setDedicatingCard(null)}
+        />
+      )}
+
+      {reflectingCard !== null && (
+        <ReflectModal
+          char={char}
+          patch={patch}
+          index={reflectingCard}
+          onClose={() => setReflectingCard(null)}
+        />
+      )}
+
+      {isCrisisOpen && (
+        <CrisisModal
+          char={char}
+          patch={patch}
+          onClose={() => setIsCrisisOpen(false)}
+        />
+      )}
+
+      {pickerTarget && (
+        <SeasonCompendiumPickerModal
+          title={pickerTarget.type === 'conviction' ? 'Select Conviction' : 'Select Failing'}
+          entries={pickerTarget.type === 'conviction' ? getConvictions() : getFailings()}
+          currentName={
+            pickerTarget.type === 'conviction'
+              ? char.data.convictions[pickerTarget.index]?.name
+              : char.data.failings.find(f => f.convictionIndex === pickerTarget.index)?.name
+          }
+          onSelect={(entry) => {
+            const idx = pickerTarget.index;
+            if (pickerTarget.type === 'conviction') {
+              const next = [...char.data.convictions];
+              next[idx] = {
+                ...next[idx],
+                season: entry.data?.season || next[idx]?.season || 'Vamor',
+                name: entry.name,
+                statement: entry.data?.statement || '',
+              };
+              patch({ convictions: next });
+            } else {
+              const existingIndex = char.data.failings.findIndex(f => f.convictionIndex === idx);
+              const statement = entry.data?.statement || '';
+              if (existingIndex >= 0) {
+                const next = [...char.data.failings];
+                next[existingIndex] = { ...next[existingIndex], name: entry.name, statement };
+                patch({ failings: next });
+              } else {
+                patch({
+                  failings: [...char.data.failings, { name: entry.name, rank: 1, convictionIndex: idx, statement }]
+                });
+              }
+            }
+          }}
+          onClose={() => setPickerTarget(null)}
         />
       )}
     </section>

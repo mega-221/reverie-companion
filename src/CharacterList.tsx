@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { defaultCharacterData } from './defaults';
 import type { Character } from './types';
+import { useConfirm } from './components/sheet/ConfirmDialog';
 
 export default function CharacterList({
   userId, onSelect,
 }: { userId: string; onSelect: (id: string) => void }) {
   const [chars, setChars] = useState<Character[]>([]);
+  const { askConfirm, confirmDialog } = useConfirm();
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newCharName, setNewCharName] = useState('');
@@ -51,13 +53,20 @@ export default function CharacterList({
   }
 
   async function remove(id: string) {
-    if (!confirm('Are you sure you want to delete this character?')) return;
+    const ok = await askConfirm({
+      title: 'Delete Character',
+      message: 'Are you sure you want to delete this character? This cannot be undone.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
     await supabase.from('characters').delete().eq('id', id);
     load();
   }
 
   return (
     <div className="mt-6 w-full max-w-3xl mx-auto">
+      {confirmDialog}
       <div className="flex justify-between items-end mb-6 border-b border-gray-700 pb-4">
         <h2 className="text-3xl font-cinzel font-bold text-gray-200">Your Characters</h2>
         <button 

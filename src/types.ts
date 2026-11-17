@@ -34,6 +34,7 @@ export type CharacterData = {
   specialSkills: { name: string; rank: number; attribute: string }[];
   convictions: { season: string; name: string; statement: string; rank: number }[];
   failings: { name: string; rank: number; convictionIndex: number; statement: string }[];
+  aspects?: { id: string; name: string; abandoned?: boolean }[];
   abilities: { name: string; equipped: boolean }[];
   disciplines: string[];
   items: InventoryItem[];

@@ -34,9 +34,9 @@ export default function Header({
   return (
     <>
       <header className="sticky top-0 z-40 bg-red-950 text-white shadow-md border-b border-red-900 w-full transition-colors duration-1000">
-        <div className="w-full px-4 py-3 flex justify-between items-center overflow-x-hidden">
-          <div className="flex items-center gap-4 min-w-0">
-            <button onClick={onBack} className="text-red-300 hover:text-white transition-colors text-sm font-bold uppercase tracking-wider flex items-center gap-2 shrink-0">
+        <div className="w-full px-3 sm:px-4 py-3 flex justify-between items-center overflow-x-hidden gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <button onClick={onBack} className="text-red-300 hover:text-white transition-colors text-xs sm:text-sm font-bold uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 shrink-0">
               ← Back
             </button>
             <div className="hidden lg:block w-px h-5 bg-red-800 shrink-0"></div>
@@ -44,7 +44,7 @@ export default function Header({
             {isEditingName ? (
               <input 
                 type="text" 
-                className="text-2xl font-cinzel font-bold bg-red-900 text-white border-b-2 border-red-400 focus:outline-none px-2 py-1 rounded w-48 sm:w-64" 
+                className="text-lg sm:text-2xl font-cinzel font-bold bg-red-900 text-white border-b-2 border-red-400 focus:outline-none px-2 py-1 rounded w-36 sm:w-64" 
                 value={tempName} 
                 onChange={(e) => setTempName(e.target.value)} 
                 onBlur={handleSave} 
@@ -54,7 +54,7 @@ export default function Header({
             ) : (
               <h1 
                 onClick={() => { setTempName(char.name); setIsEditingName(true); }} 
-                className="text-2xl font-cinzel first-letter:font-cinzelDeco font-bold truncate cursor-pointer hover:text-red-200 transition-colors shrink-0 max-w-[200px] sm:max-w-xs" 
+                className="text-lg sm:text-2xl font-cinzel first-letter:font-cinzelDeco font-bold truncate cursor-pointer hover:text-red-200 transition-colors shrink-0 max-w-[120px] sm:max-w-xs" 
                 title="Click to rename"
               >
                 {char.name || 'Unnamed Character'}
@@ -70,7 +70,7 @@ export default function Header({
             </div>
           </div>
           
-          <div className="flex items-center gap-6 shrink-0 ml-4">
+          <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 shrink-0">
             
             {/* Heart Attack Indicator */}
             {showPulse && (
@@ -80,6 +80,16 @@ export default function Header({
                 </span>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => setVitalsOpen(true)}
+              title="Open quick vitals editor"
+              aria-label="Open quick vitals"
+              className="md:hidden px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium shadow-sm bg-red-900 hover:bg-red-800 text-red-100 shrink-0 transition-colors"
+            >
+              Vitals
+            </button>
 
             <button
               type="button"
@@ -99,7 +109,7 @@ export default function Header({
             <button 
               onClick={onSave} 
               disabled={saving} 
-              className={`px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors ${saved ? 'bg-green-600' : 'bg-red-700 hover:bg-red-600'}`}
+              className={`px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium shadow-sm transition-colors ${saved ? 'bg-green-600' : 'bg-red-700 hover:bg-red-600'}`}
             >
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}
             </button>

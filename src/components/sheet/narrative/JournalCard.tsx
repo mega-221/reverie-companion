@@ -1,11 +1,309 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Character } from '../../../types';
+import { useConfirm } from '../ConfirmDialog';
 
 type Entry = NonNullable<Character['data']['journal']>[number];
 type Fields = Pick<Entry, 'title' | 'content' | 'inUniverseDate'>;
 
+export const REVERIE_MONTHS = [
+  'Wind’s Grace',
+  'Nature’s Bloom',
+  'Life’s Genesis',
+  'Sun’s Zenith',
+  'Forge’s Fire',
+  'Midyear’s Chills',
+  'Harvest’s Bounty',
+  'Frost’s Arrival',
+  'Light’s Fall',
+  'Night’s Veil',
+  'Moon’s Glow',
+  'Morning’s Rise',
+] as const;
+
+type CalendarDate = {
+  day: number; // 1..30
+  monthIndex: number; // 0..11
+  year: number;
+};
+
+const normalizeApostrophes = (s: string) => s.replace(/[’']/g, "'").toLowerCase().trim();
+
+function ordinalDay(day: number): string {
+  const mod100 = day % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${day}th`;
+  switch (day % 10) {
+    case 1: return `${day}st`;
+    case 2: return `${day}nd`;
+    case 3: return `${day}rd`;
+    default: return `${day}th`;
+  }
+}
+
+function parseReverieDate(raw?: string): CalendarDate | null {
+  if (!raw) return null;
+  const match = raw.trim().match(/^(\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?\s+(.+?),\s*(-?\d+)\.?\s*AS$/i);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const monthRaw = normalizeApostrophes(match[2]);
+  const year = Number(match[3]);
+
+  const monthIndex = REVERIE_MONTHS.findIndex(m => normalizeApostrophes(m) === monthRaw);
+  if (monthIndex < 0 || !Number.isInteger(day) || day < 1 || day > 30 || !Number.isFinite(year)) {
+    return null;
+  }
+
+  return { day, monthIndex, year };
+}
+
+function formatReverieDate(d: CalendarDate): string {
+  const safeDay = Math.max(1, Math.min(30, Math.round(d.day)));
+  const safeMonth = ((d.monthIndex % 12) + 12) % 12;
+  const safeYear = Number.isFinite(d.year) ? Math.trunc(d.year) : 421;
+  return `${ordinalDay(safeDay)} of ${REVERIE_MONTHS[safeMonth]}, ${safeYear}. AS`;
+}
+
+function formatEntryDate(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const parsed = parseReverieDate(raw);
+  return parsed ? formatReverieDate(parsed) : raw;
+}
+
+function calendarSortKey(d: CalendarDate): number {
+  return d.year * 360 + d.monthIndex * 30 + d.day;
+}
+
+function CalendarSelector({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (formatted: string) => void;
+}) {
+  const parsed = parseReverieDate(value);
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<CalendarDate>(() => parsed ?? { day: 1, monthIndex: 0, year: 421 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (parsed) setDraft(parsed);
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [open]);
+
+  const shiftMonth = (delta: number) => {
+    setDraft(prev => {
+      let nextMonth = prev.monthIndex + delta;
+      let nextYear = prev.year;
+      while (nextMonth < 0) {
+        nextMonth += 12;
+        nextYear -= 1;
+      }
+      while (nextMonth >= 12) {
+        nextMonth -= 12;
+        nextYear += 1;
+      }
+      const next = { ...prev, monthIndex: nextMonth, year: nextYear };
+      if (value) onChange(formatReverieDate(next));
+      return next;
+    });
+  };
+
+  const selectDay = (day: number) => {
+    const next = { ...draft, day };
+    setDraft(next);
+    onChange(formatReverieDate(next));
+    setOpen(false);
+  };
+
+  const handleYearChange = (rawYear: string) => {
+    const num = rawYear === '' || rawYear === '-' ? 0 : parseInt(rawYear, 10);
+    const safeYear = Number.isNaN(num) ? 421 : num;
+    const next = { ...draft, year: safeYear };
+    setDraft(next);
+    if (value) onChange(formatReverieDate(next));
+  };
+
+  const handleMonthChange = (monthIndex: number) => {
+    const next = { ...draft, monthIndex };
+    setDraft(next);
+    if (value) onChange(formatReverieDate(next));
+  };
+
+  const displayValue = parsed ? formatReverieDate(parsed) : value;
+
+  return (
+    <div ref={containerRef} className="relative sm:w-72 shrink-0">
+      <div className="flex items-center bg-gray-900 border border-gray-700 rounded focus-within:border-red-500 transition-colors">
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          className="flex-1 min-w-0 px-2.5 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5 transition-colors rounded-l"
+          title="Open calendar selector"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-red-400 shrink-0"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+          <span className={`truncate tabular-nums ${displayValue ? 'text-gray-200' : 'text-gray-500'}`}>
+            {displayValue || 'Select calendar date...'}
+          </span>
+        </button>
+
+        {value && (
+          <button
+            type="button"
+            onClick={() => {
+              onChange('');
+              setOpen(false);
+            }}
+            className="px-2 py-2 text-gray-500 hover:text-red-400 font-bold text-sm border-l border-gray-700 transition-colors shrink-0"
+            title="Clear date"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {open &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[260] bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-4"
+            onClick={() => setOpen(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-xs bg-gray-900 border border-gray-700 rounded-xl shadow-2xl p-3.5 animate-in fade-in zoom-in-95 duration-150"
+            >
+              <div className="flex items-center justify-between border-b border-gray-800 pb-2 mb-3">
+                <span className="text-xs font-cinzel font-bold uppercase tracking-widest text-gray-300">
+                  Select Date
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="text-gray-400 hover:text-white font-bold text-lg leading-none px-1"
+                  aria-label="Close calendar"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Month & Year Controls */}
+              <div className="flex items-center gap-1.5 mb-3">
+                <button
+                  type="button"
+                  onClick={() => shiftMonth(-1)}
+                  className="px-2 py-1.5 rounded bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-xs font-bold transition-colors shrink-0"
+                  title="Previous month"
+                >
+                  ‹
+                </button>
+
+                <select
+                  value={draft.monthIndex}
+                  onChange={e => handleMonthChange(Number(e.target.value))}
+                  className="flex-1 min-w-0 bg-black/40 border border-gray-700 rounded px-2 py-1.5 text-xs font-bold text-gray-200 focus:outline-none focus:border-red-500"
+                  aria-label="Month"
+                >
+                  {REVERIE_MONTHS.map((m, idx) => (
+                    <option key={m} value={idx}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="flex items-center bg-black/40 border border-gray-700 rounded focus-within:border-red-500 shrink-0">
+                  <input
+                    type="number"
+                    value={draft.year}
+                    onChange={e => handleYearChange(e.target.value)}
+                    className="w-14 bg-transparent px-1.5 py-1.5 text-xs font-bold text-gray-200 text-right focus:outline-none tabular-nums"
+                    aria-label="Year"
+                  />
+                  <span className="pr-2 pl-0.5 text-[11px] font-bold text-red-400 select-none">. AS</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => shiftMonth(1)}
+                  className="px-2 py-1.5 rounded bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-xs font-bold transition-colors shrink-0"
+                  title="Next month"
+                >
+                  ›
+                </button>
+              </div>
+
+              {/* 30-Day Grid (5 rows x 6 days) */}
+              <div className="grid grid-cols-6 gap-1">
+                {Array.from({ length: 30 }, (_, idx) => {
+                  const day = idx + 1;
+                  const isSelected = Boolean(parsed) && parsed?.day === day && parsed?.monthIndex === draft.monthIndex && parsed?.year === draft.year;
+                  const isDraftDay = draft.day === day;
+
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => selectDay(day)}
+                      className={`py-1.5 rounded text-xs font-bold tabular-nums transition-colors border ${
+                        isSelected
+                          ? 'bg-red-900 border-red-500 text-white shadow-sm'
+                          : isDraftDay
+                          ? 'bg-gray-800 border-gray-500 text-gray-100 hover:bg-red-950/60 hover:border-red-700'
+                          : 'bg-black/30 border-gray-800 text-gray-300 hover:bg-gray-800 hover:border-gray-600'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-800 text-[11px]">
+                <span className="text-gray-400 truncate pr-2 tabular-nums">
+                  {formatReverieDate(draft)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(formatReverieDate(draft));
+                    setOpen(false);
+                  }}
+                  className="px-2.5 py-1 rounded bg-red-900 hover:bg-red-800 text-white font-bold transition-colors shrink-0"
+                >
+                  Set Date
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}
+
 function renderInline(text: string) {
-  // Matches **bold**, *italic*, and ~~strikethrough~~
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~)/g);
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
@@ -61,7 +359,7 @@ function EntryEditor({ initial, submitLabel, onSave, onCancel }: {
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState(initial?.title ?? '');
-  const [inUniverseDate, setInUniverseDate] = useState(initial?.inUniverseDate ?? '');
+  const [inUniverseDate, setInUniverseDate] = useState(() => formatEntryDate(initial?.inUniverseDate) ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
   const [preview, setPreview] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -144,7 +442,7 @@ function EntryEditor({ initial, submitLabel, onSave, onCancel }: {
     <div onKeyDown={onKeyDown} className="bg-black/30 border border-gray-700 rounded-lg p-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2">
       <div className="flex flex-col sm:flex-row gap-2">
         <input type="text" placeholder="Title (optional)" value={title} onChange={e => setTitle(e.target.value)} className={`${input} flex-1 min-w-0`} />
-        <input type="text" placeholder="In-universe date (optional)" value={inUniverseDate} onChange={e => setInUniverseDate(e.target.value)} className={`${input} sm:w-56 shrink-0`} />
+        <CalendarSelector value={inUniverseDate} onChange={setInUniverseDate} />
       </div>
 
       {/* Formatting Toolbar */}
@@ -202,8 +500,44 @@ function EntryEditor({ initial, submitLabel, onSave, onCancel }: {
 export default function JournalCard({ char, patch }: { char: Character, patch: any }) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  const [order, setOrder] = useState<'newest' | 'oldest'>('newest');
+  const [searchQuery, setSearchQuery] = useState('');
+  const { askConfirm, confirmDialog } = useConfirm();
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const journal = char.data.journal || [];
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  const displayedJournal = [...journal]
+    .filter(entry => {
+      if (!normalizedQuery) return true;
+      const formattedDate = formatEntryDate(entry.inUniverseDate) || '';
+      const realDate = new Date(entry.date).toLocaleDateString();
+      return (
+        (entry.title || '').toLowerCase().includes(normalizedQuery) ||
+        (entry.content || '').toLowerCase().includes(normalizedQuery) ||
+        (entry.inUniverseDate || '').toLowerCase().includes(normalizedQuery) ||
+        formattedDate.toLowerCase().includes(normalizedQuery) ||
+        realDate.toLowerCase().includes(normalizedQuery)
+      );
+    })
+    .sort((a, b) => {
+      const da = parseReverieDate(a.inUniverseDate);
+      const db = parseReverieDate(b.inUniverseDate);
+
+      if (da && db) {
+        const diff = calendarSortKey(da) - calendarSortKey(db);
+        if (diff !== 0) return order === 'oldest' ? diff : -diff;
+      }
+
+      const ta = new Date(a.date).getTime() || 0;
+      const tb = new Date(b.date).getTime() || 0;
+      return order === 'oldest' ? ta - tb : tb - ta;
+    });
 
   const addEntry = (f: Fields) => {
     const entry: Entry = { id: crypto.randomUUID(), date: new Date().toISOString(), ...f };
@@ -216,21 +550,83 @@ export default function JournalCard({ char, patch }: { char: Character, patch: a
     setEditingId(null);
   };
 
-  const removeEntry = (id: string) => patch({ journal: journal.filter(j => j.id !== id) });
+  const removeEntry = async (id: string) => {
+    const ok = await askConfirm({
+      title: 'Delete Journal Entry',
+      message: 'Are you sure you want to delete this journal entry? This cannot be undone.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    patch({ journal: journal.filter(j => j.id !== id) });
+  };
 
-  const iconBtn = 'font-bold px-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity';
+  const iconBtn = 'font-bold px-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity';
 
   return (
-    <section className="sheet-panel p-5 w-full h-full flex flex-col">
-      <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-4 shrink-0">
+    <section className="sheet-panel p-3.5 sm:p-5 w-full h-full flex flex-col">
+      {confirmDialog}
+      <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-4 shrink-0 gap-3">
         <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Journal</h2>
-        <button
-          onClick={() => { setIsAdding(!isAdding); setEditingId(null); }}
-          className="text-xs font-bold text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-1.5 rounded transition-colors"
-        >
-          {isAdding ? 'Cancel' : '+ New Entry'}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {journal.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setOrder(o => (o === 'newest' ? 'oldest' : 'newest'))}
+              className="text-xs font-bold text-gray-400 hover:text-gray-200 bg-black/20 border border-gray-700 px-2.5 py-1.5 rounded transition-colors whitespace-nowrap shrink-0"
+              title="Toggle timeline order"
+            >
+              {order === 'newest' ? 'Newest First' : 'Chronological'}
+            </button>
+          )}
+          <button
+            onClick={() => { setIsAdding(!isAdding); setEditingId(null); }}
+            className="text-xs font-bold text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-1.5 rounded transition-colors whitespace-nowrap shrink-0"
+          >
+            {isAdding ? 'Cancel' : '+ New Entry'}
+          </button>
+        </div>
       </div>
+
+      {journal.length > 0 && (
+        <div className="mb-3 shrink-0">
+          <div className="relative flex items-center">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="absolute left-3 text-gray-500 pointer-events-none"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search entries by title, text, or date..."
+              className="w-full bg-black/25 border border-gray-700 rounded-lg pl-9 pr-8 py-1.5 text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:border-red-500 transition-colors"
+              aria-label="Search journal entries"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 text-gray-500 hover:text-gray-200 font-bold text-sm px-1"
+                title="Clear search"
+                aria-label="Clear journal search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {isAdding && (
         <div className="mb-4">
@@ -238,47 +634,102 @@ export default function JournalCard({ char, patch }: { char: Character, patch: a
         </div>
       )}
 
-      <div className="flex-1 flex flex-col gap-4 overflow-y-auto max-h-[500px] pr-2">
-        {journal.length === 0 && !isAdding ? (
-          <p className="text-gray-500 italic text-sm text-center py-8">The pages are blank. Write your first entry.</p>
+      <div className="flex-1 flex flex-col overflow-y-auto max-h-[500px] pr-2">
+        {displayedJournal.length === 0 && !isAdding ? (
+          journal.length === 0 ? (
+            <p className="text-gray-500 italic text-sm text-center py-8">The pages are blank. Write your first entry.</p>
+          ) : (
+            <div className="text-center py-8 flex flex-col items-center gap-2">
+              <p className="text-gray-500 italic text-sm">No journal entries match “{searchQuery}”.</p>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-xs font-bold text-red-400 hover:text-red-300 underline"
+              >
+                Clear search
+              </button>
+            </div>
+          )
         ) : (
-          journal.map(entry => (
-            <div key={entry.id} className="relative pl-6 group">
-              {/* Timeline Line & Dot */}
-              <div className="absolute left-0 top-2 bottom-0 w-px bg-gray-700 group-last:bottom-auto group-last:h-full"></div>
-              <div className="absolute left-[-4px] top-2 w-2.5 h-2.5 rounded-full bg-gray-600 border border-gray-900"></div>
+          displayedJournal.map((entry, idx) => {
+            const isFirst = idx === 0;
+            const isLast = idx === displayedJournal.length - 1;
+            const formattedInUniverseDate = formatEntryDate(entry.inUniverseDate);
 
-              {editingId === entry.id ? (
-                <EntryEditor
-                  initial={entry}
-                  submitLabel="Save"
-                  onSave={f => updateEntry(entry.id, f)}
-                  onCancel={() => setEditingId(null)}
+            return (
+              <div key={entry.id} className={`relative pl-5 sm:pl-7 group ${isLast ? '' : 'pb-4'}`}>
+                {/* Continuous Timeline Spine & Diamond Node */}
+                {!isFirst && (
+                  <div className="absolute left-[5px] top-0 h-[22px] w-px bg-gray-700" aria-hidden="true" />
+                )}
+                {!isLast && (
+                  <div className="absolute left-[5px] top-[22px] bottom-0 w-px bg-gray-700" aria-hidden="true" />
+                )}
+                <div
+                  className="absolute left-[1px] top-[17px] w-2.5 h-2.5 rotate-45 bg-gray-900 border border-red-500/70 group-hover:border-red-400 transition-colors"
+                  aria-hidden="true"
                 />
-              ) : (
-                <div className="bg-black/20 border border-gray-700 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2 gap-2">
-                    <div className="min-w-0">
-                      {entry.title && <h3 className="font-bold text-gray-200 text-base font-cinzel">{entry.title}</h3>}
-                      <div className="flex flex-wrap items-baseline gap-x-2">
-                        {entry.inUniverseDate && (
-                          <span className="text-xs text-red-400 font-cinzel">{entry.inUniverseDate}</span>
+
+                {editingId === entry.id ? (
+                  <EntryEditor
+                    initial={entry}
+                    submitLabel="Save"
+                    onSave={f => updateEntry(entry.id, f)}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : (
+                  <div className="bg-black/20 border border-gray-700 rounded-lg overflow-hidden">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={Boolean(expandedIds[entry.id])}
+                      onClick={() => toggleExpand(entry.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleExpand(entry.id);
+                        }
+                      }}
+                      className="p-3 sm:p-4 flex justify-between items-start gap-2 cursor-pointer select-none hover:bg-white/5 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        {entry.title ? (
+                          <h3 className="font-bold text-gray-200 text-base font-cinzel truncate">{entry.title}</h3>
+                        ) : (
+                          <h3 className="italic text-gray-500 text-sm font-cinzel">Untitled Entry</h3>
                         )}
-                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                          {new Date(entry.date).toLocaleDateString()}
-                        </span>
+                        <div className="flex flex-wrap items-baseline gap-x-2 mt-0.5">
+                          {formattedInUniverseDate && (
+                            <span className="text-xs text-red-400 font-cinzel tabular-nums">{formattedInUniverseDate}</span>
+                          )}
+                          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider tabular-nums">
+                            {new Date(entry.date).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => { setEditingId(entry.id); setIsAdding(false); }} className={`${iconBtn} text-gray-400 hover:text-gray-200 text-xs`}>Edit</button>
+                        <button onClick={() => removeEntry(entry.id)} className={`${iconBtn} text-red-500 hover:text-red-400`} title="Delete Entry">×</button>
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(entry.id)}
+                          className="px-2 text-gray-500 hover:text-white font-bold text-xs transition-colors"
+                          aria-label={expandedIds[entry.id] ? 'Collapse entry' : 'Expand entry'}
+                        >
+                          {expandedIds[entry.id] ? '▲' : '▼'}
+                        </button>
                       </div>
                     </div>
-                    <div className="flex shrink-0">
-                      <button onClick={() => { setEditingId(entry.id); setIsAdding(false); }} className={`${iconBtn} text-gray-400 hover:text-gray-200 text-xs`}>Edit</button>
-                      <button onClick={() => removeEntry(entry.id)} className={`${iconBtn} text-red-500 hover:text-red-400`}>×</button>
-                    </div>
+                    {expandedIds[entry.id] && (
+                      <div className="px-4 pb-4 pt-3 border-t border-gray-800/80 bg-black/20">
+                        <FormattedContent content={entry.content} />
+                      </div>
+                    )}
                   </div>
-                  <FormattedContent content={entry.content} />
-                </div>
-              )}
-            </div>
-          ))
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </section>

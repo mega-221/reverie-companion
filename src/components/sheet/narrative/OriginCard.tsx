@@ -1,6 +1,7 @@
 import type { Character } from '../../../types';
 import { useCompendium } from '../../../CompendiumContext';
 import { SectionHeader, ORIGIN_EFFECTS, ORIGIN_CHOICES } from '../utils';
+import { useConfirm } from '../ConfirmDialog';
 
 export default function OriginCard({ 
   char, openOriginModal, onRemoveOrigin 
@@ -10,6 +11,7 @@ export default function OriginCard({
   onRemoveOrigin: () => void 
 }) {
   const { getEntryByName } = useCompendium();
+  const { askConfirm, confirmDialog } = useConfirm();
   
   const originName = char.data.identity.origin;
   const effects = ORIGIN_EFFECTS[originName] || {};
@@ -31,7 +33,8 @@ export default function OriginCard({
   });
 
   return (
-    <section className="sheet-panel p-5 w-full h-[420px] flex flex-col">
+    <section className="sheet-panel p-3.5 sm:p-5 w-full min-h-[220px] lg:h-[420px] flex flex-col">
+      {confirmDialog}
       <SectionHeader title="Origin" />
       <div className="flex flex-col gap-4 flex-1 min-h-0">
         
@@ -52,8 +55,14 @@ export default function OriginCard({
             </button>
             {originName && (
               <button 
-                onClick={() => {
-                  if (confirm('Are you sure you want to remove your Origin? Any starting skills, inspirations, and abilities from this origin will be removed.')) {
+                onClick={async () => {
+                  const ok = await askConfirm({
+                    title: 'Remove Origin',
+                    message: 'Are you sure you want to remove your Origin? Any starting skills, inspirations, and abilities from this origin will be removed.',
+                    confirmLabel: 'Remove',
+                    tone: 'danger',
+                  });
+                  if (ok) {
                     onRemoveOrigin();
                   }
                 }} 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Character, CompendiumEntry } from '../../types';
 import { useCompendium } from '../../CompendiumContext';
 import { getSpeedData, getTypeStyle } from './utils';
+import { useConfirm } from './ConfirmDialog';
 
 export default function AbilitiesSection({ 
   char, patch, setModalAbilityIndex, setIsAbilityModalOpen, setModalDiscipline, setExpandedModalAbility 
@@ -14,6 +15,7 @@ export default function AbilitiesSection({
   setExpandedModalAbility: (s: string | null) => void 
 }) {
   const { getAbilities, getEntryByName } = useCompendium();
+  const { askConfirm, confirmDialog } = useConfirm();
   const [activeAbilityTab, setActiveAbilityTab] = useState<'discipline' | 'basic'>('discipline');
   const [expandedAbility, setExpandedAbility] = useState<number | null>(null);
   const [expandedBasicAbility, setExpandedBasicAbility] = useState<string | null>(null);
@@ -99,6 +101,7 @@ export default function AbilitiesSection({
 
   return (
     <section className="sheet-panel p-4 w-full h-full flex flex-col lg:col-span-2">
+      {confirmDialog}
       <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
         <div className="flex gap-6 items-center">
           <button onClick={() => setActiveAbilityTab('discipline')} className={`text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'discipline' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Learned Abilities</button>
@@ -240,9 +243,15 @@ export default function AbilitiesSection({
                           </button>
                           <button 
                             className="px-1 text-red-500 font-bold text-lg hover:text-red-400 transition-colors" 
-                            onClick={(e) => { 
+                            onClick={async (e) => { 
                               e.stopPropagation(); 
-                              if (confirm('Are you sure you want to delete this ability?')) {
+                              const ok = await askConfirm({
+                                title: 'Remove Ability',
+                                message: `Are you sure you want to delete ${a.name || 'this ability'}?`,
+                                confirmLabel: 'Remove',
+                                tone: 'danger',
+                              });
+                              if (ok) {
                                 patch({ abilities: char.data.abilities.filter((_: any, j: number) => j !== i) }); 
                               }
                             }}

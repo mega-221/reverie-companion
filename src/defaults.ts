@@ -11,7 +11,7 @@ export function defaultCharacterData(): CharacterData {
       Knowledge: 0, Reasoning: 0, Survival: 0,
       Intuition: 0, Persuasion: 0, Willpower: 0,
     },
-    specialSkills: [], convictions: [], failings: [], abilities: [], disciplines: [],
+    specialSkills: [], convictions: [], failings: [], aspects: [], abilities: [], disciplines: [],
     items: [],
     possessions: [],
     equipment: {
