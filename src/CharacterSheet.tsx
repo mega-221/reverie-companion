@@ -31,7 +31,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('gameplay');
   
-  // Heart attack pulse state
   const [pulseState, setPulseState] = useState<'none' | 'active' | 'fading'>('none');
 
   const [levelUpTarget, setLevelUpTarget] = useState<LevelUpTarget | null>(null);
@@ -78,7 +77,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           extra: Array.isArray(rawEq.extra) ? rawEq.extra.map((id: string) => resolveEq(id)) : []
         };
 
-        // --- Journal Migration ---
         const oldNotes = fetchedChar.data.notes || '';
         let migratedJournal = fetchedChar.data.journal || [];
         if (oldNotes && migratedJournal.length === 0) {
@@ -155,11 +153,9 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
   if (!char) return <p className="text-gray-400 p-8 text-center font-cinzel text-xl h-screen flex items-center justify-center bg-gray-900">Loading character...</p>;
 
-  // --- Persistent Critical State ---
   const baseStrainMax = 5 + (char.data.progression.tier - 1) + char.data.bonus.sl;
   const isCritical = char.data.trackers.strain > baseStrainMax || char.data.trackers.vigor < 1;
 
-  // Filter stays active if critically wounded OR if the heart attack pulse is playing
   const showFilter = isCritical || pulseState !== 'none';
 
   function patch(p: Partial<CharacterData>) {
@@ -183,13 +179,11 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     
     const nextVal = Math.max(min, Math.min(max, current + amount));
     
-    // --- Heart Attack Trigger Logic ---
     if (key === 'strain' && nextVal >= max) {
       setPulseState('active');
       const endurance = char.data.skills.Endurance || 0;
       const targetVigor = 1 + endurance;
       
-      // Don't heal the player if they are already below the threshold
       const newVigor = char.data.trackers.vigor < targetVigor ? char.data.trackers.vigor : targetVigor;
       const baseStrainMax = max / 2;
       
@@ -201,7 +195,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         }
       });
       
-      // 2 second shock, 1 second fade
       setTimeout(() => setPulseState('fading'), 2000);
       setTimeout(() => setPulseState('none'), 3000); 
       return; 
@@ -359,7 +352,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
   return (
     <>
-      {/* Vibrant Heart Attack Overlay (Sits outside the grayscale filter) */}
       {pulseState !== 'none' && (
         <div className={`fixed inset-0 z-[100] pointer-events-none backdrop-blur-[2px] bg-cyan-950/10 transition-opacity duration-1000 ease-in-out ${
           pulseState === 'fading' ? 'opacity-0' : 'opacity-100'
@@ -368,9 +360,8 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         </div>
       )}
 
-      {/* Main Content Wrapper (Grapples the desaturation based on showFilter) */}
       <div className={`min-h-screen bg-gray-900 pb-20 font-sans text-gray-200 transition-all duration-1000 ${showFilter ? 'grayscale-[60%] contrast-[1.1]' : ''}`}>
-        <Header char={char} onBack={onBack} onSave={save} saving={saving} saved={saved} onNameSave={(name) => { setChar({ ...char, name }); handleNameSave(name); }} />
+        <Header char={char} onBack={onBack} onSave={save} saving={saving} saved={saved} onNameSave={(name) => { setChar({ ...char, name }); handleNameSave(name); }} updateTracker={updateTracker} showPulse={pulseState !== 'none'} />
         <main className="w-full px-4 sm:px-6 pt-6 relative z-10">
           
           {activeTab === 'gameplay' && (
@@ -413,7 +404,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             </div>
           )}
 
-          {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} openOriginModal={() => setIsOriginModalOpen(true)} />}
+          {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} openOriginModal={() => setIsOriginModalOpen(true)} onRemoveOrigin={() => applyOrigin('', {})} />}
           
           {activeTab === 'progression' && (
             <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in duration-200">
@@ -444,19 +435,19 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             </div>
           )}
         </main>
-        
-        <LevelUpModal char={char} levelUpTarget={levelUpTarget} setLevelUpTarget={setLevelUpTarget} handleAdvance={handleAdvance} handleRegress={handleRegress} />
-        <OriginModal char={char} isOpen={isOriginModalOpen} onClose={() => setIsOriginModalOpen(false)} applyOrigin={applyOrigin} />
-        <ClassModal char={char} isOpen={isClassModalOpen} onClose={() => setIsClassModalOpen(false)} patch={patch} />
-        <SpecialSkillModal char={char} isOpen={isSpecialSkillModalOpen} onClose={() => setIsSpecialSkillModalOpen(false)} patch={patch} modalIndex={modalSpecialSkillIndex} />
-        <AbilityModal char={char} isOpen={isAbilityModalOpen} onClose={() => setIsAbilityModalOpen(false)} patch={patch} modalIndex={modalAbilityIndex} />
-        <InventoryModal char={char} isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} patch={patch} />
-        
-        <PathModal char={char} isOpen={isPathModalOpen} onClose={() => setIsPathModalOpen(false)} patch={patch} classData={getEntryByName(char.data.identity.className)} />
-        <DisciplineModal char={char} isOpen={isDisciplineModalOpen} onClose={() => setIsDisciplineModalOpen(false)} patch={patch} modalIndex={modalDisciplineIndex} />
       </div>
 
-      {/* Footer moved OUTSIDE the filtered container so it remains visible and fixed */}
+      {/* Modals rendered OUTSIDE the filtered wrapper so fixed positioning is viewport-relative */}
+      <LevelUpModal char={char} levelUpTarget={levelUpTarget} setLevelUpTarget={setLevelUpTarget} handleAdvance={handleAdvance} handleRegress={handleRegress} />
+      <OriginModal char={char} isOpen={isOriginModalOpen} onClose={() => setIsOriginModalOpen(false)} applyOrigin={applyOrigin} />
+      <ClassModal char={char} isOpen={isClassModalOpen} onClose={() => setIsClassModalOpen(false)} patch={patch} />
+      <SpecialSkillModal char={char} isOpen={isSpecialSkillModalOpen} onClose={() => setIsSpecialSkillModalOpen(false)} patch={patch} modalIndex={modalSpecialSkillIndex} />
+      <AbilityModal char={char} isOpen={isAbilityModalOpen} onClose={() => setIsAbilityModalOpen(false)} patch={patch} modalIndex={modalAbilityIndex} />
+      <InventoryModal char={char} isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} patch={patch} />
+
+      <PathModal char={char} isOpen={isPathModalOpen} onClose={() => setIsPathModalOpen(false)} patch={patch} classData={getEntryByName(char.data.identity.className)} />
+      <DisciplineModal char={char} isOpen={isDisciplineModalOpen} onClose={() => setIsDisciplineModalOpen(false)} patch={patch} modalIndex={modalDisciplineIndex} />
+
       <Footer activeTab={activeTab} setActiveTab={setActiveTab} showFilter={showFilter} />
     </>
   );

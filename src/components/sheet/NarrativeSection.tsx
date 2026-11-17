@@ -5,33 +5,42 @@ import ConvictionsCard from './narrative/ConvictionsCard';
 import AspectsCard from './narrative/AspectsCard';
 import JournalCard from './narrative/JournalCard';
 
-export default function NarrativeSection({ char, patch, openOriginModal }: { char: Character, patch: any, openOriginModal: () => void }) {
+export default function NarrativeSection({ 
+  char, patch, openOriginModal, onRemoveOrigin 
+}: { 
+  char: Character, 
+  patch: any, 
+  openOriginModal: () => void, 
+  onRemoveOrigin: () => void 
+}) {
   return (
     <div className="w-full max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200">
       
-      {/* 1. ORIGIN SECTION (Top Left) */}
-      <div className="w-full lg:col-span-5 h-full">
-        <OriginCard char={char} openOriginModal={openOriginModal} />
+      {/* 1. ORIGIN — fixed height */}
+      <div className="w-full lg:col-span-4">
+        <OriginCard char={char} openOriginModal={openOriginModal} onRemoveOrigin={onRemoveOrigin} />
       </div>
 
-      {/* 2. RELATIONSHIPS SECTION (Top Right) */}
-      <div className="w-full lg:col-span-7 h-full">
+      {/* 2. RELATIONSHIPS — expanded to fill the 8 cols */}
+      <div className="w-full lg:col-span-8">
         <RelationshipsCard char={char} patch={patch} />
       </div>
 
-      {/* 3. CONVICTIONS & FAILINGS (Full Width) */}
+      {/* 3. CONVICTIONS & FAILINGS — hero band */}
       <div className="w-full lg:col-span-12">
         <ConvictionsCard char={char} patch={patch} />
       </div>
 
-      {/* 4. ASPECTS (Bottom Left) */}
-      <div className="w-full lg:col-span-5 h-full">
+      {/* 4. ASPECTS — 5-up band (constraint for AspectsCard when built) */}
+      <div className="w-full lg:col-span-12">
         <AspectsCard char={char} />
       </div>
 
-      {/* 5. JOURNAL (Bottom Right) */}
-      <div className="w-full lg:col-span-7 h-full">
-        <JournalCard char={char} patch={patch} />
+      {/* 5. JOURNAL — full-width band, centered timeline */}
+      <div className="w-full lg:col-span-12">
+        <div className="max-w-3xl mx-auto">
+          <JournalCard char={char} patch={patch} />
+        </div>
       </div>
 
     </div>

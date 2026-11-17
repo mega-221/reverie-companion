@@ -57,8 +57,14 @@ export type CharacterData = {
     }[];
   };
   notes: string;
-    journal: { id: string; date: string; title: string; content: string; }[];
-  relationships: { id: string; name: string; role: string; status: string; }[];
+    journal?: {
+  id: string;
+  date: string;            // real creation time (ISO)
+  title: string;
+  content: string;
+  inUniverseDate?: string; // free text, e.g. "3rd of Ashfall, Year 412"
+}[];
+    relationships: { id: string; name: string; faction: string; role: string; description: string; }[];
   // keep notes: string for backwards compatibility during migration, or remove it if you handle it fully. 
   // I recommend keeping it in the type but not using it in the UI.
 };

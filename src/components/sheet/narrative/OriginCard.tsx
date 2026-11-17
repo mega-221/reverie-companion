@@ -2,7 +2,13 @@ import type { Character } from '../../../types';
 import { useCompendium } from '../../../CompendiumContext';
 import { SectionHeader, ORIGIN_EFFECTS, ORIGIN_CHOICES } from '../utils';
 
-export default function OriginCard({ char, openOriginModal }: { char: Character, openOriginModal: () => void }) {
+export default function OriginCard({ 
+  char, openOriginModal, onRemoveOrigin 
+}: { 
+  char: Character, 
+  openOriginModal: () => void, 
+  onRemoveOrigin: () => void 
+}) {
   const { getEntryByName } = useCompendium();
   
   const originName = char.data.identity.origin;
@@ -11,14 +17,12 @@ export default function OriginCard({ char, openOriginModal }: { char: Character,
   
   const startingSkills: string[] = [];
   
-  // 1. Pull hardcoded starting skills from ORIGIN_EFFECTS
   if (effects.starting) {
     Object.entries(effects.starting).forEach(([skill, rank]) => {
       startingSkills.push(`${skill} ${rank}`);
     });
   }
   
-  // 2. Pull starting skills from player choices
   Object.entries(choices).forEach(([choiceId, skillName]) => {
     const choice = ORIGIN_CHOICES[originName]?.find(c => c.id === choiceId);
     if (choice?.type === 'starting' && choice.rank) {
@@ -27,23 +31,50 @@ export default function OriginCard({ char, openOriginModal }: { char: Character,
   });
 
   return (
-    <section className="sheet-panel p-5 w-full h-full flex flex-col">
+    <section className="sheet-panel p-5 w-full h-[420px] flex flex-col">
       <SectionHeader title="Origin" />
-      <div className="flex flex-col gap-4 flex-1">
-        <div 
-          className="border border-gray-700 bg-black/40 p-2.5 rounded-lg shadow-inner font-normal text-lg w-full text-gray-200 cursor-pointer flex justify-between items-center hover:border-gray-500 transition-colors"
-          onClick={openOriginModal}
-        >
-          <span className="truncate">{originName || "— Select Origin —"}</span>
-          <span className="text-gray-500 text-sm">▼</span>
+      <div className="flex flex-col gap-4 flex-1 min-h-0">
+        
+        {/* Locked selection display with edit/remove actions */}
+        <div className="flex items-center justify-between w-full bg-black/20 border border-gray-700 rounded-lg px-4 py-3 shrink-0">
+          <div className="flex items-center min-w-0 flex-1">
+            <span className={`text-lg truncate ${originName ? 'text-gray-200 font-bold' : 'text-gray-500 italic'}`}>
+              {originName || '— No Origin —'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 border-l border-gray-700 pl-3 ml-3 shrink-0">
+            <button 
+              onClick={openOriginModal} 
+              className="text-gray-400 text-sm px-1 hover:text-white transition-colors" 
+              title="Select/Change Origin"
+            >
+              ✎
+            </button>
+            {originName && (
+              <button 
+                onClick={() => {
+                  if (confirm('Are you sure you want to remove your Origin? Any starting skills, inspirations, and abilities from this origin will be removed.')) {
+                    onRemoveOrigin();
+                  }
+                }} 
+                className="text-red-500 font-bold px-1 text-lg leading-none hover:text-red-400 transition-colors" 
+                title="Remove Origin"
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
         
-        <div className="flex-1 text-sm font-normal text-gray-300 italic border-l-2 border-gray-600 pl-3 py-1 leading-relaxed">
-          {getEntryByName(originName)?.data?.lore || 'Select an origin to view its lore. Your Origin dictates your starting skills, inspirations, and minimum skill caps.'}
+        {/* Lore - scroll removed, centered vertically */}
+        <div className="flex-1 flex items-center text-sm font-normal text-gray-300 italic border-l-2 border-gray-600 pl-3 py-1 leading-relaxed overflow-hidden">
+          <p className="w-full">
+            {getEntryByName(originName)?.data?.lore || 'Select an origin to view its lore. Your Origin dictates your starting skills, inspirations, and minimum skill caps.'}
+          </p>
         </div>
         
         {originName && (
-            <div className="mt-2 bg-black/20 rounded border border-gray-700/50 p-3 text-sm flex flex-col gap-2">
+            <div className="mt-auto bg-black/20 rounded border border-gray-700/50 p-3 text-sm flex flex-col gap-2 shrink-0">
               <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Mechanical Benefits</div>
               <div className="text-gray-300">
                 <strong className="text-gray-400">Inspiration:</strong> {char.data.identity.inspirations?.join(', ') || 'None'}
