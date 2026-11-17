@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Character, CompendiumEntry } from '../../../types';
 import { useCompendium } from '../../../CompendiumContext';
@@ -793,7 +793,6 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
   const [mobileIndex, setMobileIndex] = useState(0);
   const [leavingIndex, setLeavingIndex] = useState<number | null>(null);
   const [slideDir, setSlideDir] = useState<'next' | 'prev' | null>(null);
-  const touchStartX = useRef<number | null>(null);
 
   const convCount = char.data.convictions.length;
   const safeMobileIndex = convCount > 0 ? Math.min(mobileIndex, convCount - 1) : 0;
@@ -868,20 +867,7 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
           No convictions yet. Click "+ Add" above to begin.
         </div>
       ) : (
-      <div
-        onTouchStart={(e) => {
-          touchStartX.current = e.touches[0]?.clientX ?? null;
-        }}
-        onTouchEnd={(e) => {
-          if (touchStartX.current === null) return;
-          const dx = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
-          touchStartX.current = null;
-          if (Math.abs(dx) > 45) {
-            stepMobileCard(dx < 0 ? 1 : -1);
-          }
-        }}
-        className="relative flex flex-wrap justify-center sm:justify-evenly gap-6 w-full py-11 sm:py-10 overflow-visible"
-      >
+      <div className="relative flex flex-wrap justify-center sm:justify-evenly gap-6 w-full py-11 sm:py-10 overflow-visible">
         {char.data.convictions.map((conviction, i) => {
           const failing = char.data.failings.find(f => f.convictionIndex === i);
 
@@ -933,7 +919,12 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
               }`}
             >
               <div
-                className="relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d]"
+                onClick={() => {
+                  if (!isEditing && window.matchMedia('(max-width: 639px)').matches) {
+                    toggleFlip(i);
+                  }
+                }}
+                className="relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] cursor-pointer sm:cursor-default"
                 style={{ transform: `rotateY(${rotation}deg)` }}
               >
 
@@ -1008,9 +999,9 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
 
                   <div className="w-full h-full p-5 flex flex-col relative z-20">
                     <div className="grid grid-cols-3 items-center mb-4 mt-2 px-2 z-20">
-                      <button onClick={() => setEditingCard(i)} className={`justify-self-start ${hasConv ? 'text-gray-400 hover:text-white' : 'text-cyan-700 hover:text-cyan-300'} transition-colors`} title="Edit">✎</button>
+                      <button onClick={(e) => { e.stopPropagation(); setEditingCard(i); }} className={`justify-self-start ${hasConv ? 'text-gray-400 hover:text-white' : 'text-cyan-700 hover:text-cyan-300'} transition-colors`} title="Edit">✎</button>
                       <span className={`justify-self-center text-[10px] font-bold uppercase tracking-widest ${hasConv ? 'text-gray-300 opacity-90' : 'text-cyan-600'}`}>Conviction</span>
-                      <button onClick={() => toggleFlip(i)} className={`justify-self-end ${hasConv ? 'text-gray-400 hover:text-white' : 'text-cyan-700 hover:text-cyan-300'} transition-colors`} title="Flip to Failing"><FlipIcon /></button>
+                      <button onClick={(e) => { e.stopPropagation(); toggleFlip(i); }} className={`justify-self-end ${hasConv ? 'text-gray-400 hover:text-white' : 'text-cyan-700 hover:text-cyan-300'} transition-colors`} title="Flip to Failing"><FlipIcon /></button>
                     </div>
 
                     <div className="flex-1 flex flex-col items-center relative px-4 sm:px-6 pb-6 w-full pt-4 z-20">
@@ -1047,7 +1038,7 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                           </div>
                         </div>
                         <button
-                          onClick={() => setDedicatingCard(i)}
+                          onClick={(e) => { e.stopPropagation(); setDedicatingCard(i); }}
                           className="w-full text-[10px] uppercase tracking-widest py-2 rounded transition-colors shadow-sm bg-black/40 hover:bg-black/60 border border-white/20 text-white"
                         >
                           Dedicate
@@ -1117,9 +1108,9 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                     )}
 
                     <div className="grid grid-cols-3 items-center mb-4 mt-2 px-2 z-20">
-                      <button onClick={() => setEditingCard(i)} className={`justify-self-start ${hasFail ? 'text-red-500 hover:text-red-400' : 'text-cyan-700 hover:text-cyan-300'} transition-colors`} title="Edit">✎</button>
+                      <button onClick={(e) => { e.stopPropagation(); setEditingCard(i); }} className={`justify-self-start ${hasFail ? 'text-red-500 hover:text-red-400' : 'text-cyan-700 hover:text-cyan-300'} transition-colors`} title="Edit">✎</button>
                       <span className={`justify-self-center text-[10px] font-bold uppercase tracking-widest ${hasFail ? 'text-red-500/70' : 'text-cyan-600'}`}>Failing</span>
-                      <button onClick={() => toggleFlip(i)} className={`justify-self-end ${hasFail ? 'text-red-500 hover:text-red-400' : 'text-cyan-700 hover:text-cyan-300'} transition-colors`} title="Flip to Conviction"><FlipIcon /></button>
+                      <button onClick={(e) => { e.stopPropagation(); toggleFlip(i); }} className={`justify-self-end ${hasFail ? 'text-red-500 hover:text-red-400' : 'text-cyan-700 hover:text-cyan-300'} transition-colors`} title="Flip to Conviction"><FlipIcon /></button>
                     </div>
 
                     <div className="flex-1 flex flex-col items-center relative px-4 sm:px-6 pb-6 w-full pt-4 z-20">
@@ -1159,7 +1150,7 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                         </div>
                         <button
                           type="button"
-                          onClick={() => setReflectingCard(i)}
+                          onClick={(e) => { e.stopPropagation(); setReflectingCard(i); }}
                           className="w-full text-[10px] uppercase tracking-widest py-2 rounded transition-colors bg-red-950/40 hover:bg-red-900/60 border border-red-900/50 text-red-400"
                         >
                           Reflect

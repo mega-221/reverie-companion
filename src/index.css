@@ -23,34 +23,48 @@
     display: none;
   }
   .animate-deck-in-next {
-    animation: cardDeckInNext 380ms ease-in-out both;
+    will-change: transform, opacity;
+    animation: cardDeckInNext 460ms linear both;
   }
   .animate-deck-out-next {
-    animation: cardDeckOutNext 380ms ease-in-out forwards;
+    will-change: transform, opacity;
+    animation: cardDeckOutNext 460ms linear forwards;
   }
   .animate-deck-in-prev {
-    animation: cardDeckInPrev 380ms ease-in-out both;
+    will-change: transform, opacity;
+    animation: cardDeckInPrev 460ms linear both;
   }
   .animate-deck-out-prev {
-    animation: cardDeckOutPrev 380ms ease-in-out forwards;
+    will-change: transform, opacity;
+    animation: cardDeckOutPrev 460ms linear forwards;
   }
 }
 
 @keyframes cardDeckInNext {
   0% {
-    opacity: 0.15;
+    opacity: 0;
     z-index: 10;
-    transform: perspective(1100px) translateX(10%) translateZ(-160px) rotateY(8deg) scale(0.82);
+    transform: perspective(1100px) translateX(0%) translateZ(-170px) rotateY(0deg) scale(0.84);
   }
-  48% {
-    opacity: 0.88;
+  20% {
+    opacity: 0.45;
+    z-index: 10;
+    transform: perspective(1100px) translateX(12%) translateZ(-150px) rotateY(9deg) scale(0.86);
+  }
+  50% {
+    opacity: 0.85;
     z-index: 20;
-    transform: perspective(1100px) translateX(40%) translateZ(-60px) rotateY(24deg) scale(0.92);
+    transform: perspective(1100px) translateX(34%) translateZ(-85px) rotateY(22deg) scale(0.92);
+  }
+  80% {
+    opacity: 0.97;
+    z-index: 20;
+    transform: perspective(1100px) translateX(12%) translateZ(-18px) rotateY(9deg) scale(0.98);
   }
   100% {
     opacity: 1;
     z-index: 20;
-    transform: perspective(1100px) translateX(0) translateZ(0) rotateY(0deg) scale(1);
+    transform: perspective(1100px) translateX(0%) translateZ(0px) rotateY(0deg) scale(1);
   }
 }
 
@@ -58,35 +72,55 @@
   0% {
     opacity: 1;
     z-index: 20;
-    transform: perspective(1100px) translateX(0) translateZ(0) rotateY(0deg) scale(1);
+    transform: perspective(1100px) translateX(0%) translateZ(0px) rotateY(0deg) scale(1);
   }
-  48% {
-    opacity: 0.78;
+  20% {
+    opacity: 0.92;
+    z-index: 20;
+    transform: perspective(1100px) translateX(-12%) translateZ(-18px) rotateY(-9deg) scale(0.98);
+  }
+  50% {
+    opacity: 0.72;
     z-index: 15;
-    transform: perspective(1100px) translateX(-40%) translateZ(-60px) rotateY(-24deg) scale(0.92);
+    transform: perspective(1100px) translateX(-34%) translateZ(-85px) rotateY(-22deg) scale(0.92);
+  }
+  80% {
+    opacity: 0.25;
+    z-index: 10;
+    transform: perspective(1100px) translateX(-12%) translateZ(-150px) rotateY(-9deg) scale(0.86);
   }
   100% {
     opacity: 0;
     z-index: 10;
-    transform: perspective(1100px) translateX(-10%) translateZ(-160px) rotateY(-8deg) scale(0.82);
+    transform: perspective(1100px) translateX(0%) translateZ(-170px) rotateY(0deg) scale(0.84);
   }
 }
 
 @keyframes cardDeckInPrev {
   0% {
-    opacity: 0.15;
+    opacity: 0;
     z-index: 10;
-    transform: perspective(1100px) translateX(-10%) translateZ(-160px) rotateY(-8deg) scale(0.82);
+    transform: perspective(1100px) translateX(0%) translateZ(-170px) rotateY(0deg) scale(0.84);
   }
-  48% {
-    opacity: 0.88;
+  20% {
+    opacity: 0.45;
+    z-index: 10;
+    transform: perspective(1100px) translateX(-12%) translateZ(-150px) rotateY(-9deg) scale(0.86);
+  }
+  50% {
+    opacity: 0.85;
     z-index: 20;
-    transform: perspective(1100px) translateX(-40%) translateZ(-60px) rotateY(-24deg) scale(0.92);
+    transform: perspective(1100px) translateX(-34%) translateZ(-85px) rotateY(-22deg) scale(0.92);
+  }
+  80% {
+    opacity: 0.97;
+    z-index: 20;
+    transform: perspective(1100px) translateX(-12%) translateZ(-18px) rotateY(-9deg) scale(0.98);
   }
   100% {
     opacity: 1;
     z-index: 20;
-    transform: perspective(1100px) translateX(0) translateZ(0) rotateY(0deg) scale(1);
+    transform: perspective(1100px) translateX(0%) translateZ(0px) rotateY(0deg) scale(1);
   }
 }
 
@@ -94,17 +128,27 @@
   0% {
     opacity: 1;
     z-index: 20;
-    transform: perspective(1100px) translateX(0) translateZ(0) rotateY(0deg) scale(1);
+    transform: perspective(1100px) translateX(0%) translateZ(0px) rotateY(0deg) scale(1);
   }
-  48% {
-    opacity: 0.78;
+  20% {
+    opacity: 0.92;
+    z-index: 20;
+    transform: perspective(1100px) translateX(12%) translateZ(-18px) rotateY(9deg) scale(0.98);
+  }
+  50% {
+    opacity: 0.72;
     z-index: 15;
-    transform: perspective(1100px) translateX(40%) translateZ(-60px) rotateY(24deg) scale(0.92);
+    transform: perspective(1100px) translateX(34%) translateZ(-85px) rotateY(22deg) scale(0.92);
+  }
+  80% {
+    opacity: 0.25;
+    z-index: 10;
+    transform: perspective(1100px) translateX(12%) translateZ(-150px) rotateY(9deg) scale(0.86);
   }
   100% {
     opacity: 0;
     z-index: 10;
-    transform: perspective(1100px) translateX(10%) translateZ(-160px) rotateY(8deg) scale(0.82);
+    transform: perspective(1100px) translateX(0%) translateZ(-170px) rotateY(0deg) scale(0.84);
   }
 }
 

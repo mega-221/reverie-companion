@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Character, CompendiumEntry } from '../../../types';
 import { useCompendium } from '../../../CompendiumContext';
@@ -461,7 +461,6 @@ export default function AspectsCard({
   const [mobileIndex, setMobileIndex] = useState(0);
   const [leavingIndex, setLeavingIndex] = useState<number | null>(null);
   const [slideDir, setSlideDir] = useState<'next' | 'prev' | null>(null);
-  const touchStartX = useRef<number | null>(null);
 
   const aspects = char.data.aspects || [];
   const safeMobileIndex = aspects.length > 0 ? Math.min(mobileIndex, aspects.length - 1) : 0;
@@ -604,22 +603,9 @@ export default function AspectsCard({
         </div>
       )}
 
-      {/* Centered, Standardized, Rearrangeable Card Grid (centered incremental stepper on mobile, centered wrap on sm+) */}
+      {/* Centered, Standardized, Rearrangeable Card Grid (buttons-only stepper on mobile, centered wrap on sm+) */}
       {aspects.length > 0 && (
-        <div
-          className="flex-1 flex flex-col justify-center"
-          onTouchStart={(e) => {
-            touchStartX.current = e.touches[0]?.clientX ?? null;
-          }}
-          onTouchEnd={(e) => {
-            if (touchStartX.current === null) return;
-            const dx = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
-            touchStartX.current = null;
-            if (Math.abs(dx) > 45) {
-              stepMobileAspect(dx < 0 ? 1 : -1);
-            }
-          }}
-        >
+        <div className="flex-1 flex flex-col justify-center">
           <div className="relative flex flex-wrap justify-center items-stretch gap-4 sm:gap-5 w-full py-2 sm:py-0 overflow-visible">
             {aspects.map((slot, i) => {
               const slotKey = slot.id || `${slot.name}-${i}`;
@@ -821,45 +807,59 @@ export default function AspectsCard({
                   )}
                 </div>
 
-                {/* Single Unified Upward-Expanding Requirements Drawer (zero duplicate elements, zero ghosting) */}
-                {slot.name && !isEditing && (
-                  <div
-                    className={`absolute inset-x-0 bottom-0 z-20 bg-gray-950 border-t flex flex-col overflow-hidden transition-[max-height] duration-300 ease-out ${
-                      isAbandoned && !isReqsOpen ? 'grayscale opacity-50' : ''
-                    } ${
-                      isReqsOpen && !isLoreOpen
-                        ? 'max-h-[calc(100%-2.25rem)] border-gray-700'
-                        : 'max-h-10 border-gray-800'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggleReqs(slotKey)}
-                      className="w-full h-10 px-4 bg-black/35 hover:bg-black/55 flex items-center justify-between text-left transition-colors shrink-0"
-                      title={isReqsOpen ? 'Collapse requirements' : 'Click to view requirements'}
+                {/* Upward-Expanding Requirements Drawer (exact mirror of Lore drawer transition) */}
+                {slot.name && (
+                  <>
+                    <div
+                      aria-hidden={!isReqsOpen || isEditing || isLoreOpen}
+                      className={`absolute inset-x-0 top-9 bottom-10 z-20 flex flex-col justify-end overflow-hidden ${
+                        isReqsOpen && !isEditing && !isLoreOpen
+                          ? 'pointer-events-auto'
+                          : 'pointer-events-none'
+                      }`}
                     >
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                        Requirements
-                      </span>
-                      <span className="text-[10px] font-bold text-gray-400">
-                        {isReqsOpen ? '▼' : '▲'}
-                      </span>
-                    </button>
-                    <div className="overflow-y-auto no-scrollbar px-4 py-3 border-t border-gray-800">
-                      {requirements.length > 0 ? (
-                        <ul className="space-y-1.5 text-xs text-gray-200">
-                          {requirements.map((req, rIdx) => (
-                            <li key={rIdx} className="flex items-start gap-2 leading-snug">
-                              <span className="text-gray-500 select-none">•</span>
-                              <span>{req}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className="text-xs text-gray-500 italic">None</span>
-                      )}
+                      <div
+                        className={`w-full bg-gray-950 flex flex-col overflow-hidden transition-[height] duration-300 ease-out ${
+                          isReqsOpen && !isEditing && !isLoreOpen
+                            ? 'h-full border-t border-gray-700'
+                            : 'h-0 border-t-0'
+                        }`}
+                      >
+                        <div className="flex-1 overflow-y-auto no-scrollbar p-4 flex flex-col justify-center">
+                          {requirements.length > 0 ? (
+                            <ul className="space-y-1.5 text-xs text-gray-200">
+                              {requirements.map((req, rIdx) => (
+                                <li key={rIdx} className="flex items-start gap-2 leading-snug">
+                                  <span className="text-gray-500 select-none">•</span>
+                                  <span>{req}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div className="text-xs text-gray-500 italic text-center">None</div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+
+                    {!isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => toggleReqs(slotKey)}
+                        className={`absolute inset-x-0 bottom-0 z-[22] w-full h-10 px-4 bg-gray-950 hover:bg-black/90 border-t flex items-center justify-between text-left transition-colors ${
+                          isAbandoned && !isReqsOpen ? 'grayscale opacity-50' : ''
+                        } ${isReqsOpen && !isLoreOpen ? 'border-gray-700' : 'border-gray-800'}`}
+                        title={isReqsOpen ? 'Collapse requirements' : 'Click to view requirements'}
+                      >
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                          Requirements
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-400">
+                          {isReqsOpen ? '▼' : '▲'}
+                        </span>
+                      </button>
+                    )}
+                  </>
                 )}
 
                 {/* Animated Downward-Expanding Lore Drawer (rolls down below Name Zone, solid opaque) */}
