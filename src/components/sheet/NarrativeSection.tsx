@@ -36,11 +36,9 @@ export default function NarrativeSection({
         <AspectsCard char={char} />
       </div>
 
-      {/* 5. JOURNAL — full-width band, centered timeline */}
+      {/* 5. JOURNAL — full-width band matching Aspects */}
       <div className="w-full lg:col-span-12">
-        <div className="max-w-3xl mx-auto">
-          <JournalCard char={char} patch={patch} />
-        </div>
+        <JournalCard char={char} patch={patch} />
       </div>
 
     </div>
