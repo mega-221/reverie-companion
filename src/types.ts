@@ -26,9 +26,32 @@ export type InventoryItem = {
   location?: string;
 };
 
+export type AdvancementType =
+  | 'acc'
+  | 'eva'
+  | 'vl'
+  | 'sl'
+  | 'discipline_ability'
+  | 'aspect_slot'
+  | 'new_discipline'
+  | 'conviction_5'
+  | 'skill_5';
+
+export type AdvancementSelection = {
+  id: string;
+  tier: number;
+  type: AdvancementType;
+  targetName?: string;
+};
+
 export type CharacterData = {
   identity: { origin: string; className: string; path: string; quote: string; inspirations: string[]; originChoices: Record<string, string> };
-  progression: { tier: number; level: number; xp: number };
+  progression: {
+    tier: number;
+    level: number;
+    xp: number;
+    advancements?: AdvancementSelection[];
+  };
   attributes: { grt: number; ref: number; int: number; psy: number };
   skills: Record<string, number>;
   specialSkills: { name: string; rank: number; attribute: string }[];
@@ -58,16 +81,14 @@ export type CharacterData = {
     }[];
   };
   notes: string;
-    journal?: {
-  id: string;
-  date: string;            // real creation time (ISO)
-  title: string;
-  content: string;
-  inUniverseDate?: string; // free text, e.g. "3rd of Ashfall, Year 412"
-}[];
-    relationships: { id: string; name: string; faction: string; role: string; description: string; }[];
-  // keep notes: string for backwards compatibility during migration, or remove it if you handle it fully. 
-  // I recommend keeping it in the type but not using it in the UI.
+  journal?: {
+    id: string;
+    date: string;
+    title: string;
+    content: string;
+    inUniverseDate?: string;
+  }[];
+  relationships: { id: string; name: string; faction: string; role: string; description: string; }[];
 };
 
 export type CompendiumEntry = {

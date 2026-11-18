@@ -8,11 +8,13 @@ import {
   getMaxAttributePoints, getSpentAttributePoints,
   type Tab, type LevelUpTarget 
 } from './components/sheet/utils';
+import { vigorMax, strainMax, dpMax } from './calc';
 
 import Header from './components/sheet/Header';
 import ClassSection from './components/sheet/ClassSection';
 import AbilitiesSection from './components/sheet/AbilitiesSection';
 import NarrativeSection from './components/sheet/NarrativeSection';
+import ProgressionSection from './components/sheet/ProgressionSection';
 import Footer from './components/sheet/Footer';
 import InventoryModal from './components/sheet/InventoryModal';
 import { LevelUpModal, OriginModal, ClassModal, SpecialSkillModal, AbilityModal, PathModal, DisciplineModal } from './components/sheet/Modals';
@@ -101,7 +103,10 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           progression: {
             tier: fetchedChar.data.progression?.tier || 2,
             level: fetchedChar.data.progression?.level || 5,
-            xp: fetchedChar.data.progression?.xp ?? 0
+            xp: fetchedChar.data.progression?.xp ?? 0,
+            advancements: Array.isArray(fetchedChar.data.progression?.advancements)
+              ? fetchedChar.data.progression.advancements
+              : []
           },
           attributes: {
             grt: fetchedChar.data.attributes?.grt || 1,
@@ -160,7 +165,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
   if (!char) return <p className="text-gray-400 p-8 text-center font-cinzel text-xl h-screen flex items-center justify-center bg-gray-900">Loading character...</p>;
 
-  const baseStrainMax = 5 + (char.data.progression.tier - 1) + char.data.bonus.sl;
+  const baseStrainMax = strainMax(char.data);
   const isCritical = char.data.trackers.strain > baseStrainMax || char.data.trackers.vigor < 1;
 
   const showFilter = isCritical || pulseState !== 'none';
@@ -177,12 +182,12 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     let min = 0; 
     
     if (key === 'vigor') {
-      const baseMax = 5 + (char.data.progression.tier - 1) + char.data.bonus.vm;
+      const baseMax = vigorMax(char.data);
       max = baseMax * 2; 
       min = -baseMax; 
     }
-    if (key === 'strain') max = (5 + (char.data.progression.tier - 1) + char.data.bonus.sl) * 2;
-    if (key === 'dp') max = 2 + (char.data.progression.tier - 1) + char.data.bonus.dp;
+    if (key === 'strain') max = strainMax(char.data) * 2;
+    if (key === 'dp') max = dpMax(char.data);
     
     const nextVal = Math.max(min, Math.min(max, current + amount));
     
@@ -192,13 +197,13 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       const targetVigor = 1 + endurance;
       
       const newVigor = char.data.trackers.vigor < targetVigor ? char.data.trackers.vigor : targetVigor;
-      const baseStrainMax = max / 2;
+      const halfMax = max / 2;
       
       patch({
         trackers: {
           ...char.data.trackers,
           vigor: newVigor,
-          strain: baseStrainMax
+          strain: halfMax
         }
       });
       
@@ -355,8 +360,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     }
   };
 
-  const availableAttrPts = getMaxAttributePoints(char.data.progression.tier) - getSpentAttributePoints(char.data.attributes);
-
   return (
     <>
       {pulseState !== 'none' && (
@@ -413,34 +416,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
           {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} openOriginModal={() => setIsOriginModalOpen(true)} onRemoveOrigin={() => applyOrigin('', {})} />}
           
-          {activeTab === 'progression' && (
-            <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in duration-200">
-              <section className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm w-full">
-                <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">Progression</h2>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl">
-                  <label className="flex flex-col text-sm font-bold text-gray-300">Tier
-                    <input type="number" min={1} max={6} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.tier} onChange={e => patch({ progression: { ...char.data.progression, tier: +e.target.value } })} />
-                  </label>
-                  
-                  <label className="flex flex-col text-sm font-bold text-gray-300">Level
-                    <input type="number" min={1} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.level} onChange={e => patch({ progression: { ...char.data.progression, level: +e.target.value } })} />
-                  </label>
-                  
-                  <label className="flex flex-col text-sm font-bold text-gray-300">XP
-                    <input type="number" min={0} className="border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200" value={char.data.progression.xp} onChange={e => patch({ progression: { ...char.data.progression, xp: +e.target.value } })} />
-                  </label>
-
-                  <div className="flex flex-col text-sm font-bold text-gray-300">
-                    <span>Attribute Points</span>
-                    <div className={`border border-gray-700 bg-black/40 p-2 rounded mt-1 font-normal shadow-inner text-center flex items-center justify-center h-[42px] ${availableAttrPts > 0 ? 'text-green-400' : 'text-gray-400'}`}>
-                      {availableAttrPts} <span className="text-gray-500 mx-1">/</span> {getMaxAttributePoints(char.data.progression.tier)}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </div>
-          )}
+          {activeTab === 'progression' && <ProgressionSection char={char} patch={patch} />}
         </main>
       </div>
 

@@ -2,12 +2,15 @@ import type { Character } from '../../types';
 import { evasion, movementTiles, burdenMax, calculateBurden } from '../../calc';
 import { useCompendium } from '../../CompendiumContext';
 import { Tooltip } from './utils';
+import { deriveLevelAndTierFromXp } from './progression/progressionData';
 
 export default function StatsCard({ char, patch }: { char: Character, updateTracker: (k: any, a: number) => void, patch: any }) {
   const { getEntryByName } = useCompendium();
   const maxBurdenVal = burdenMax(char.data);
   const currentBurdenVal = calculateBurden(char.data, getEntryByName);
   const isOverburdened = currentBurdenVal > maxBurdenVal;
+
+  const { level, tier } = deriveLevelAndTierFromXp(char.data.progression.xp ?? 0);
 
   const getSeasonColor = (season?: string) => {
     switch(season) {
@@ -56,12 +59,12 @@ export default function StatsCard({ char, patch }: { char: Character, updateTrac
           <div className="flex justify-between items-center bg-black/20 p-2.5 rounded border border-gray-700/50 w-full">
             <div className="flex flex-col items-center flex-1">
               <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-1">Tier</span>
-              <span className="text-gray-100 font-bold text-lg leading-none">{char.data.progression.tier}</span>
+              <span className="text-gray-100 font-bold text-lg leading-none">{tier}</span>
             </div>
             <div className="w-px h-7 bg-gray-700"></div>
             <div className="flex flex-col items-center flex-1">
               <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-1">Level</span>
-              <span className="text-gray-100 font-bold text-lg leading-none">{char.data.progression.level}</span>
+              <span className="text-gray-100 font-bold text-lg leading-none">{level}</span>
             </div>
             <div className="w-px h-7 bg-gray-700"></div>
             <div className="flex flex-col items-center flex-1">

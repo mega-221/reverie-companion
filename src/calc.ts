@@ -1,8 +1,16 @@
-import type { CharacterData } from './types';
-export const vigorMax  = (d: CharacterData) => 5 + (d.progression.tier - 1) + d.bonus.vm;
-export const strainMax = (d: CharacterData) => 5 + (d.progression.tier - 1) + d.bonus.sl;
-export const dpMax     = (d: CharacterData) => 2 + (d.progression.tier - 1) + d.bonus.dp;
-export const evasion   = (d: CharacterData) => 10 + d.bonus.eva;
+import type { CharacterData, AdvancementType } from './types';
+
+const countAdv = (d: CharacterData, type: AdvancementType) =>
+  (d.progression.advancements || []).filter(a => a.type === type).length;
+
+// Every new tier gives +1 VM and +1 SL (including tiers beyond 5); +1 per VL advancement, +2 per SL advancement
+export const vigorMax      = (d: CharacterData) => 5 + (d.progression.tier - 1) + d.bonus.vm + countAdv(d, 'vl');
+export const strainMax     = (d: CharacterData) => 5 + (d.progression.tier - 1) + d.bonus.sl + (countAdv(d, 'sl') * 2);
+// Tiers 1-5 give +1 DP maximum; tiers beyond 5 do not grant DP maximum
+export const dpMax         = (d: CharacterData) => 2 + Math.min(Math.max(0, d.progression.tier - 1), 4) + d.bonus.dp;
+export const evasion       = (d: CharacterData) => 10 + d.bonus.eva + countAdv(d, 'eva');
+export const accuracyBonus = (d: CharacterData) => countAdv(d, 'acc');
+export const aspectSlotMax = (d: CharacterData) => countAdv(d, 'aspect_slot');
 
 export function movementTiles(d: CharacterData) {
   const s = (d.skills.Athletics ?? 0) + d.attributes.grt + d.attributes.ref;
