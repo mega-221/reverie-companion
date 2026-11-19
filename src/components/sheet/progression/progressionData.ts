@@ -411,3 +411,10 @@ export function refundTierAdvancements(
   const removed = advancements.filter(a => a.tier === tierToRefund);
   return applyAdvancementRemovals(data, kept, removed);
 }
+
+export const calculateLevelFromXp = (xp: number): number => Math.max(0, Math.floor((xp || 0) / 5));
+
+export const deriveLevelAndTierFromXp = (xp: number) => {
+  const level = calculateLevelFromXp(xp);
+  return { level, tier: calculateTierFromLevel(level) };
+};
