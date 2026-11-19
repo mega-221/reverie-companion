@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from './supabase';
 import type { Character, CharacterData } from './types';
 import { useCompendium } from './CompendiumContext';
@@ -8,29 +9,31 @@ import {
   getMaxAttributePoints, getSpentAttributePoints,
   type Tab, type LevelUpTarget 
 } from './components/sheet/utils';
-import { vigorMax, strainMax, dpMax } from './calc';
+import { vigorMax, strainMax, dpMax, apMax } from './calc';
+import {
+  calculateTierFromLevel,
+  getMaxAccessibleAbilityRank,
+  isSkillInspired,
+  getSkillMaxRank,
+  getSpendableXp,
+  type AbilityPickTask,
+} from './components/sheet/progression/progressionData';
 
 import Header from './components/sheet/Header';
-import ClassSection from './components/sheet/ClassSection';
-import AbilitiesSection from './components/sheet/AbilitiesSection';
+import GameplaySection from './components/sheet/GameplaySection';
 import NarrativeSection from './components/sheet/NarrativeSection';
 import ProgressionSection from './components/sheet/ProgressionSection';
 import Footer from './components/sheet/Footer';
-import InventoryModal from './components/sheet/InventoryModal';
-import { LevelUpModal, OriginModal, ClassModal, SpecialSkillModal, AbilityModal, PathModal, DisciplineModal } from './components/sheet/Modals';
-
-import StatsCard from './components/sheet/StatsCard';
-import VitalsCard from './components/sheet/VitalsCard';
-import CoreSkillsCard from './components/sheet/CoreSkillsCard';
-import LoadoutCard from './components/sheet/LoadoutCard';
-import InjuriesCard from './components/sheet/InjuriesCard';
-import SpecialSkillsCard from './components/sheet/SpecialSkillsCard';
+import InventoryModal from './components/sheet/modals/InventoryModal';
+import { LevelUpModal, OriginModal, ClassModal, SpecialSkillModal, AbilityModal, PathModal, DisciplineModal } from './components/sheet/modals/Modals';
 
 export default function CharacterSheet({ id, onBack }: { id: string, onBack: () => void }) {
-  const { getAbilities, getEntryByName } = useCompendium();
+  const { getAbilities, getEntryByName, loading: compendiumLoading } = useCompendium();
   const [char, setChar] = useState<Character | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('gameplay');
   
   const [pulseState, setPulseState] = useState<'none' | 'active' | 'fading'>('none');
@@ -45,6 +48,8 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const [modalSpecialSkillIndex, setModalSpecialSkillIndex] = useState<number | null>(null);
   const [isAbilityModalOpen, setIsAbilityModalOpen] = useState(false);
   const [modalAbilityIndex, setModalAbilityIndex] = useState<number | null>(null);
+  const [abilityPickQueue, setAbilityPickQueue] = useState<AbilityPickTask[]>([]);
+  const [abilityPickTotal, setAbilityPickTotal] = useState(0);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
 
   useEffect(() => {
@@ -100,14 +105,24 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             inspirations: fetchedChar.data.identity?.inspirations || [],
             originChoices: fetchedChar.data.identity?.originChoices || {}
           },
-          progression: {
-            tier: fetchedChar.data.progression?.tier || 2,
-            level: fetchedChar.data.progression?.level || 5,
-            xp: fetchedChar.data.progression?.xp ?? 0,
-            advancements: Array.isArray(fetchedChar.data.progression?.advancements)
-              ? fetchedChar.data.progression.advancements
-              : []
-          },
+          progression: (() => {
+            const rawLevel = Math.max(0, fetchedChar.data.progression?.level ?? 0);
+            const derivedTier = calculateTierFromLevel(rawLevel);
+            const rawXp = Math.max(0, fetchedChar.data.progression?.xp ?? 0);
+            const totalXp =
+              rawXp < rawLevel * 5
+                ? rawLevel * 5 + Math.min(4, rawXp)
+                : rawXp;
+            return {
+              tier: fetchedChar.data.progression?.tier ?? derivedTier,
+              level: rawLevel,
+              xp: totalXp,
+              spendableXp: totalXp,
+              advancements: Array.isArray(fetchedChar.data.progression?.advancements)
+                ? fetchedChar.data.progression.advancements
+                : []
+            };
+          })(),
           attributes: {
             grt: fetchedChar.data.attributes?.grt || 1,
             ref: fetchedChar.data.attributes?.ref || 1,
@@ -118,13 +133,15 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             vm: fetchedChar.data.bonus?.vm || 0,
             sl: fetchedChar.data.bonus?.sl || 0,
             dp: fetchedChar.data.bonus?.dp || 0,
-            eva: fetchedChar.data.bonus?.eva || 0
+            eva: fetchedChar.data.bonus?.eva || 0,
+            ap: fetchedChar.data.bonus?.ap || 0,
           },
           trackers: {
-            vigor: fetchedChar.data.trackers?.vigor ?? 6,
+            vigor: fetchedChar.data.trackers?.vigor ?? 5,
             strain: fetchedChar.data.trackers?.strain ?? 0,
-            dp: fetchedChar.data.trackers?.dp ?? 3,
+            dp: fetchedChar.data.trackers?.dp ?? 2,
             ap: fetchedChar.data.trackers?.ap ?? 0,
+            apInitialized: Boolean(fetchedChar.data.trackers?.apInitialized),
             acc: fetchedChar.data.trackers?.acc ?? 0,
             injuries: (fetchedChar.data.trackers?.injuries || []).map((inj: any) => ({
               name: inj.name || inj.part || 'Unknown Injury',
@@ -159,9 +176,50 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           notes: oldNotes
         };
 
+        const initialApMax = apMax(safeData, getEntryByName);
+        if (!safeData.trackers.apInitialized && safeData.trackers.ap === 0 && initialApMax > 0) {
+          safeData.trackers.ap = initialApMax;
+          safeData.trackers.apInitialized = true;
+        }
+
+        safeData.progression.spendableXp = getSpendableXp(safeData);
         setChar({ ...fetchedChar, data: safeData });
+        setHasUnsavedChanges(false);
+        setSaved(false);
       });
   }, [id]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    if (compendiumLoading || !char) return;
+    const targetMaxAp = apMax(char.data, getEntryByName);
+    if (!char.data.trackers.apInitialized && (char.data.trackers.ap ?? 0) === 0 && targetMaxAp > 0) {
+      setChar(prev => {
+        if (!prev) return prev;
+        if (prev.data.trackers.apInitialized || (prev.data.trackers.ap ?? 0) !== 0) return prev;
+        return {
+          ...prev,
+          data: {
+            ...prev.data,
+            trackers: {
+              ...prev.data.trackers,
+              ap: targetMaxAp,
+              apInitialized: true,
+            },
+          },
+        };
+      });
+    }
+  }, [compendiumLoading, char?.id]);
 
   if (!char) return <p className="text-gray-400 p-8 text-center font-cinzel text-xl h-screen flex items-center justify-center bg-gray-900">Loading character...</p>;
 
@@ -171,8 +229,70 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const showFilter = isCritical || pulseState !== 'none';
 
   function patch(p: Partial<CharacterData>) {
-    setChar(c => c && { ...c, data: { ...c.data, ...p } });
+    setChar(c => {
+      if (!c) return c;
+      const merged: CharacterData = { ...c.data, ...p };
+
+      if (!p.trackers) {
+        const prevVigorMax = vigorMax(c.data);
+        const nextVigorMax = vigorMax(merged);
+        const deltaVigorMax = nextVigorMax - prevVigorMax;
+
+        const prevDpMax = dpMax(c.data);
+        const nextDpMax = dpMax(merged);
+        const deltaDpMax = nextDpMax - prevDpMax;
+
+        const prevArmourId = c.data.equipment?.armour || '';
+        const nextArmourId = merged.equipment?.armour || '';
+        const equippedNewArmour = Boolean(nextArmourId && nextArmourId !== prevArmourId);
+        const prevApMax = apMax(c.data, getEntryByName);
+        const nextApMax = apMax(merged, getEntryByName);
+        const deltaApMax = nextApMax - prevApMax;
+
+        if (deltaVigorMax !== 0 || deltaDpMax !== 0 || deltaApMax !== 0 || equippedNewArmour) {
+          const nextVigor =
+            deltaVigorMax !== 0
+              ? Math.max(
+                  -nextVigorMax,
+                  Math.min(nextVigorMax * 2, merged.trackers.vigor + deltaVigorMax)
+                )
+              : merged.trackers.vigor;
+
+          const nextDp =
+            deltaDpMax !== 0
+              ? Math.max(0, Math.min(nextDpMax, merged.trackers.dp + deltaDpMax))
+              : merged.trackers.dp;
+
+          const nextAp = equippedNewArmour
+            ? nextApMax
+            : deltaApMax !== 0
+            ? Math.max(0, (merged.trackers.ap ?? 0) + deltaApMax)
+            : merged.trackers.ap;
+
+          merged.trackers = {
+            ...merged.trackers,
+            vigor: nextVigor,
+            dp: nextDp,
+            ap: nextAp,
+            apInitialized:
+              equippedNewArmour || deltaApMax !== 0 ? true : merged.trackers.apInitialized,
+          };
+        }
+      }
+
+      return {
+        ...c,
+        data: {
+          ...merged,
+          progression: {
+            ...merged.progression,
+            spendableXp: getSpendableXp(merged),
+          },
+        },
+      };
+    });
     setSaved(false);
+    setHasUnsavedChanges(true);
   }
 
   function updateTracker(key: 'vigor' | 'strain' | 'dp' | 'ap' | 'acc', amount: number) {
@@ -212,14 +332,35 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       return; 
     }
 
-    patch({ trackers: { ...char.data.trackers, [key]: nextVal } });
+    patch({
+      trackers: {
+        ...char.data.trackers,
+        [key]: nextVal,
+        ...(key === 'ap' ? { apInitialized: true } : {}),
+      },
+    });
   }
 
-  async function save() {
-    if (!char) return;
+  async function save(): Promise<boolean> {
+    if (!char) return false;
     setSaving(true);
-    await supabase.from('characters').update({ data: char.data }).eq('id', char.id);
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000);
+    const { error } = await supabase.from('characters').update({ data: char.data }).eq('id', char.id);
+    setSaving(false);
+    if (!error) {
+      setHasUnsavedChanges(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      return true;
+    }
+    return false;
+  }
+
+  function handleRequestBack() {
+    if (hasUnsavedChanges) {
+      setIsExitConfirmOpen(true);
+    } else {
+      onBack();
+    }
   }
 
   async function handleNameSave(newName: string) {
@@ -288,6 +429,8 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
   const handleAdvance = () => {
     if (!char || !levelUpTarget) return;
+    const currentSpendable = getSpendableXp(char.data);
+
     if (levelUpTarget.type === 'attribute') {
       const current = char.data.attributes[levelUpTarget.key]; 
       const max = getMaxAttribute(char.data.progression.tier);
@@ -299,30 +442,33 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     } else if (levelUpTarget.type === 'skill') {
       const current = char.data.skills[levelUpTarget.key] ?? 0;
       const attr = Object.keys(SKILL_GROUPS).find(a => (SKILL_GROUPS[a as keyof typeof SKILL_GROUPS].skills as readonly string[]).includes(levelUpTarget.key)) as keyof typeof char.data.attributes;
-      const max = Math.min(8, char.data.attributes[attr] * 2);
+      const originMin = getMinSkillRank(levelUpTarget.key, char);
+      const max = getSkillMaxRank(levelUpTarget.key, char.data.attributes[attr], originMin, char.data);
       if (current < max) {
         let cost = SKILL_XP_COSTS[current];
-        const isInspired = char.data.identity.inspirations?.includes(levelUpTarget.key);
+        const isInspired = isSkillInspired(levelUpTarget.key, char.data);
         if (isInspired) cost = Math.max(0, cost - 1);
 
-        if (char.data.progression.xp >= cost) {
+        if (currentSpendable >= cost) {
           patch({ 
             skills: { ...char.data.skills, [levelUpTarget.key]: current + 1 }, 
-            progression: { ...char.data.progression, xp: char.data.progression.xp - cost } 
           });
         }
       }
     } else if (levelUpTarget.type === 'specialSkill') {
       const skill = char.data.specialSkills[levelUpTarget.index]; 
-      const max = Math.min(8, char.data.attributes[skill.attribute as keyof typeof char.data.attributes] * 2);
+      const compendiumAttr = getEntryByName(skill.name)?.data?.attribute;
+      const attr = (compendiumAttr || skill.attribute || 'grt') as keyof typeof char.data.attributes;
+      const originMin = getMinSkillRank(skill.name, char);
+      const max = getSkillMaxRank(skill.name, char.data.attributes[attr], originMin, char.data);
       if (skill.rank < max) {
         let cost = SKILL_XP_COSTS[skill.rank];
-        const isInspired = char.data.identity.inspirations?.includes(skill.name);
+        const isInspired = isSkillInspired(skill.name, char.data);
         if (isInspired) cost = Math.max(0, cost - 1);
 
-        if (char.data.progression.xp >= cost) {
+        if (currentSpendable >= cost) {
           const next = [...char.data.specialSkills]; next[levelUpTarget.index] = { ...next[levelUpTarget.index], rank: skill.rank + 1 };
-          patch({ specialSkills: next, progression: { ...char.data.progression, xp: char.data.progression.xp - cost } });
+          patch({ specialSkills: next });
         }
       }
     }
@@ -330,6 +476,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
   const handleRegress = () => {
     if (!char || !levelUpTarget) return;
+
     if (levelUpTarget.type === 'attribute') {
       const current = char.data.attributes[levelUpTarget.key]; 
       if (current > 1) patch({ attributes: { ...char.data.attributes, [levelUpTarget.key]: current - 1 } });
@@ -337,25 +484,16 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       const current = char.data.skills[levelUpTarget.key] ?? 0; 
       const min = getMinSkillRank(levelUpTarget.key, char);
       if (current > min) {
-        let refund = SKILL_XP_COSTS[current - 1];
-        const isInspired = char.data.identity.inspirations?.includes(levelUpTarget.key);
-        if (isInspired) refund = Math.max(0, refund - 1);
-
         patch({ 
           skills: { ...char.data.skills, [levelUpTarget.key]: current - 1 }, 
-          progression: { ...char.data.progression, xp: char.data.progression.xp + refund } 
         });
       }
     } else if (levelUpTarget.type === 'specialSkill') {
       const skill = char.data.specialSkills[levelUpTarget.index]; 
       const min = getMinSkillRank(skill.name, char);
       if (skill.rank > min) {
-        let refund = SKILL_XP_COSTS[skill.rank - 1];
-        const isInspired = char.data.identity.inspirations?.includes(skill.name);
-        if (isInspired) refund = Math.max(0, refund - 1);
-
         const next = [...char.data.specialSkills]; next[levelUpTarget.index] = { ...next[levelUpTarget.index], rank: skill.rank - 1 };
-        patch({ specialSkills: next, progression: { ...char.data.progression, xp: char.data.progression.xp + refund } });
+        patch({ specialSkills: next });
       }
     }
   };
@@ -371,52 +509,50 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       )}
 
       <div className={`min-h-screen bg-gray-900 pb-20 font-sans text-gray-200 transition-all duration-1000 ${showFilter ? 'grayscale-[60%] contrast-[1.1]' : ''}`}>
-        <Header char={char} onBack={onBack} onSave={save} saving={saving} saved={saved} onNameSave={(name) => { setChar({ ...char, name }); handleNameSave(name); }} updateTracker={updateTracker} showPulse={pulseState !== 'none'} />
+        <Header
+          char={char}
+          onBack={handleRequestBack}
+          onSave={save}
+          saving={saving}
+          saved={saved}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onNameSave={(name) => { setChar({ ...char, name }); handleNameSave(name); }}
+          updateTracker={updateTracker}
+          showPulse={pulseState !== 'none'}
+        />
         <main className="w-full px-4 sm:px-6 pt-6 relative z-10">
           
           {activeTab === 'gameplay' && (
-            <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200 items-start">
-              
-              <div className="lg:col-span-4 h-full order-1 lg:order-none">
-                <StatsCard char={char} updateTracker={updateTracker} patch={patch} />
-              </div>
-              <div className="lg:col-span-4 h-full order-2 lg:order-none">
-                <VitalsCard char={char} updateTracker={updateTracker} />
-              </div>
-              <div className="lg:col-span-4 h-full order-3 lg:order-none">
-                <CoreSkillsCard char={char} setLevelUpTarget={setLevelUpTarget} />
-              </div>
-
-              <div className="lg:col-span-4 h-full order-6 lg:order-none">
-                <LoadoutCard char={char} patch={patch} onOpenInventory={() => setIsInventoryModalOpen(true)} />
-              </div>
-              <div className="lg:col-span-4 h-full order-5 lg:order-none">
-                <InjuriesCard char={char} patch={patch} />
-              </div>
-              <div className="lg:col-span-4 h-full order-4 lg:order-none">
-                <SpecialSkillsCard char={char} patch={patch} setLevelUpTarget={setLevelUpTarget} setIsSpecialSkillModalOpen={setIsSpecialSkillModalOpen} setModalSpecialSkillIndex={setModalSpecialSkillIndex} setExpandedSpecialSkill={() => {}} />
-              </div>
-
-              <div className="lg:col-span-4 h-full order-7 lg:order-none">
-                <ClassSection 
-                  char={char} 
-                  patch={patch} 
-                  setIsClassModalOpen={setIsClassModalOpen} 
-                  setIsPathModalOpen={setIsPathModalOpen} 
-                  setIsDisciplineModalOpen={setIsDisciplineModalOpen} 
-                  setModalDisciplineIndex={setModalDisciplineIndex} 
-                />
-              </div>
-              <div className="lg:col-span-8 order-8 lg:order-none">
-                <AbilitiesSection char={char} patch={patch} setModalAbilityIndex={setModalAbilityIndex} setIsAbilityModalOpen={setIsAbilityModalOpen} setModalDiscipline={() => {}} setExpandedModalAbility={() => {}} />
-              </div>
-
-            </div>
+            <GameplaySection
+              char={char}
+              patch={patch}
+              updateTracker={updateTracker}
+              setLevelUpTarget={setLevelUpTarget}
+              setIsClassModalOpen={setIsClassModalOpen}
+              setIsPathModalOpen={setIsPathModalOpen}
+              setIsDisciplineModalOpen={setIsDisciplineModalOpen}
+              setModalDisciplineIndex={setModalDisciplineIndex}
+              setIsSpecialSkillModalOpen={setIsSpecialSkillModalOpen}
+              setModalSpecialSkillIndex={setModalSpecialSkillIndex}
+              setIsAbilityModalOpen={setIsAbilityModalOpen}
+              setModalAbilityIndex={setModalAbilityIndex}
+              onOpenInventory={() => setIsInventoryModalOpen(true)}
+            />
           )}
 
           {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} openOriginModal={() => setIsOriginModalOpen(true)} onRemoveOrigin={() => applyOrigin('', {})} />}
           
-          {activeTab === 'progression' && <ProgressionSection char={char} patch={patch} />}
+          {activeTab === 'progression' && (
+            <ProgressionSection
+              char={char}
+              patch={patch}
+              onQueueAbilityPicks={(tasks) => {
+                if (tasks.length === 0) return;
+                setAbilityPickQueue(tasks);
+                setAbilityPickTotal(tasks.length);
+              }}
+            />
+          )}
         </main>
       </div>
 
@@ -425,13 +561,167 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       <OriginModal char={char} isOpen={isOriginModalOpen} onClose={() => setIsOriginModalOpen(false)} applyOrigin={applyOrigin} />
       <ClassModal char={char} isOpen={isClassModalOpen} onClose={() => setIsClassModalOpen(false)} patch={patch} />
       <SpecialSkillModal char={char} isOpen={isSpecialSkillModalOpen} onClose={() => setIsSpecialSkillModalOpen(false)} patch={patch} modalIndex={modalSpecialSkillIndex} />
-      <AbilityModal char={char} isOpen={isAbilityModalOpen} onClose={() => setIsAbilityModalOpen(false)} patch={patch} modalIndex={modalAbilityIndex} />
+      <AbilityModal
+        char={char}
+        isOpen={isAbilityModalOpen}
+        onClose={() => setIsAbilityModalOpen(false)}
+        patch={patch}
+        modalIndex={modalAbilityIndex}
+        guidedQueue={abilityPickQueue}
+        guidedTotal={abilityPickTotal}
+        onGuidedSelect={(abilityName) => {
+          patch({
+            abilities: [...char.data.abilities, { name: abilityName, equipped: false }],
+          });
+          setAbilityPickQueue(prev => {
+            const next = prev.slice(1);
+            if (next.length === 0) setAbilityPickTotal(0);
+            return next;
+          });
+        }}
+        onGuidedSkip={() => {
+          setAbilityPickQueue(prev => {
+            const next = prev.slice(1);
+            if (next.length === 0) setAbilityPickTotal(0);
+            return next;
+          });
+        }}
+        onGuidedSkipAll={() => {
+          setAbilityPickQueue([]);
+          setAbilityPickTotal(0);
+        }}
+      />
       <InventoryModal char={char} isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} patch={patch} />
 
       <PathModal char={char} isOpen={isPathModalOpen} onClose={() => setIsPathModalOpen(false)} patch={patch} classData={getEntryByName(char.data.identity.className)} />
-      <DisciplineModal char={char} isOpen={isDisciplineModalOpen} onClose={() => setIsDisciplineModalOpen(false)} patch={patch} modalIndex={modalDisciplineIndex} />
+      <DisciplineModal
+        char={char}
+        isOpen={isDisciplineModalOpen}
+        onClose={() => setIsDisciplineModalOpen(false)}
+        patch={patch}
+        modalIndex={modalDisciplineIndex}
+        onDisciplineSelected={(discName: string) => {
+          const maxRank = getMaxAccessibleAbilityRank(char.data.progression.tier);
+          const allAbilities = getAbilities();
+          const ownedNames = new Set((char.data.abilities || []).map(a => a.name));
+          const tasks: AbilityPickTask[] = [];
+
+          // Rank 0: 2 abilities
+          const ownedRank0 = (char.data.abilities || []).filter(ab => {
+            const entry = getEntryByName(ab.name);
+            return entry?.data?.source === discName && Number(entry?.data?.class_rank ?? 0) === 0;
+          }).length;
+          const availRank0 = allAbilities.filter(
+            ab => ab.data?.source === discName && Number(ab.data?.class_rank ?? 0) === 0 && !ownedNames.has(ab.name)
+          ).length;
+          const rank0ToPick = Math.min(availRank0, Math.max(0, 2 - ownedRank0));
+          for (let k = 0; k < rank0ToPick; k++) {
+            tasks.push({
+              discipline: discName,
+              rank: 0,
+              promptDetail:
+                rank0ToPick > 1
+                  ? `Select Rank 0 ability from ${discName} (${k + 1} of ${rank0ToPick}).`
+                  : `Select 1 Rank 0 ability from ${discName}.`,
+            });
+          }
+
+          // Upper ranks 1 .. (tier - 1): 1 ability each
+          for (let rank = 1; rank <= maxRank; rank++) {
+            const ownedAtRank = (char.data.abilities || []).filter(ab => {
+              const entry = getEntryByName(ab.name);
+              return entry?.data?.source === discName && Number(entry?.data?.class_rank ?? 0) === rank;
+            }).length;
+            const availAtRank = allAbilities.filter(
+              ab => ab.data?.source === discName && Number(ab.data?.class_rank ?? 0) === rank && !ownedNames.has(ab.name)
+            ).length;
+            if (ownedAtRank < 1 && availAtRank > 0) {
+              tasks.push({
+                discipline: discName,
+                rank,
+                promptDetail: `Select 1 Rank ${rank} ability from ${discName}.`,
+              });
+            }
+          }
+
+          if (tasks.length > 0) {
+            setAbilityPickQueue(tasks);
+            setAbilityPickTotal(tasks.length);
+          }
+        }}
+      />
 
       <Footer activeTab={activeTab} setActiveTab={setActiveTab} showFilter={showFilter} />
+
+      {isExitConfirmOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setIsExitConfirmOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="sheet-modal max-w-sm animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
+              <h3 className="font-cinzel font-bold text-lg text-gray-200 truncate pr-2">Unsaved Changes</h3>
+              <button
+                type="button"
+                onClick={() => setIsExitConfirmOpen(false)}
+                className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2 shrink-0"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-5 flex flex-col gap-5">
+              <p className="text-sm text-gray-300 leading-relaxed">
+                You have unsaved changes on <strong className="text-gray-100">{char.name || 'this character'}</strong>. Would you like to save before exiting?
+              </p>
+
+              <div className="flex flex-col gap-2 w-full">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={async () => {
+                    const ok = await save();
+                    if (ok) {
+                      setIsExitConfirmOpen(false);
+                      onBack();
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 rounded-lg font-bold text-sm border bg-red-900 hover:bg-red-800 border-red-700 text-white shadow-sm transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save & Exit'}
+                </button>
+                <div className="flex gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={() => setIsExitConfirmOpen(false)}
+                    className="flex-1 py-2 px-3 rounded-lg font-bold text-sm border border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasUnsavedChanges(false);
+                      setIsExitConfirmOpen(false);
+                      onBack();
+                    }}
+                    className="flex-1 py-2 px-3 rounded-lg font-bold text-sm border border-red-900/80 text-red-300 bg-red-950/40 hover:bg-red-900/50 transition-colors"
+                  >
+                    Discard & Exit
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

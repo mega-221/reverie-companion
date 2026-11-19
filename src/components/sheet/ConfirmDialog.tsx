@@ -62,7 +62,7 @@ export function ConfirmDialog({
         </div>
 
         <div className="p-5 flex flex-col gap-5">
-          <p className="text-sm text-gray-300 leading-relaxed">{message}</p>
+          <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">{message}</p>
 
           <div className="flex gap-2 w-full">
             <button

@@ -250,3 +250,40 @@ select option {
   80% { opacity: 1; }
   100% { transform: translateY(350px) translateX(30px) rotate(180deg); opacity: 0; }
 }
+
+/* --- PROGRESSION & XP MAX ANIMATIONS --- */
+
+@keyframes xp-bar-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.55), inset 0 0 6px rgba(255, 255, 255, 0.25);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(34, 211, 238, 0.95), inset 0 0 10px rgba(255, 255, 255, 0.5);
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes xp-shimmer-sweep {
+  0% { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
+  30% { opacity: 0.7; }
+  70% { opacity: 0.7; }
+  100% { transform: translateX(260%) skewX(-20deg); opacity: 0; }
+}
+
+@keyframes xp-ready-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.35), 0 0 20px rgba(34, 211, 238, 0.12); }
+  50% { box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12), 0 0 28px rgba(34, 211, 238, 0.32); }
+}
+
+.xp-max-segment {
+  animation: xp-bar-glow 1.8s ease-in-out infinite;
+}
+
+.xp-max-shimmer {
+  animation: xp-shimmer-sweep 2.2s ease-in-out infinite;
+}
+
+.xp-max-container {
+  animation: xp-ready-ring 2s ease-in-out infinite;
+}

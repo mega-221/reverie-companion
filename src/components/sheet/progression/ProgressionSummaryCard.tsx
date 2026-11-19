@@ -1,60 +1,128 @@
 import type { Character, CharacterData } from '../../../types';
-import { getMaxAttributePoints, getSpentAttributePoints } from '../utils';
-import { TIER_DEFINITIONS, calculateLevelFromXp, calculateTierFromLevel } from './progressionData';
-import { vigorMax, strainMax, dpMax, evasion, accuracyBonus, aspectSlotMax } from '../../../calc';
+import { getMaxAttributePoints, getSpentAttributePoints, Tooltip } from '../utils';
+import {
+  getTierDefinition,
+  calculateTierFromLevel,
+  pruneDisabledTierAdvancements,
+  getSpendableXp,
+} from './progressionData';
+import {
+  vigorMax,
+  strainMax,
+  dpMax,
+  evasion,
+  accuracyBonus,
+  aspectSlotMax,
+  getBurdenPenalty,
+  getArmourCombatPenalty,
+  getEquippedArmourInfo,
+} from '../../../calc';
+import { useCompendium } from '../../../CompendiumContext';
 
 export default function ProgressionSummaryCard({
   char,
   patch,
-  totalBudget,
-  spentCount,
+  onTierReached,
 }: {
   char: Character;
   patch: (p: Partial<CharacterData>) => void;
-  totalBudget: number;
-  spentCount: number;
+  onTierReached: (fromTier: number, toTier: number) => void;
 }) {
-  const safeXp = Math.max(0, char.data.progression.xp ?? 0);
-  const derivedLevel = calculateLevelFromXp(safeXp);
-  const derivedTier = calculateTierFromLevel(derivedLevel);
-  const xpInLevel = safeXp % 5;
+  const { getEntryByName } = useCompendium();
+  const currentLevel = Math.max(0, char.data.progression.level ?? 0);
+  const currentTier = calculateTierFromLevel(currentLevel);
+  const totalXp = Math.max(0, char.data.progression.xp ?? 0);
+  const spendableXp = getSpendableXp(char.data);
 
-  const availableAttrPts =
-    getMaxAttributePoints(derivedTier) - getSpentAttributePoints(char.data.attributes);
-  const unspentAdv = totalBudget - spentCount;
+  const burdenPenalty = getBurdenPenalty(char.data, getEntryByName);
+  const armourInfo = getEquippedArmourInfo(char.data, getEntryByName);
+  const armourCombatPenalty = getArmourCombatPenalty(char.data, getEntryByName);
+  const totalCombatPenalty = burdenPenalty + armourCombatPenalty;
+  const baseAcc = (char.data.trackers.acc || 0) + accuracyBonus(char.data);
+  const effectiveAcc = baseAcc - totalCombatPenalty;
+  const effectiveEva = evasion(char.data);
+  const maxVigorVal = vigorMax(char.data);
+  const maxStrainVal = strainMax(char.data);
+  const maxDpVal = dpMax(char.data);
 
-  const activeTierDef =
-    TIER_DEFINITIONS.find(t => t.tier === Math.min(derivedTier, 6)) || TIER_DEFINITIONS[0];
+  const maxXpBar = 5;
+  const xpProgress = Math.max(0, totalXp - currentLevel * maxXpBar);
+  const xpDisplay = Math.min(maxXpBar, xpProgress);
+  const isMaxXp = xpProgress >= maxXpBar;
+  const isHalfway = xpDisplay >= 3 && !isMaxXp;
 
-  const handleXpDelta = (delta: number) => {
-    const nextXp = Math.max(0, safeXp + delta);
-    const nextLevel = calculateLevelFromXp(nextXp);
-    const nextTier = calculateTierFromLevel(nextLevel);
+  const maxAttrPts = getMaxAttributePoints(currentTier);
+  const availableAttrPts = maxAttrPts - getSpentAttributePoints(char.data.attributes);
+  const maxAspects = aspectSlotMax(char.data);
+  const usedAspects = (char.data.aspects || []).length;
+
+  const activeTierDef = getTierDefinition(currentTier);
+
+  const applyProgressionUpdate = (
+    nextLevel: number,
+    nextTotalXp: number
+  ) => {
+    const safeNextLevel = Math.max(0, nextLevel);
+    const nextTier = calculateTierFromLevel(safeNextLevel);
+
+    const pruned =
+      nextTier < currentTier
+        ? pruneDisabledTierAdvancements(char.data, nextTier)
+        : {};
+
+    const baseProgression = pruned.progression || char.data.progression;
+
     patch({
+      ...pruned,
       progression: {
-        ...char.data.progression,
-        xp: nextXp,
-        level: nextLevel,
+        ...baseProgression,
+        level: safeNextLevel,
         tier: nextTier,
+        xp: Math.max(0, nextTotalXp),
       },
     });
+
+    if (nextTier > currentTier) {
+      onTierReached(currentTier, nextTier);
+    }
   };
 
-  // Destiny-Point-style 5-slot Experience Bar
-  const maxXpBar = 5;
-  const isHalfway = xpInLevel >= 3 && xpInLevel < maxXpBar;
-  const isReadyToLevel = xpInLevel === maxXpBar - 1;
+  const handleXpDelta = (delta: number) => {
+    if (delta > 0) {
+      const nextTotalXp = totalXp + 1;
+      const nextLevel =
+        xpProgress >= maxXpBar ? currentLevel + 1 : currentLevel;
+      applyProgressionUpdate(nextLevel, nextTotalXp);
+    } else if (delta < 0 && totalXp > 0) {
+      const nextTotalXp = totalXp - 1;
+      const nextLevel =
+        nextTotalXp < currentLevel * maxXpBar
+          ? Math.floor(nextTotalXp / maxXpBar)
+          : currentLevel;
+      applyProgressionUpdate(nextLevel, nextTotalXp);
+    }
+  };
+
+  const handleLevelUpFromXp = () => {
+    if (!isMaxXp) return;
+    applyProgressionUpdate(currentLevel + 1, totalXp);
+  };
+
+  const handleLevelDownFromXp = () => {
+    if (currentLevel <= 0 || xpProgress > 0) return;
+    applyProgressionUpdate(currentLevel - 1, totalXp);
+  };
 
   let trackingClass = 'tracking-[0.25em]';
   if (isHalfway) trackingClass = 'tracking-[0.35em]';
-  if (isReadyToLevel) trackingClass = 'tracking-[0.45em]';
+  if (isMaxXp) trackingClass = 'tracking-[0.45em]';
 
-  const titleColor = isReadyToLevel
-    ? 'text-cyan-400'
+  const titleColor = isMaxXp
+    ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]'
     : isHalfway
     ? 'text-yellow-400'
     : 'text-white';
-  const segmentColor = isReadyToLevel ? 'bg-cyan-500' : 'bg-yellow-500';
+  const segmentColor = isMaxXp ? 'bg-cyan-400 xp-max-segment' : 'bg-yellow-500';
 
   return (
     <section className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm w-full flex flex-col gap-5">
@@ -64,31 +132,19 @@ export default function ProgressionSummaryCard({
             Progression & Advancements
           </h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Tier {derivedTier} — <span className="text-red-400 font-semibold">{activeTierDef.title}</span> · {activeTierDef.description}
+            Tier {currentTier} — <span className={currentTier > 0 ? 'text-purple-300 font-semibold' : 'text-slate-300 font-semibold'}>{activeTierDef.title}</span> · {activeTierDef.description}
           </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="px-2.5 py-1 rounded bg-black/40 border border-gray-700 text-gray-300">
-            Attribute Points{' '}
-            <strong className={availableAttrPts > 0 ? 'text-emerald-400' : 'text-gray-200'}>
-              {availableAttrPts}/{getMaxAttributePoints(derivedTier)}
-            </strong>
-          </span>
-          <span className="px-2.5 py-1 rounded bg-black/40 border border-gray-700 text-gray-300">
-            Aspect Slots <strong className="text-purple-400">{aspectSlotMax(char.data)}</strong>
-          </span>
         </div>
       </div>
 
-      {/* Top Row: Derived Tier / Level / Advancement Points + 5-Slot Destiny-Style XP Bar */}
+      {/* Top Row: Tier / Level / Experience + 5-Slot XP Progress Bar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         <div className="lg:col-span-6 flex justify-between items-center bg-black/25 p-3.5 rounded-lg border border-gray-700/60">
           <div className="flex flex-col items-center flex-1">
             <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-1">
               Tier
             </span>
-            <span className="text-gray-100 font-bold text-2xl leading-none">{derivedTier}</span>
+            <span className="text-gray-100 font-bold text-2xl leading-none">{currentTier}</span>
             <span className="text-[10px] text-gray-400 italic mt-1">{activeTierDef.title}</span>
           </div>
 
@@ -98,44 +154,66 @@ export default function ProgressionSummaryCard({
             <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-1">
               Level
             </span>
-            <span className="text-gray-100 font-bold text-2xl leading-none">{derivedLevel}</span>
-            <span className="text-[10px] text-gray-500 mt-1">Total XP: {safeXp}</span>
+            <span className="text-gray-100 font-bold text-2xl leading-none">
+              {currentLevel}
+            </span>
+            <span className="text-[10px] text-gray-500 mt-1">
+              {currentLevel === 0 ? 'Starting Level' : activeTierDef.levelRange}
+            </span>
           </div>
 
           <div className="w-px h-10 bg-gray-700" />
 
-          <div className="flex flex-col items-center flex-1">
-            <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-1">
-              Advancements
-            </span>
-            <span
-              className={`font-bold text-2xl leading-none ${
-                unspentAdv > 0 ? 'text-red-400' : 'text-gray-100'
-              }`}
-            >
-              {spentCount}
-              <span className="text-sm text-gray-500 font-normal">/{totalBudget}</span>
-            </span>
-            <span className="text-[10px] text-gray-400 mt-1">
-              {unspentAdv > 0 ? `${unspentAdv} Available` : 'All Spent'}
-            </span>
-          </div>
+          <Tooltip
+            text="Total Experience earned vs. Spendable XP remaining for advancing Core & Special Skills."
+            className="flex-1 justify-center"
+            noBorder
+          >
+            <div className="flex flex-col items-center w-full">
+              <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-1">
+                Experience
+              </span>
+              <span className="font-bold text-2xl leading-none text-gray-100 tabular-nums">
+                {totalXp}
+                <span className="text-xs text-gray-500 font-normal ml-1">Total</span>
+              </span>
+              <span className="text-[10px] text-gray-400 mt-1 tabular-nums">
+                <strong className={spendableXp < 0 ? 'text-red-400' : 'text-yellow-400'}>
+                  {spendableXp}
+                </strong>{' '}
+                Spendable
+              </span>
+            </div>
+          </Tooltip>
         </div>
 
-        {/* 5-Slot Experience Bar matching VitalsCard Destiny Point Bar */}
-        <div className="lg:col-span-6 flex flex-col items-center justify-center bg-black/25 px-4 py-3 rounded-lg border border-gray-700/60 gap-2">
-          <span
-            className={`font-bold uppercase text-sm transition-all duration-500 ease-out ${trackingClass} ${titleColor}`}
-          >
-            Experience
-          </span>
+        {/* 5-Slot Experience Progress Bar with Fixed-Position Controls */}
+        <div
+          className={`lg:col-span-6 relative overflow-hidden flex flex-col items-center justify-center px-4 py-3 rounded-lg border gap-2 transition-all duration-500 ${
+            isMaxXp
+              ? 'bg-cyan-950/25 border-cyan-500/70 xp-max-container'
+              : 'bg-black/25 border-gray-700/60'
+          }`}
+        >
+          {isMaxXp && (
+            <div className="pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-cyan-300/20 to-transparent xp-max-shimmer" />
+          )}
 
-          <div className="flex w-full gap-1.5">
+          <div className="flex items-center justify-center w-full min-h-[22px] relative z-10">
+            <span
+              className={`font-bold uppercase text-sm transition-all duration-500 ease-out ${trackingClass} ${titleColor}`}
+            >
+              Experience
+            </span>
+          </div>
+
+          <div className="flex w-full gap-1.5 relative z-10">
             {Array.from({ length: maxXpBar }).map((_, i) => {
-              const isFilled = i < xpInLevel;
+              const isFilled = i < xpDisplay;
               return (
                 <div
                   key={i}
+                  style={isMaxXp ? { animationDelay: `${i * 110}ms` } : undefined}
                   className={`flex-1 h-3 rounded-sm transition-all duration-300 ${
                     isFilled ? segmentColor : 'bg-gray-700/50'
                   }`}
@@ -144,79 +222,179 @@ export default function ProgressionSummaryCard({
             })}
           </div>
 
-          <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm w-36 h-8 mt-0.5 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => handleXpDelta(-1)}
-              disabled={safeXp <= 0}
-              className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-40 disabled:hover:bg-transparent font-bold text-lg shrink-0 transition-colors duration-75"
-              title="Remove 1 Experience Point"
-            >
-              −
-            </button>
-
-            <div className="flex-1 text-center font-bold text-white flex items-baseline justify-center gap-1 select-none">
-              <span className="text-lg">{xpInLevel}</span>
-              <span className="text-xs text-gray-500 font-normal">/ {maxXpBar}</span>
+          {/* 3-Column Fixed Grid so XP +/- Buttons Never Shift Horizontally */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 w-full mt-0.5 relative z-10 min-h-[32px]">
+            <div className="flex justify-end">
+              {xpProgress === 0 && currentLevel > 0 && (
+                <button
+                  type="button"
+                  onClick={handleLevelDownFromXp}
+                  className="h-8 px-2.5 sm:px-3 rounded-lg bg-gray-900/90 hover:bg-red-950/50 border border-gray-700 hover:border-red-800 text-gray-300 hover:text-red-200 font-cinzel font-bold text-[11px] uppercase tracking-wider transition-colors whitespace-nowrap"
+                  title="Level down (disables higher tiers if leaving a tier)"
+                >
+                  ← Level Down
+                </button>
+              )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleXpDelta(1)}
-              className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white font-bold text-lg shrink-0 transition-colors duration-75"
-              title="Add 1 Experience Point"
-            >
-              +
-            </button>
+            <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm w-36 h-8 overflow-hidden justify-self-center">
+              <button
+                type="button"
+                onClick={() => handleXpDelta(-1)}
+                disabled={totalXp <= 0}
+                className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-40 disabled:hover:bg-transparent font-bold text-lg shrink-0 transition-colors duration-75"
+                title="Remove 1 Experience Point"
+              >
+                −
+              </button>
+
+              <div className="flex-1 text-center font-bold text-white flex items-baseline justify-center gap-1 select-none">
+                <span className={`text-lg ${isMaxXp ? 'text-cyan-300' : ''}`}>{xpDisplay}</span>
+                <span className="text-xs text-gray-500 font-normal">/ {maxXpBar}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleXpDelta(1)}
+                className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white font-bold text-lg shrink-0 transition-colors duration-75"
+                title="Gain 1 Experience Point"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="flex justify-start">
+              {isMaxXp && (
+                <button
+                  type="button"
+                  onClick={handleLevelUpFromXp}
+                  className="h-8 px-2.5 sm:px-3 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400 text-cyan-200 font-cinzel font-bold text-[11px] uppercase tracking-wider shadow-[0_0_12px_rgba(34,211,238,0.35)] transition-colors animate-pulse whitespace-nowrap"
+                >
+                  Level Up →
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* StatsCard-Style Combat & Resource Strip above Advancements */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
-        <div className="flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
-          <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
-            Accuracy
-          </span>
-          <span className="font-bold text-xl text-white leading-none">
-            {(char.data.trackers.acc || 0) + accuracyBonus(char.data)}
-          </span>
-        </div>
+      {/* Unified Combat & Progression Resource Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-center">
+        <Tooltip
+          text={
+            totalCombatPenalty > 0
+              ? [
+                  `Base Accuracy: ${baseAcc}`,
+                  burdenPenalty > 0 ? `Overburden Penalty: -${burdenPenalty}` : '',
+                  armourCombatPenalty > 0 && armourInfo
+                    ? `Unmet Armour Carry (${armourInfo.characterCarry}/${armourInfo.requiredCarry}): -${armourCombatPenalty}`
+                    : '',
+                ]
+                  .filter(Boolean)
+                  .join('\n')
+              : 'Base Accuracy + Accuracy bonuses (2 advancements per +1).'
+          }
+          noBorder
+          noTruncate
+        >
+          <div className="w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
+              Accuracy
+            </span>
+            <span
+              className={`font-bold text-xl leading-none tabular-nums ${
+                totalCombatPenalty > 0 || effectiveAcc < 0 ? 'text-red-500' : 'text-white'
+              }`}
+            >
+              {effectiveAcc}
+            </span>
+          </div>
+        </Tooltip>
 
-        <div className="flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
-          <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
-            Evasion
-          </span>
-          <span className="font-bold text-xl text-white leading-none">
-            {evasion(char.data)}
-          </span>
-        </div>
+        <Tooltip text="Base 10 + bonuses + Evasion bonuses (2 advancements per +1)." noBorder>
+          <div className="w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
+              Evasion
+            </span>
+            <span className={`font-bold text-xl leading-none tabular-nums ${effectiveEva < 0 ? 'text-red-500' : 'text-white'}`}>
+              {effectiveEva}
+            </span>
+          </div>
+        </Tooltip>
 
-        <div className="flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
-          <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
-            Vigor Maximum
-          </span>
-          <span className="font-bold text-xl text-white leading-none">
-            {vigorMax(char.data)}
-          </span>
-        </div>
+        <Tooltip text="5 at Level 0, +1 per Tier reached, +1 per Vigor Limit advancement." noBorder>
+          <div className="w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
+              Vigor Limit
+            </span>
+            <span className={`font-bold text-xl leading-none tabular-nums ${maxVigorVal < 0 ? 'text-red-500' : 'text-white'}`}>
+              {maxVigorVal}
+            </span>
+          </div>
+        </Tooltip>
 
-        <div className="flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
-          <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
-            Strain Limit
-          </span>
-          <span className="font-bold text-xl text-white leading-none">
-            {strainMax(char.data)}
-          </span>
-        </div>
+        <Tooltip text="5 at Level 0, +1 per Tier reached, +1 per Strain Limit advancement." noBorder>
+          <div className="w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
+              Strain Limit
+            </span>
+            <span className={`font-bold text-xl leading-none tabular-nums ${maxStrainVal < 0 ? 'text-red-500' : 'text-white'}`}>
+              {maxStrainVal}
+            </span>
+          </div>
+        </Tooltip>
 
-        <div className="col-span-2 sm:col-span-1 flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
-          <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
-            Destiny Maximum
-          </span>
-          <span className="font-bold text-xl text-white leading-none">
-            {dpMax(char.data)}
-          </span>
+        <Tooltip text="Starts at 2; Tiers 2–5 each grant +1 Destiny Maximum." noBorder>
+          <div className="w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
+              Destiny Max
+            </span>
+            <span className={`font-bold text-xl leading-none tabular-nums ${maxDpVal < 0 ? 'text-red-500' : 'text-white'}`}>
+              {maxDpVal}
+            </span>
+          </div>
+        </Tooltip>
+
+        <Tooltip text="Each of Tiers 1–5 grants +1 Attribute Point (max 5 total). Spend them by clicking attributes on the Gameplay Profile." noBorder>
+          <div className="w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
+              Attribute Points
+            </span>
+            <span
+              className={`font-bold text-xl leading-none tabular-nums ${
+                availableAttrPts < 0
+                  ? 'text-red-400'
+                  : availableAttrPts > 0
+                  ? 'text-emerald-400'
+                  : 'text-white'
+              }`}
+            >
+              {availableAttrPts}
+              <span className="text-xs text-gray-500 font-normal">/{maxAttrPts}</span>
+            </span>
+          </div>
+        </Tooltip>
+
+        <div className="col-span-2 lg:col-span-1">
+          <Tooltip text="Aspect slots adopted / total unlocked via Tier 1–5 Advancements." noBorder>
+            <div className="w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2.5 border border-gray-700/50">
+              <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-1.5">
+                Aspect Slots
+              </span>
+              <span
+                className={`font-bold text-xl leading-none tabular-nums ${
+                  usedAspects > maxAspects
+                    ? 'text-red-400'
+                    : usedAspects < maxAspects
+                    ? 'text-purple-300'
+                    : 'text-white'
+                }`}
+              >
+                {usedAspects}
+                <span className="text-xs text-gray-500 font-normal">/{maxAspects}</span>
+              </span>
+            </div>
+          </Tooltip>
         </div>
       </div>
     </section>

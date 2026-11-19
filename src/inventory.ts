@@ -14,9 +14,10 @@ export function equipItem(
   if (!itemToEquip || itemToEquip.qty <= 0) return null;
 
   const dbItem = getEntryByName(itemToEquip.name);
-  const category = dbItem?.data?.category || itemToEquip.category || 'equipment';
+  const category = String(dbItem?.data?.category || itemToEquip.category || 'equipment').toLowerCase();
 
   if (slot === 'armour' && category !== 'armour') return null;
+  if ((slot === 'mainHand' || slot === 'offHand') && category === 'armour') return null;
   if (slot === 'offHand' && data.equipment.mainHandMode === '2H') return null;
 
   const nextEquipment: CharacterData['equipment'] = { ...data.equipment };
@@ -93,9 +94,10 @@ export function equipExtraItem(
 
   const dbItem = getEntryByName(itemToEquip.name);
   const req = dbItem?.data?.req || '';
-  const category = dbItem?.data?.category || itemToEquip.category || 'equipment';
+  const category = String(dbItem?.data?.category || itemToEquip.category || 'equipment').toLowerCase();
   const subtype = dbItem?.data?.subtype || itemToEquip.subtype || '';
   
+  if (category === 'armour') return null;
   // Block melee weapons (but allow Eidoloscopes which are 0H)
   if (category === 'weapon' && subtype !== 'Eidoloscope' && (req.includes('1H') || req.includes('2H'))) return null;
 

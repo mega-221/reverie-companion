@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Character, CompendiumEntry } from '../../../types';
 import { useCompendium } from '../../../CompendiumContext';
-import { dpMax } from '../../../calc';
+import { dpMax, aspectSlotMax } from '../../../calc';
 import { useConfirm } from '../ConfirmDialog';
 import { SKILL_GROUPS } from '../utils';
-
-const MAX_ASPECTS = 5;
 
 const ASPECT_CATEGORY_ORDER = [
   'Grit',
@@ -473,7 +471,8 @@ export default function AspectsCard({
     setSlideDir(delta > 0 ? 'next' : 'prev');
     setMobileIndex(nextIndex);
   };
-  const canAddAspect = aspects.length < MAX_ASPECTS;
+  const maxAspectSlots = aspectSlotMax(char.data);
+  const canAddAspect = aspects.length < maxAspectSlots;
   const existingNames = aspects.map((a) => a.name).filter(Boolean);
   const dpCost = dpMax(char.data);
   const availableDp = char.data.trackers.dp;
@@ -571,8 +570,12 @@ export default function AspectsCard({
           <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">
             Aspects
           </h2>
-          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500 tabular-nums shrink-0">
-            {aspects.length} / {MAX_ASPECTS}
+          <span
+            className={`text-[11px] font-bold uppercase tracking-widest tabular-nums shrink-0 ${
+              aspects.length > maxAspectSlots ? 'text-red-400' : 'text-gray-500'
+            }`}
+          >
+            {aspects.length} / {maxAspectSlots}
           </span>
         </div>
 
@@ -588,7 +591,13 @@ export default function AspectsCard({
               ? 'text-cyan-400 border-cyan-800 hover:bg-cyan-950/40 hover:text-cyan-300'
               : 'text-gray-600 border-gray-700 cursor-not-allowed'
           }`}
-          title={canAddAspect ? 'Add new aspect' : 'Maximum of 5 aspects reached'}
+          title={
+            canAddAspect
+              ? 'Add new aspect'
+              : maxAspectSlots === 0
+              ? 'Unlock Aspect Slots via Tier Advancements in Progression'
+              : `All ${maxAspectSlots} unlocked Aspect slot(s) filled`
+          }
         >
           + Add
         </button>
@@ -596,10 +605,13 @@ export default function AspectsCard({
 
       {/* Empty State */}
       {aspects.length === 0 && (
-        <div className="flex-1 flex justify-center items-center px-4 text-center">
-          <h3 className="text-xl font-bold uppercase tracking-[0.2em] text-gray-500 leading-tight text-center">
-            No aspects adopted
-          </h3>
+        <div className="flex-1 flex flex-col justify-center items-center py-10 px-4 text-center gap-1.5">
+          <p className="text-gray-500 italic text-sm">No aspects adopted yet.</p>
+          {maxAspectSlots === 0 && (
+            <p className="text-xs text-gray-500/80 italic">
+              Unlock Aspect Slots in the Progression tab to adopt aspects.
+            </p>
+          )}
         </div>
       )}
 
@@ -1061,7 +1073,7 @@ export default function AspectsCard({
 
           const next = [...aspects];
           if (pickerIndex >= next.length) {
-            if (next.length >= MAX_ASPECTS) return;
+            if (next.length >= maxAspectSlots) return;
             next.push({ id: crypto.randomUUID(), name: entry.name, abandoned: false });
           } else {
             next[pickerIndex] = {

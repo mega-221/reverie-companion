@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { defaultCharacterData } from './defaults';
 import type { Character } from './types';
 import { useConfirm } from './components/sheet/ConfirmDialog';
+import { calculateTierFromLevel } from './components/sheet/progression/progressionData';
 
 export default function CharacterList({
   userId, onSelect,
@@ -12,7 +13,7 @@ export default function CharacterList({
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newCharName, setNewCharName] = useState('');
-  const [newCharLevel, setNewCharLevel] = useState<number>(1);
+  const [newCharLevel, setNewCharLevel] = useState<number>(0);
   const [creating, setCreating] = useState(false);
 
   async function load() {
@@ -28,16 +29,16 @@ export default function CharacterList({
     setCreating(true);
     
     const charData = defaultCharacterData();
-    const safeLevel = Math.max(1, Math.min(24, newCharLevel));
-    const tier = Math.ceil(safeLevel / 4);
+    const safeLevel = Math.max(0, newCharLevel);
+    const tier = calculateTierFromLevel(safeLevel);
     
     charData.progression.level = safeLevel;
     charData.progression.tier = tier;
     charData.progression.xp = safeLevel * 5;
+    charData.progression.spendableXp = safeLevel * 5;
     
-    const tierMod = tier - 1;
-    charData.trackers.vigor = 5 + tierMod;
-    charData.trackers.dp = 2 + tierMod;
+    charData.trackers.vigor = 5 + tier;
+    charData.trackers.dp = 2 + Math.min(Math.max(0, tier - 1), 4);
     
     await supabase.from('characters').insert({ 
       name: newCharName.trim(), 
@@ -48,7 +49,7 @@ export default function CharacterList({
     setCreating(false);
     setIsCreateModalOpen(false);
     setNewCharName('');
-    setNewCharLevel(1);
+    setNewCharLevel(0);
     load();
   }
 
@@ -132,8 +133,7 @@ export default function CharacterList({
                   Level
                   <input
                     type="number"
-                    min={1}
-                    max={24}
+                    min={0}
                     className="border border-gray-700 bg-black/40 p-3 rounded-lg mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200 text-lg text-center"
                     value={newCharLevel}
                     onChange={(e) => setNewCharLevel(+e.target.value)}

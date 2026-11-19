@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export const ATTRIBUTE_NAMES = { grt: 'Grit', ref: 'Reflex', int: 'Intellect', psy: 'Psyche' };
 export const ATTRIBUTE_DESCRIPTIONS = {
@@ -81,7 +82,7 @@ export type Tab = 'gameplay' | 'narrative' | 'progression';
 export type LevelUpTarget = { type: 'attribute'; key: keyof typeof ATTRIBUTE_NAMES } | { type: 'skill'; key: string } | { type: 'specialSkill'; index: number };
 
 export const getMaxAttribute = (tier: number) => tier >= 5 ? 4 : tier >= 3 ? 3 : 2;
-export const getMaxAttributePoints = (tier: number) => Math.max(0, tier - 1);
+export const getMaxAttributePoints = (tier: number) => Math.min(5, Math.max(0, tier));
 export const getSpentAttributePoints = (attributes: { grt: number, ref: number, int: number, psy: number }) => (attributes.grt - 1) + (attributes.ref - 1) + (attributes.int - 1) + (attributes.psy - 1);
 
 export const getMinSkillRank = (skillName: string, char: any) => {
@@ -143,9 +144,9 @@ export const SectionHeader = ({ title }: { title: string }) => (
 );
 
 export const Tooltip = ({ 
-  text, children, className = "w-full", noBorder = false, disabled = false 
+  text, children, className = "w-full", noBorder = false, disabled = false, noTruncate = false 
 }: { 
-  text: string, children: React.ReactNode, className?: string, noBorder?: boolean, disabled?: boolean 
+  text: string, children: React.ReactNode, className?: string, noBorder?: boolean, disabled?: boolean, noTruncate?: boolean 
 }) => {
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [show, setShow] = useState(false);
@@ -153,7 +154,7 @@ export const Tooltip = ({
   if (disabled) {
     return (
       <div className={`inline-flex items-center ${className}`}>
-        <div className={`truncate w-full ${!noBorder ? 'border-b border-dotted border-gray-500' : ''}`}>{children}</div>
+        <div className={`${noTruncate ? 'w-full' : 'truncate w-full'} ${!noBorder ? 'border-b border-dotted border-gray-500' : ''}`}>{children}</div>
       </div>
     );
   }
@@ -165,12 +166,13 @@ export const Tooltip = ({
   };
   return (
     <div className={`relative inline-flex items-center cursor-help ${className}`} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShow(false)}>
-      <div className={`truncate w-full ${!noBorder ? 'border-b border-dotted border-gray-500' : ''}`}>{children}</div>
-      {show && (
-        <div className="fixed z-[9999] w-64 -translate-x-1/2 -translate-y-full mb-2 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl pointer-events-none text-center leading-tight normal-case font-normal italic" style={{ left: coords.x, top: coords.y }}>
+      <div className={`${noTruncate ? 'w-full' : 'truncate w-full'} ${!noBorder ? 'border-b border-dotted border-gray-500' : ''}`}>{children}</div>
+      {show && typeof document !== 'undefined' && createPortal(
+        <div className="fixed z-[9999] w-64 -translate-x-1/2 -translate-y-full mb-2 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl pointer-events-none text-center leading-tight normal-case font-normal italic whitespace-pre-line" style={{ left: coords.x, top: coords.y - 6 }}>
           {text || 'No description available.'}
           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

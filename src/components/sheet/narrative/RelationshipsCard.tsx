@@ -187,7 +187,7 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
           {/* 5 rows * 44px + 4 gaps * 6px = 244px, fixed inside remaining height */}
           <div className="flex-1 min-h-0 space-y-1.5 overflow-hidden">
             {relationships.length === 0 ? (
-              <div className="h-full flex items-center justify-center">
+              <div className="h-full flex flex-col items-center justify-center py-10 px-4 text-center">
                 <p className="text-gray-500 italic text-sm">No bonds forged yet.</p>
               </div>
             ) : displayedRelationships.length === 0 ? (

@@ -4,6 +4,7 @@ import type { Character, CompendiumEntry } from '../../../types';
 import { useCompendium } from '../../../CompendiumContext';
 import { dpMax } from '../../../calc';
 import { useConfirm } from '../ConfirmDialog';
+import { hasConvictionRank5Unlocked } from '../progression/progressionData';
 
 const SELECT_SEASON_ORDER = ['Halice', 'Vamor', 'Bruma', 'Trumst'] as const;
 
@@ -18,9 +19,9 @@ const FlipIcon = () => (
   </svg>
 );
 
-const RankPips = ({ rank, type, color }: { rank: number, type: 'conviction' | 'failing', color?: string }) => {
-  const maxRank = 4;
+const RankPips = ({ rank, type, color, maxRank = 4 }: { rank: number, type: 'conviction' | 'failing', color?: string, maxRank?: number }) => {
   const activeColor = type === 'conviction' ? (color || '#9ca3af') : '#d93838';
+  const connectorWidth = maxRank > 4 ? 'w-2.5 mx-1' : 'w-3 mx-1.5';
   return (
     <div className="flex items-center justify-center relative z-20">
       {Array.from({ length: maxRank }).map((_, i) => {
@@ -35,7 +36,7 @@ const RankPips = ({ rank, type, color }: { rank: number, type: 'conviction' | 'f
             />
             {i < maxRank - 1 && (
               <div
-                className="h-px w-3 mx-1.5 transition-colors duration-300"
+                className={`h-px ${connectorWidth} transition-colors duration-300`}
                 style={{ backgroundColor: i < rank - 1 ? activeColor : '#4b5563' }}
               />
             )}
@@ -71,7 +72,8 @@ function DedicateModal({ char, patch, index, onClose }: { char: Character, patch
   if (!conviction) return null;
 
   const currentRank = conviction.rank;
-  const maxRank = 4;
+  const isRank5Unlocked = hasConvictionRank5Unlocked(conviction.name, char.data) || currentRank >= 5;
+  const maxRank = isRank5Unlocked ? 5 : 4;
   const cost = dpMax(char.data);
   const availableDp = char.data.trackers.dp;
   const seasonColor = getSeasonHex(conviction.season);
@@ -122,7 +124,7 @@ function DedicateModal({ char, patch, index, onClose }: { char: Character, patch
             <div className="text-3xl font-bold text-white mb-2">{currentRank} <span className="text-lg text-gray-500 font-normal">/ {maxRank}</span></div>
 
             <div className="mt-1 mb-2">
-              <RankPips rank={currentRank} type="conviction" color={seasonColor} />
+              <RankPips rank={currentRank} type="conviction" color={seasonColor} maxRank={maxRank} />
             </div>
 
             {isMaxed ? (
@@ -153,7 +155,7 @@ function DedicateModal({ char, patch, index, onClose }: { char: Character, patch
 
           <div className="flex justify-between items-center text-sm font-bold text-gray-400 mt-2 bg-black/20 p-2 rounded">
             <span>Available DP:</span>
-            <span className={canAfford && !isMaxed ? "text-cyan-400" : "text-gray-400"}>
+            <span className={availableDp < 0 ? "text-red-400" : canAfford && !isMaxed ? "text-cyan-400" : "text-gray-400"}>
               {availableDp} / {dpMax(char.data)}
             </span>
           </div>
@@ -254,7 +256,7 @@ function ReflectModal({ char, patch, index, onClose }: { char: Character, patch:
 
           <div className="flex justify-between items-center text-sm font-bold text-gray-400 mt-2 bg-black/20 p-2 rounded">
             <span>Available DP:</span>
-            <span className={canAfford && !isMinned ? "text-cyan-400" : "text-gray-400"}>
+            <span className={availableDp < 0 ? "text-red-400" : canAfford && !isMinned ? "text-cyan-400" : "text-gray-400"}>
               {availableDp} / {dpMax(char.data)}
             </span>
           </div>
@@ -863,8 +865,8 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
       </div>
 
       {char.data.convictions.length === 0 ? (
-        <div className="flex justify-center items-center py-16 px-4 text-center text-cyan-800/60 italic text-sm">
-          No convictions yet. Click "+ Add" above to begin.
+        <div className="flex-1 flex flex-col justify-center items-center py-12 px-4 text-center">
+          <p className="text-gray-500 italic text-sm">No convictions or failings manifested.</p>
         </div>
       ) : (
       <div className="relative flex flex-wrap justify-center sm:justify-evenly gap-6 w-full py-11 sm:py-10 overflow-visible">
@@ -1034,7 +1036,12 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Rank</span>
                           <div className="flex items-center py-1">
-                            <RankPips rank={convRank} type="conviction" color={seasonColor} />
+                            <RankPips
+                              rank={convRank}
+                              type="conviction"
+                              color={seasonColor}
+                              maxRank={hasConvictionRank5Unlocked(conviction?.name || '', char.data) || convRank >= 5 ? 5 : 4}
+                            />
                           </div>
                         </div>
                         <button

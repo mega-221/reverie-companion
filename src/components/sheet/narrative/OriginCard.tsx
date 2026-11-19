@@ -41,8 +41,8 @@ export default function OriginCard({
         {/* Locked selection display with edit/remove actions */}
         <div className="flex items-center justify-between w-full bg-black/20 border border-gray-700 rounded-lg px-4 py-3 shrink-0">
           <div className="flex items-center min-w-0 flex-1">
-            <span className={`text-lg truncate ${originName ? 'text-gray-200 font-bold' : 'text-gray-500 italic'}`}>
-              {originName || '— No Origin —'}
+            <span className={`truncate ${originName ? 'text-lg text-gray-200 font-bold' : 'text-sm text-gray-500 italic'}`}>
+              {originName || 'No origin selected'}
             </span>
           </div>
           <div className="flex items-center gap-2 border-l border-gray-700 pl-3 ml-3 shrink-0">
@@ -76,11 +76,17 @@ export default function OriginCard({
         </div>
         
         {/* Lore - scroll removed, centered vertically */}
-        <div className="flex-1 flex items-center text-sm font-normal text-gray-300 italic border-l-2 border-gray-600 pl-3 py-1 leading-relaxed overflow-hidden">
-          <p className="w-full">
-            {getEntryByName(originName)?.data?.lore || 'Select an origin to view its lore. Your Origin dictates your starting skills, inspirations, and minimum skill caps.'}
-          </p>
-        </div>
+        {originName ? (
+          <div className="flex-1 flex items-center text-sm font-normal text-gray-300 italic border-l-2 border-gray-600 pl-3 py-1 leading-relaxed overflow-hidden">
+            <p className="w-full">
+              {getEntryByName(originName)?.data?.lore || 'No origin lore recorded.'}
+            </p>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center py-6 px-4 text-center">
+            <p className="text-gray-500 italic text-sm">No origin selected yet.</p>
+          </div>
+        )}
         
         {originName && (
             <div className="mt-auto bg-black/20 rounded border border-gray-700/50 p-3 text-sm flex flex-col gap-2 shrink-0">

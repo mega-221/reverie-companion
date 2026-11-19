@@ -637,7 +637,9 @@ export default function JournalCard({ char, patch }: { char: Character, patch: a
       <div className="flex-1 flex flex-col overflow-y-auto max-h-[500px] pr-2">
         {displayedJournal.length === 0 && !isAdding ? (
           journal.length === 0 ? (
-            <p className="text-gray-500 italic text-sm text-center py-8">The pages are blank. Write your first entry.</p>
+            <div className="flex-1 flex flex-col items-center justify-center py-10 px-4 text-center">
+              <p className="text-gray-500 italic text-sm">No journal entries yet.</p>
+            </div>
           ) : (
             <div className="text-center py-8 flex flex-col items-center gap-2">
               <p className="text-gray-500 italic text-sm">No journal entries match “{searchQuery}”.</p>

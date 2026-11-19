@@ -16,11 +16,14 @@ export type InventoryItem = {
   subtype?: string;
   burden?: number;
   value?: number;
+  ap?: number;
+  resists?: string;
   req?: string;
   dmg?: string;
   range?: string;
   ammo?: string;
   effect?: string;
+  description?: string;
   season?: string;
   ability_access?: string;
   location?: string;
@@ -42,6 +45,7 @@ export type AdvancementSelection = {
   tier: number;
   type: AdvancementType;
   targetName?: string;
+  slot?: number;
 };
 
 export type CharacterData = {
@@ -50,6 +54,7 @@ export type CharacterData = {
     tier: number;
     level: number;
     xp: number;
+    spendableXp?: number;
     advancements?: AdvancementSelection[];
   };
   attributes: { grt: number; ref: number; int: number; psy: number };
@@ -69,9 +74,10 @@ export type CharacterData = {
     armour: string;
     extra: string[];
   };
-  bonus: { vm: number; sl: number; dp: number; eva: number };
+  bonus: { vm: number; sl: number; dp: number; eva: number; ap?: number };
   trackers: {
     vigor: number; strain: number; dp: number; ap: number; acc: number;
+    apInitialized?: boolean;
     injuries: { 
       name: string; 
       affectedAttributes: string[]; 
@@ -107,6 +113,8 @@ export type CompendiumEntry = {
     acc?: string;
     dmg?: string;
     eva?: string;
+    ap?: number;
+    resists?: string;
     category?: string;
     subtype?: string;
     req?: string;
