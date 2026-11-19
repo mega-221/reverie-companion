@@ -1,7 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from './supabase';
-import type { Character, CharacterData } from './types';
+import type {
+  AllowedEditor,
+  Character,
+  CharacterData,
+  CompendiumEntry,
+  PartyNotificationPayload,
+  PartyVitalsSyncPayload,
+} from './types';
 import { useCompendium } from './CompendiumContext';
 import { 
   ORIGIN_EFFECTS, ORIGIN_CHOICES, CORE_SKILLS, SPECIAL_SKILL_ATTRIBUTES, 
@@ -18,6 +25,9 @@ import {
   getSpendableXp,
   type AbilityPickTask,
 } from './components/sheet/progression/progressionData';
+import { sendEphemeralBroadcast, useVisibilityRealtime } from './hooks/useVisibilityRealtime';
+import { useTheme } from './theme/ThemeContext';
+import { resolveDynamicConvictionThemeId } from './theme/themes';
 
 import Header from './components/sheet/Header';
 import GameplaySection from './components/sheet/GameplaySection';
@@ -25,17 +35,211 @@ import NarrativeSection from './components/sheet/NarrativeSection';
 import ProgressionSection from './components/sheet/ProgressionSection';
 import Footer from './components/sheet/Footer';
 import InventoryModal from './components/sheet/modals/InventoryModal';
+import SettingsModal from './components/SettingsModal';
+import PartyNotificationPopup from './components/party/PartyNotificationPopup';
+import PartyDateTransitionPopup, { type PartyDateTransition } from './components/party/PartyDateTransitionPopup';
+import { normalizeCalendarDate } from './reverieCalendar';
 import { LevelUpModal, OriginModal, ClassModal, SpecialSkillModal, AbilityModal, PathModal, DisciplineModal } from './components/sheet/modals/Modals';
+import { CrisisModal } from './components/sheet/narrative/ConvictionsCard';
 
-export default function CharacterSheet({ id, onBack }: { id: string, onBack: () => void }) {
+function normalizeCharacter(
+  fetchedChar: Character,
+  getEntryByName: (name: string) => CompendiumEntry | undefined
+): Character {
+  const rawItems: any[] = Array.isArray(fetchedChar.data?.items) ? fetchedChar.data.items : [];
+  const migratedItems = rawItems.map((i: any) =>
+    typeof i === 'string'
+      ? { id: crypto.randomUUID(), name: i, qty: 1 }
+      : { ...i, id: i.id || crypto.randomUUID() }
+  );
+
+  const resolveEq = (val: string): string => {
+    if (!val) return '';
+    if (val.length > 30) return val;
+    const existing = migratedItems.find((i: any) => i.name === val);
+    if (existing) return existing.id;
+    const newId = crypto.randomUUID();
+    migratedItems.push({ id: newId, name: val, qty: 0 });
+    return newId;
+  };
+
+  const rawEq = fetchedChar.data?.equipment || ({} as any);
+  const migratedEq = {
+    mainHand: resolveEq(rawEq.mainHand || ''),
+    mainHandMode: (rawEq.mainHandMode || (rawEq.mainHand ? '1H' : '')) as '1H' | '2H' | '',
+    offHand: resolveEq(rawEq.offHand || ''),
+    armour: resolveEq(rawEq.armour || ''),
+    extra: Array.isArray(rawEq.extra) ? rawEq.extra.map((id: string) => resolveEq(id)) : [],
+  };
+
+  const oldNotes = fetchedChar.data?.notes || '';
+  let migratedJournal = fetchedChar.data?.journal || [];
+  if (oldNotes && migratedJournal.length === 0) {
+    migratedJournal = [{
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      title: 'Imported Notes',
+      content: oldNotes,
+    }];
+  }
+
+  const safeData: CharacterData = {
+    ...(fetchedChar.data || {}),
+    identity: {
+      origin: fetchedChar.data?.identity?.origin || '',
+      className: fetchedChar.data?.identity?.className || '',
+      path: fetchedChar.data?.identity?.path || '',
+      quote: fetchedChar.data?.identity?.quote || '',
+      inspirations: fetchedChar.data?.identity?.inspirations || [],
+      originChoices: fetchedChar.data?.identity?.originChoices || {},
+    },
+    progression: (() => {
+      const rawLevel = Math.max(0, fetchedChar.data?.progression?.level ?? 0);
+      const derivedTier = calculateTierFromLevel(rawLevel);
+      const rawXp = Math.max(0, fetchedChar.data?.progression?.xp ?? 0);
+      const totalXp =
+        rawXp < rawLevel * 5
+          ? rawLevel * 5 + Math.min(4, rawXp)
+          : rawXp;
+      return {
+        tier: fetchedChar.data?.progression?.tier ?? derivedTier,
+        level: rawLevel,
+        xp: totalXp,
+        spendableXp: totalXp,
+        advancements: Array.isArray(fetchedChar.data?.progression?.advancements)
+          ? fetchedChar.data.progression.advancements
+          : [],
+      };
+    })(),
+    attributes: {
+      grt: fetchedChar.data?.attributes?.grt || 1,
+      ref: fetchedChar.data?.attributes?.ref || 1,
+      int: fetchedChar.data?.attributes?.int || 1,
+      psy: fetchedChar.data?.attributes?.psy || 1,
+    },
+    bonus: {
+      vm: fetchedChar.data?.bonus?.vm || 0,
+      sl: fetchedChar.data?.bonus?.sl || 0,
+      dp: fetchedChar.data?.bonus?.dp || 0,
+      eva: fetchedChar.data?.bonus?.eva || 0,
+      ap: fetchedChar.data?.bonus?.ap || 0,
+    },
+    trackers: {
+      vigor: fetchedChar.data?.trackers?.vigor ?? 5,
+      strain: fetchedChar.data?.trackers?.strain ?? 0,
+      dp: fetchedChar.data?.trackers?.dp ?? 2,
+      ap: fetchedChar.data?.trackers?.ap ?? 0,
+      apInitialized: Boolean(fetchedChar.data?.trackers?.apInitialized),
+      acc: fetchedChar.data?.trackers?.acc ?? 0,
+      injuries: (fetchedChar.data?.trackers?.injuries || []).map((inj: any) => ({
+        name: inj.name || inj.part || 'Unknown Injury',
+        affectedAttributes: Array.isArray(inj.affectedAttributes)
+          ? inj.affectedAttributes
+          : (inj.affectedAttributes ? inj.affectedAttributes.split(',').map((s: string) => s.trim()) : []),
+        severity: inj.severity ?? 1,
+        treatment: inj.treatment || 'none',
+        weeksLeft: inj.weeksLeft ?? (inj.severity ?? 1) * 4,
+      })),
+    },
+    equipment: migratedEq,
+    abilities: Array.isArray(fetchedChar.data?.abilities)
+      ? fetchedChar.data.abilities.map((a: any) => (typeof a === 'string' ? { name: a, equipped: true } : a))
+      : [],
+    convictions: fetchedChar.data?.convictions || [],
+    failings: fetchedChar.data?.failings || [],
+    aspects: Array.isArray(fetchedChar.data?.aspects)
+      ? fetchedChar.data.aspects.map((a: any) =>
+          typeof a === 'string'
+            ? { id: crypto.randomUUID(), name: a, abandoned: false }
+            : { id: a?.id || crypto.randomUUID(), name: a?.name || '', abandoned: Boolean(a?.abandoned) }
+        )
+      : [],
+    specialSkills: fetchedChar.data?.specialSkills || [],
+    items: migratedItems,
+    possessions: (fetchedChar.data?.possessions || []).map((i: any) => ({ ...i, id: i.id || crypto.randomUUID() })),
+    disciplines: fetchedChar.data?.disciplines || [],
+    skills: fetchedChar.data?.skills || {},
+    journal: migratedJournal,
+    relationships: fetchedChar.data?.relationships || [],
+    notes: oldNotes,
+    allowedEditors: Array.isArray(fetchedChar.allowed_editors)
+      ? fetchedChar.allowed_editors
+      : Array.isArray(fetchedChar.data?.allowedEditors)
+      ? fetchedChar.data.allowedEditors
+      : [],
+  };
+
+  const initialApMax = apMax(safeData, getEntryByName);
+  if (!safeData.trackers.apInitialized && safeData.trackers.ap === 0 && initialApMax > 0) {
+    safeData.trackers.ap = initialApMax;
+    safeData.trackers.apInitialized = true;
+  }
+
+  safeData.progression.spendableXp = getSpendableXp(safeData);
+
+  return {
+    ...fetchedChar,
+    allowed_editors: safeData.allowedEditors,
+    data: safeData,
+  };
+}
+
+function isTextInputPatch(p: Partial<CharacterData>, prevData: CharacterData): boolean {
+  if ('notes' in p || 'journal' in p || 'relationships' in p) return true;
+  if ('identity' in p && p.identity) {
+    const sameMeta =
+      p.identity.origin === prevData.identity?.origin &&
+      p.identity.className === prevData.identity?.className &&
+      p.identity.path === prevData.identity?.path &&
+      JSON.stringify(p.identity.inspirations) === JSON.stringify(prevData.identity?.inspirations) &&
+      JSON.stringify(p.identity.originChoices) === JSON.stringify(prevData.identity?.originChoices);
+    if (sameMeta && p.identity.quote !== prevData.identity?.quote) return true;
+  }
+  if ('convictions' in p && p.convictions && p.convictions.length === (prevData.convictions?.length ?? 0)) {
+    return true;
+  }
+  if ('failings' in p && p.failings && p.failings.length === (prevData.failings?.length ?? 0)) {
+    return true;
+  }
+  return false;
+}
+
+export default function CharacterSheet({
+  id,
+  onBack,
+  currentUserId,
+  currentUserEmail = '',
+  currentUsername = '',
+  onUsernameUpdated,
+  partyId,
+  readOnly = false,
+  initialCharacter,
+}: {
+  id: string;
+  onBack: () => void;
+  currentUserId?: string;
+  currentUserEmail?: string;
+  currentUsername?: string;
+  onUsernameUpdated?: (newUsername: string) => void;
+  partyId?: string;
+  readOnly?: boolean;
+  initialCharacter?: Character;
+}) {
   const { getAbilities, getEntryByName, loading: compendiumLoading } = useCompendium();
+  const { setOverrideThemeId } = useTheme();
   const [char, setChar] = useState<Character | null>(null);
+  const [isAuthoritativeDbChar, setIsAuthoritativeDbChar] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('gameplay');
-  
+  const [isSheetSettingsOpen, setIsSheetSettingsOpen] = useState(false);
+  const [notificationQueue, setNotificationQueue] = useState<PartyNotificationPayload[]>([]);
+  const [dateTransition, setDateTransition] = useState<PartyDateTransition | null>(null);
+
   const [pulseState, setPulseState] = useState<'none' | 'active' | 'fading'>('none');
 
   const [levelUpTarget, setLevelUpTarget] = useState<LevelUpTarget | null>(null);
@@ -51,201 +255,61 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   const [abilityPickQueue, setAbilityPickQueue] = useState<AbilityPickTask[]>([]);
   const [abilityPickTotal, setAbilityPickTotal] = useState(0);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
+  const [isCrisisNotifOpen, setIsCrisisNotifOpen] = useState(false);
 
-  useEffect(() => {
-    supabase.from('characters').select('*').eq('id', id).single()
-      .then(({ data }) => {
-        if (!data) return;
-        const fetchedChar = data as Character;
+  const clientSessionIdRef = useRef(crypto.randomUUID());
+  const charRef = useRef<Character | null>(null);
+  const dirtyRef = useRef(false);
+  const effectiveReadOnlyRef = useRef(true);
+  const sharedPartyIdsRef = useRef<string[]>(partyId ? [partyId] : []);
 
-        const rawItems: any[] = Array.isArray(fetchedChar.data.items) ? fetchedChar.data.items : [];
-        const migratedItems = rawItems.map((i: any) =>
-          typeof i === 'string'
-            ? { id: crypto.randomUUID(), name: i, qty: 1 }
-            : { ...i, id: i.id || crypto.randomUUID() }
-        );
+  const debounceSaveTimerRef = useRef<number | null>(null);
+  const textBroadcastTimerRef = useRef<number | null>(null);
+  const pendingTextPatchRef = useRef<Partial<CharacterData>>({});
 
-        const resolveEq = (val: string): string => {
-          if (!val) return '';
-          if (val.length > 30) return val; 
-          const existing = migratedItems.find((i: any) => i.name === val);
-          if (existing) return existing.id;
-          const newId = crypto.randomUUID();
-          migratedItems.push({ id: newId, name: val, qty: 0 }); 
-          return newId;
-        };
+  const isOwner = Boolean(char && currentUserId && char.user_id === currentUserId);
+  const allowedEditors: AllowedEditor[] =
+    char?.allowed_editors ?? char?.data?.allowedEditors ?? [];
+  const isAllowedEditor = Boolean(
+    char && currentUserId && allowedEditors.some(ed => ed.user_id === currentUserId)
+  );
+  const canEdit = Boolean(
+    char &&
+    isAuthoritativeDbChar &&
+    (isOwner || isAllowedEditor || (!currentUserId && !readOnly))
+  );
+  const effectiveReadOnly = !canEdit;
+  effectiveReadOnlyRef.current = effectiveReadOnly;
 
-        const rawEq = fetchedChar.data.equipment || ({} as any);
-        const migratedEq = {
-          mainHand: resolveEq(rawEq.mainHand || ''),
-          mainHandMode: (rawEq.mainHandMode || (rawEq.mainHand ? '1H' : '')) as '1H' | '2H' | '',
-          offHand: resolveEq(rawEq.offHand || ''),
-          armour: resolveEq(rawEq.armour || ''),
-          extra: Array.isArray(rawEq.extra) ? rawEq.extra.map((id: string) => resolveEq(id)) : []
-        };
-
-        const oldNotes = fetchedChar.data.notes || '';
-        let migratedJournal = fetchedChar.data.journal || [];
-        if (oldNotes && migratedJournal.length === 0) {
-          migratedJournal = [{ 
-            id: crypto.randomUUID(), 
-            date: new Date().toISOString(), 
-            title: 'Imported Notes', 
-            content: oldNotes 
-          }];
-        }
-
-        const safeData: CharacterData = {
-          ...fetchedChar.data,
-          identity: {
-            origin: fetchedChar.data.identity?.origin || '',
-            className: fetchedChar.data.identity?.className || '',
-            path: fetchedChar.data.identity?.path || '',
-            quote: fetchedChar.data.identity?.quote || '',
-            inspirations: fetchedChar.data.identity?.inspirations || [],
-            originChoices: fetchedChar.data.identity?.originChoices || {}
-          },
-          progression: (() => {
-            const rawLevel = Math.max(0, fetchedChar.data.progression?.level ?? 0);
-            const derivedTier = calculateTierFromLevel(rawLevel);
-            const rawXp = Math.max(0, fetchedChar.data.progression?.xp ?? 0);
-            const totalXp =
-              rawXp < rawLevel * 5
-                ? rawLevel * 5 + Math.min(4, rawXp)
-                : rawXp;
-            return {
-              tier: fetchedChar.data.progression?.tier ?? derivedTier,
-              level: rawLevel,
-              xp: totalXp,
-              spendableXp: totalXp,
-              advancements: Array.isArray(fetchedChar.data.progression?.advancements)
-                ? fetchedChar.data.progression.advancements
-                : []
-            };
-          })(),
-          attributes: {
-            grt: fetchedChar.data.attributes?.grt || 1,
-            ref: fetchedChar.data.attributes?.ref || 1,
-            int: fetchedChar.data.attributes?.int || 1,
-            psy: fetchedChar.data.attributes?.psy || 1
-          },
-          bonus: {
-            vm: fetchedChar.data.bonus?.vm || 0,
-            sl: fetchedChar.data.bonus?.sl || 0,
-            dp: fetchedChar.data.bonus?.dp || 0,
-            eva: fetchedChar.data.bonus?.eva || 0,
-            ap: fetchedChar.data.bonus?.ap || 0,
-          },
-          trackers: {
-            vigor: fetchedChar.data.trackers?.vigor ?? 5,
-            strain: fetchedChar.data.trackers?.strain ?? 0,
-            dp: fetchedChar.data.trackers?.dp ?? 2,
-            ap: fetchedChar.data.trackers?.ap ?? 0,
-            apInitialized: Boolean(fetchedChar.data.trackers?.apInitialized),
-            acc: fetchedChar.data.trackers?.acc ?? 0,
-            injuries: (fetchedChar.data.trackers?.injuries || []).map((inj: any) => ({
-              name: inj.name || inj.part || 'Unknown Injury',
-              affectedAttributes: Array.isArray(inj.affectedAttributes) 
-                ? inj.affectedAttributes 
-                : (inj.affectedAttributes ? inj.affectedAttributes.split(',').map((s:string) => s.trim()) : []),
-              severity: inj.severity ?? 1,
-              treatment: inj.treatment || 'none',
-              weeksLeft: inj.weeksLeft ?? (inj.severity ?? 1) * 4
-            }))
-          },
-          equipment: migratedEq,
-          abilities: Array.isArray(fetchedChar.data.abilities)
-            ? fetchedChar.data.abilities.map((a: any) => typeof a === 'string' ? { name: a, equipped: true } : a)
-            : [],
-          convictions: fetchedChar.data.convictions || [],
-          failings: fetchedChar.data.failings || [],
-          aspects: Array.isArray(fetchedChar.data.aspects)
-            ? fetchedChar.data.aspects.map((a: any) =>
-                typeof a === 'string'
-                  ? { id: crypto.randomUUID(), name: a, abandoned: false }
-                  : { id: a?.id || crypto.randomUUID(), name: a?.name || '', abandoned: Boolean(a?.abandoned) }
-              )
-            : [],
-          specialSkills: fetchedChar.data.specialSkills || [],
-          items: migratedItems,
-          possessions: (fetchedChar.data.possessions || []).map((i: any) => ({ ...i, id: i.id || crypto.randomUUID() })),
-          disciplines: fetchedChar.data.disciplines || [],
-          skills: fetchedChar.data.skills || {},
-          journal: migratedJournal,
-          relationships: fetchedChar.data.relationships || [],
-          notes: oldNotes
-        };
-
-        const initialApMax = apMax(safeData, getEntryByName);
-        if (!safeData.trackers.apInitialized && safeData.trackers.ap === 0 && initialApMax > 0) {
-          safeData.trackers.ap = initialApMax;
-          safeData.trackers.apInitialized = true;
-        }
-
-        safeData.progression.spendableXp = getSpendableXp(safeData);
-        setChar({ ...fetchedChar, data: safeData });
-        setHasUnsavedChanges(false);
-        setSaved(false);
-      });
-  }, [id]);
-
-  useEffect(() => {
-    if (!hasUnsavedChanges) return;
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [hasUnsavedChanges]);
-
-  useEffect(() => {
-    if (compendiumLoading || !char) return;
-    const targetMaxAp = apMax(char.data, getEntryByName);
-    if (!char.data.trackers.apInitialized && (char.data.trackers.ap ?? 0) === 0 && targetMaxAp > 0) {
-      setChar(prev => {
-        if (!prev) return prev;
-        if (prev.data.trackers.apInitialized || (prev.data.trackers.ap ?? 0) !== 0) return prev;
-        return {
-          ...prev,
-          data: {
-            ...prev.data,
-            trackers: {
-              ...prev.data.trackers,
-              ap: targetMaxAp,
-              apInitialized: true,
-            },
-          },
-        };
-      });
+  const clearSyncTimers = useCallback(() => {
+    if (debounceSaveTimerRef.current !== null) {
+      window.clearTimeout(debounceSaveTimerRef.current);
+      debounceSaveTimerRef.current = null;
     }
-  }, [compendiumLoading, char?.id]);
+    if (textBroadcastTimerRef.current !== null) {
+      window.clearTimeout(textBroadcastTimerRef.current);
+      textBroadcastTimerRef.current = null;
+    }
+    pendingTextPatchRef.current = {};
+  }, []);
 
-  if (!char) return <p className="text-gray-400 p-8 text-center font-cinzel text-xl h-screen flex items-center justify-center bg-gray-900">Loading character...</p>;
+  const buildPatchedCharacter = useCallback(
+    (prev: Character, p: Partial<CharacterData>, preserveTrackersExact = false): Character => {
+      const merged: CharacterData = { ...prev.data, ...p };
 
-  const baseStrainMax = strainMax(char.data);
-  const isCritical = char.data.trackers.strain > baseStrainMax || char.data.trackers.vigor < 1;
-
-  const showFilter = isCritical || pulseState !== 'none';
-
-  function patch(p: Partial<CharacterData>) {
-    setChar(c => {
-      if (!c) return c;
-      const merged: CharacterData = { ...c.data, ...p };
-
-      if (!p.trackers) {
-        const prevVigorMax = vigorMax(c.data);
+      if (!p.trackers && !preserveTrackersExact) {
+        const prevVigorMax = vigorMax(prev.data);
         const nextVigorMax = vigorMax(merged);
         const deltaVigorMax = nextVigorMax - prevVigorMax;
 
-        const prevDpMax = dpMax(c.data);
+        const prevDpMax = dpMax(prev.data);
         const nextDpMax = dpMax(merged);
         const deltaDpMax = nextDpMax - prevDpMax;
 
-        const prevArmourId = c.data.equipment?.armour || '';
+        const prevArmourId = prev.data.equipment?.armour || '';
         const nextArmourId = merged.equipment?.armour || '';
         const equippedNewArmour = Boolean(nextArmourId && nextArmourId !== prevArmourId);
-        const prevApMax = apMax(c.data, getEntryByName);
+        const prevApMax = apMax(prev.data, getEntryByName);
         const nextApMax = apMax(merged, getEntryByName);
         const deltaApMax = nextApMax - prevApMax;
 
@@ -281,7 +345,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       }
 
       return {
-        ...c,
+        ...prev,
         data: {
           ...merged,
           progression: {
@@ -290,51 +354,540 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           },
         },
       };
-    });
+    },
+    [getEntryByName]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadError(null);
+    dirtyRef.current = false;
+    setHasUnsavedChanges(false);
+    setSaved(false);
+    clearSyncTimers();
+
+    sharedPartyIdsRef.current = partyId ? [partyId] : [];
+
+    async function loadSharedPartyMembership() {
+      const { data: rows } = await supabase
+        .from('party_characters')
+        .select('party_id')
+        .eq('character_id', id);
+
+      if (cancelled || !rows) return;
+      const ids = new Set<string>(partyId ? [partyId] : []);
+      for (const r of rows as any[]) {
+        if (r.party_id) ids.add(r.party_id);
+      }
+      sharedPartyIdsRef.current = Array.from(ids);
+    }
+
+    async function loadCharacter() {
+      loadSharedPartyMembership();
+
+      const { data: liveChar } = await supabase
+        .from('characters')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (cancelled) return;
+
+      if (liveChar) {
+        const normalized = normalizeCharacter(liveChar as Character, getEntryByName);
+        charRef.current = normalized;
+        setChar(normalized);
+        setIsAuthoritativeDbChar(true);
+        return;
+      }
+
+      if (initialCharacter && initialCharacter.id === id) {
+        const normalized = normalizeCharacter(initialCharacter, getEntryByName);
+        charRef.current = normalized;
+        setChar(normalized);
+        setIsAuthoritativeDbChar(false);
+        return;
+      }
+
+      if (partyId) {
+        const { data: sharedRow, error: sharedErr } = await supabase
+          .from('party_characters')
+          .select('*')
+          .eq('party_id', partyId)
+          .eq('character_id', id)
+          .single();
+
+        if (cancelled) return;
+
+        if (sharedRow && !sharedErr) {
+          const snapshotChar: Character = {
+            id: sharedRow.character_id,
+            user_id: sharedRow.user_id,
+            name: sharedRow.character_name || 'Unnamed Character',
+            data: sharedRow.character_data || {},
+            allowed_editors: Array.isArray(sharedRow.character_data?.allowedEditors)
+              ? sharedRow.character_data.allowedEditors
+              : [],
+            created_at: sharedRow.created_at,
+            updated_at: sharedRow.created_at,
+          };
+          const normalized = normalizeCharacter(snapshotChar, getEntryByName);
+          charRef.current = normalized;
+          setChar(normalized);
+          setIsAuthoritativeDbChar(false);
+          return;
+        }
+      }
+
+      setLoadError('Character not found or you do not have permission to view it.');
+    }
+
+    loadCharacter();
+
+    return () => {
+      cancelled = true;
+      clearSyncTimers();
+    };
+  }, [id, partyId, initialCharacter, clearSyncTimers]);
+
+  const persistCharacterToDb = useCallback(async (target: Character): Promise<boolean> => {
+    if (!target || effectiveReadOnlyRef.current) return false;
+    setSaving(true);
+    const updatedAt = new Date().toISOString();
+
+    const { error } = await supabase
+      .from('characters')
+      .update({
+        data: target.data,
+        name: target.name,
+        updated_at: updatedAt,
+      })
+      .eq('id', target.id);
+
+    if (!error) {
+      await supabase
+        .from('party_characters')
+        .update({
+          character_data: target.data,
+          character_name: target.name,
+        })
+        .eq('character_id', target.id);
+
+      dirtyRef.current = false;
+      setHasUnsavedChanges(false);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2000);
+    }
+
+    setSaving(false);
+    return !error;
+  }, []);
+
+  const { broadcast } = useVisibilityRealtime({
+    channelName: id ? `char-sync:${id}` : null,
+    enabled: Boolean(id && char),
+    broadcastHandlers: {
+      'sheet:patch': (payload) => {
+        if (!payload || payload.senderId === clientSessionIdRef.current || !charRef.current) return;
+
+        let nextChar = charRef.current;
+        if (payload.patch && typeof payload.patch === 'object') {
+          nextChar = buildPatchedCharacter(nextChar, payload.patch as Partial<CharacterData>, true);
+        } else if (payload.data) {
+          nextChar = normalizeCharacter(
+            { ...nextChar, data: payload.data },
+            getEntryByName
+          );
+        }
+        if (typeof payload.name === 'string') {
+          nextChar = { ...nextChar, name: payload.name };
+        }
+
+        charRef.current = nextChar;
+        setChar(nextChar);
+        // Receiving tab does NOT own the save timer or mark dirty
+      },
+      'sheet:permissions': (payload) => {
+        if (!payload || payload.senderId === clientSessionIdRef.current || !charRef.current) return;
+        const nextEditors = Array.isArray(payload.allowed_editors) ? payload.allowed_editors : [];
+        const updated: Character = {
+          ...charRef.current,
+          allowed_editors: nextEditors,
+          data: {
+            ...charRef.current.data,
+            allowedEditors: nextEditors,
+          },
+        };
+        charRef.current = updated;
+        setChar(updated);
+      },
+      'party:notify': async (payload: PartyNotificationPayload) => {
+        if (!payload?.id || !currentUserId || !Array.isArray(payload.targetUserIds)) return;
+        if (!payload.targetUserIds.includes(currentUserId)) return;
+
+        let belongsToParty =
+          Boolean(partyId && payload.partyId === partyId) ||
+          sharedPartyIdsRef.current.includes(payload.partyId);
+
+        if (!belongsToParty && payload.partyId) {
+          const { data: membershipRow } = await supabase
+            .from('party_characters')
+            .select('party_id')
+            .eq('character_id', id)
+            .eq('party_id', payload.partyId)
+            .maybeSingle();
+          if (membershipRow?.party_id) {
+            sharedPartyIdsRef.current = Array.from(new Set([...sharedPartyIdsRef.current, membershipRow.party_id]));
+            belongsToParty = true;
+          }
+        }
+
+        if (!belongsToParty) return;
+
+        setNotificationQueue(prev => {
+          if (prev.some(n => n.id === payload.id)) return prev;
+          return [...prev, payload];
+        });
+      },
+    },
+    onBeforeHide: () => {
+      if (textBroadcastTimerRef.current !== null && Object.keys(pendingTextPatchRef.current).length > 0) {
+        window.clearTimeout(textBroadcastTimerRef.current);
+        textBroadcastTimerRef.current = null;
+        broadcast('sheet:patch', {
+          senderId: clientSessionIdRef.current,
+          patch: pendingTextPatchRef.current,
+        });
+        pendingTextPatchRef.current = {};
+      }
+      if (debounceSaveTimerRef.current !== null) {
+        window.clearTimeout(debounceSaveTimerRef.current);
+        debounceSaveTimerRef.current = null;
+      }
+      if (dirtyRef.current && charRef.current && !effectiveReadOnlyRef.current) {
+        persistCharacterToDb(charRef.current);
+      }
+    },
+    onResumeFromHidden: async () => {
+      const { data: sharedRows } = await supabase
+        .from('party_characters')
+        .select('party_id')
+        .eq('character_id', id);
+      if (sharedRows) {
+        const ids = new Set<string>(partyId ? [partyId] : []);
+        for (const r of sharedRows as any[]) {
+          if (r.party_id) ids.add(r.party_id);
+        }
+        sharedPartyIdsRef.current = Array.from(ids);
+      }
+
+      if (dirtyRef.current) return;
+      const { data: fresh } = await supabase
+        .from('characters')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (fresh) {
+        const normalized = normalizeCharacter(fresh as Character, getEntryByName);
+        charRef.current = normalized;
+        setChar(normalized);
+        setIsAuthoritativeDbChar(true);
+      }
+    },
+  });
+
+  const activePartyId = partyId || sharedPartyIdsRef.current[0];
+  useVisibilityRealtime({
+    channelName: activePartyId ? `party-sync:${activePartyId}` : null,
+    enabled: Boolean(activePartyId && char),
+    broadcastHandlers: {
+      'party:calendar': (payload) => {
+        if (!payload?.calendar_date) return;
+        const nextDate = normalizeCalendarDate(payload.calendar_date);
+        const prevSource = payload.previous_date;
+        if (prevSource) {
+          const prevDate = normalizeCalendarDate(prevSource);
+          if (
+            prevDate.day !== nextDate.day ||
+            prevDate.monthIndex !== nextDate.monthIndex ||
+            prevDate.year !== nextDate.year
+          ) {
+            setDateTransition({
+              id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+              previousDate: prevDate,
+              nextDate,
+            });
+          }
+        }
+      },
+      'party:notify': async (payload: PartyNotificationPayload) => {
+        if (!payload?.id || !currentUserId || !Array.isArray(payload.targetUserIds)) return;
+        if (!payload.targetUserIds.includes(currentUserId)) return;
+        setNotificationQueue(prev => {
+          if (prev.some(n => n.id === payload.id)) return prev;
+          return [...prev, payload];
+        });
+      },
+    },
+  });
+
+  const emitPartyVitalsIfChanged = useCallback(
+    (prevChar: Character | null, nextChar: Character, force = false) => {
+      const partyIds = sharedPartyIdsRef.current;
+      if (partyIds.length === 0) return;
+
+      const nextVMax = vigorMax(nextChar.data);
+      const nextSMax = strainMax(nextChar.data);
+      const nextDMax = dpMax(nextChar.data);
+      const nextAMax = apMax(nextChar.data, getEntryByName);
+
+      const nextV = nextChar.data.trackers.vigor;
+      const nextS = nextChar.data.trackers.strain;
+      const nextD = nextChar.data.trackers.dp;
+      const nextA = nextChar.data.trackers.ap ?? 0;
+
+      if (!force && prevChar) {
+        const prevVMax = vigorMax(prevChar.data);
+        const prevSMax = strainMax(prevChar.data);
+        const prevDMax = dpMax(prevChar.data);
+        const prevAMax = apMax(prevChar.data, getEntryByName);
+
+        const unchanged =
+          prevChar.name === nextChar.name &&
+          prevChar.data.trackers.vigor === nextV &&
+          prevVMax === nextVMax &&
+          prevChar.data.trackers.strain === nextS &&
+          prevSMax === nextSMax &&
+          prevChar.data.trackers.dp === nextD &&
+          prevDMax === nextDMax &&
+          (prevChar.data.trackers.ap ?? 0) === nextA &&
+          prevAMax === nextAMax;
+
+        if (unchanged) return;
+      }
+
+      const payload: PartyVitalsSyncPayload = {
+        character_id: nextChar.id,
+        name: nextChar.name,
+        vigor: nextV,
+        vigorMax: nextVMax,
+        strain: nextS,
+        strainMax: nextSMax,
+        dp: nextD,
+        dpMax: nextDMax,
+        ap: nextA,
+        apMax: nextAMax,
+        updated_at: new Date().toISOString(),
+      };
+
+      for (const pid of partyIds) {
+        sendEphemeralBroadcast(`party-sync:${pid}`, 'party:vitals', payload);
+      }
+    },
+    [getEntryByName]
+  );
+
+  const emitPatchBroadcast = useCallback(
+    (deltaPatch: Partial<CharacterData>, isText: boolean) => {
+      if (!isText) {
+        // Flush any buffered text patch together with this immediate discrete click
+        let combined = deltaPatch;
+        if (textBroadcastTimerRef.current !== null) {
+          window.clearTimeout(textBroadcastTimerRef.current);
+          textBroadcastTimerRef.current = null;
+          combined = { ...pendingTextPatchRef.current, ...deltaPatch };
+          pendingTextPatchRef.current = {};
+        }
+        broadcast('sheet:patch', {
+          senderId: clientSessionIdRef.current,
+          patch: combined,
+        });
+        return;
+      }
+
+      // Throttle text input typing to ~400ms
+      pendingTextPatchRef.current = {
+        ...pendingTextPatchRef.current,
+        ...deltaPatch,
+      };
+      if (textBroadcastTimerRef.current === null) {
+        textBroadcastTimerRef.current = window.setTimeout(() => {
+          textBroadcastTimerRef.current = null;
+          const patchToSend = pendingTextPatchRef.current;
+          pendingTextPatchRef.current = {};
+          if (Object.keys(patchToSend).length === 0) return;
+          broadcast('sheet:patch', {
+            senderId: clientSessionIdRef.current,
+            patch: patchToSend,
+          });
+        }, 400);
+      }
+    },
+    [broadcast]
+  );
+
+  const scheduleDebouncedSave = useCallback(
+    (target: Character) => {
+      if (debounceSaveTimerRef.current !== null) {
+        window.clearTimeout(debounceSaveTimerRef.current);
+      }
+      debounceSaveTimerRef.current = window.setTimeout(() => {
+        debounceSaveTimerRef.current = null;
+        if (dirtyRef.current && charRef.current && !effectiveReadOnlyRef.current) {
+          persistCharacterToDb(charRef.current);
+        } else if (dirtyRef.current && !effectiveReadOnlyRef.current) {
+          persistCharacterToDb(target);
+        }
+      }, 2500);
+    },
+    [persistCharacterToDb]
+  );
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const dynamicSheetThemeId = char?.data?.dynamicTheme
+    ? resolveDynamicConvictionThemeId(char.data.convictions)
+    : null;
+
+  useEffect(() => {
+    setOverrideThemeId(dynamicSheetThemeId);
+  }, [dynamicSheetThemeId, setOverrideThemeId]);
+
+  useEffect(() => {
+    return () => {
+      setOverrideThemeId(null);
+    };
+  }, [setOverrideThemeId]);
+
+  useEffect(() => {
+    if (compendiumLoading || !char) return;
+    const targetMaxAp = apMax(char.data, getEntryByName);
+    if (!char.data.trackers.apInitialized && (char.data.trackers.ap ?? 0) === 0 && targetMaxAp > 0) {
+      setChar(prev => {
+        if (!prev) return prev;
+        if (prev.data.trackers.apInitialized || (prev.data.trackers.ap ?? 0) !== 0) return prev;
+        const next: Character = {
+          ...prev,
+          data: {
+            ...prev.data,
+            trackers: {
+              ...prev.data.trackers,
+              ap: targetMaxAp,
+              apInitialized: true,
+            },
+          },
+        };
+        charRef.current = next;
+        return next;
+      });
+    }
+  }, [compendiumLoading, char?.id]);
+
+  if (loadError) {
+    return (
+      <div className="w-full min-h-screen rev-canvas flex flex-col items-center justify-center p-6 text-center gap-4">
+        <p className="text-red-400 font-cinzel text-lg">{loadError}</p>
+        <button
+          onClick={onBack}
+          className="px-4 py-2 rev-btn-secondary font-bold text-sm"
+        >
+          ← Back
+        </button>
+      </div>
+    );
+  }
+
+  if (!char) {
+    return (
+      <p className="text-gray-400 p-8 text-center font-cinzel text-xl h-screen flex items-center justify-center rev-canvas">
+        Loading character...
+      </p>
+    );
+  }
+
+  const baseStrainMax = strainMax(char.data);
+  const isCritical = char.data.trackers.strain > baseStrainMax || char.data.trackers.vigor < 1;
+  const showFilter = isCritical || pulseState !== 'none';
+
+  function patch(p: Partial<CharacterData>) {
+    if (effectiveReadOnly || !charRef.current) return;
+    const prevChar = charRef.current;
+    const nextChar = buildPatchedCharacter(prevChar, p, false);
+
+    // Build exact delta patch (includes any derived trackers / progression updates)
+    const deltaPatch: Partial<CharacterData> = {};
+    for (const key of Object.keys(p) as Array<keyof CharacterData>) {
+      (deltaPatch as any)[key] = nextChar.data[key];
+    }
+    if (nextChar.data.trackers !== prevChar.data.trackers) {
+      deltaPatch.trackers = nextChar.data.trackers;
+    }
+    if (nextChar.data.progression !== prevChar.data.progression) {
+      deltaPatch.progression = nextChar.data.progression;
+    }
+
+    const isText = isTextInputPatch(p, prevChar.data);
+
+    charRef.current = nextChar;
+    setChar(nextChar);
+    dirtyRef.current = true;
     setSaved(false);
     setHasUnsavedChanges(true);
+
+    emitPatchBroadcast(deltaPatch, isText);
+    emitPartyVitalsIfChanged(prevChar, nextChar);
+    scheduleDebouncedSave(nextChar);
   }
 
   function updateTracker(key: 'vigor' | 'strain' | 'dp' | 'ap' | 'acc', amount: number) {
-    if (!char) return;
-    const current = char.data.trackers[key];
+    if (effectiveReadOnly || !charRef.current) return;
+    const currentChar = charRef.current;
+    const current = currentChar.data.trackers[key];
     let max = Infinity;
-    let min = 0; 
-    
+    let min = 0;
+
     if (key === 'vigor') {
-      const baseMax = vigorMax(char.data);
-      max = baseMax * 2; 
-      min = -baseMax; 
+      const baseMax = vigorMax(currentChar.data);
+      max = baseMax * 2;
+      min = -baseMax;
     }
-    if (key === 'strain') max = strainMax(char.data) * 2;
-    if (key === 'dp') max = dpMax(char.data);
-    
+    if (key === 'strain') max = strainMax(currentChar.data) * 2;
+    if (key === 'dp') max = dpMax(currentChar.data);
+
     const nextVal = Math.max(min, Math.min(max, current + amount));
-    
+
     if (key === 'strain' && nextVal >= max) {
       setPulseState('active');
-      const endurance = char.data.skills.Endurance || 0;
+      const endurance = currentChar.data.skills.Endurance || 0;
       const targetVigor = 1 + endurance;
-      
-      const newVigor = char.data.trackers.vigor < targetVigor ? char.data.trackers.vigor : targetVigor;
+
+      const newVigor = currentChar.data.trackers.vigor < targetVigor ? currentChar.data.trackers.vigor : targetVigor;
       const halfMax = max / 2;
-      
+
       patch({
         trackers: {
-          ...char.data.trackers,
+          ...currentChar.data.trackers,
           vigor: newVigor,
-          strain: halfMax
-        }
+          strain: halfMax,
+        },
       });
-      
+
       setTimeout(() => setPulseState('fading'), 2000);
-      setTimeout(() => setPulseState('none'), 3000); 
-      return; 
+      setTimeout(() => setPulseState('none'), 3000);
+      return;
     }
 
     patch({
       trackers: {
-        ...char.data.trackers,
+        ...currentChar.data.trackers,
         [key]: nextVal,
         ...(key === 'ap' ? { apInitialized: true } : {}),
       },
@@ -342,38 +895,30 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
   }
 
   async function save(): Promise<boolean> {
-    if (!char) return false;
-    setSaving(true);
-    const { error } = await supabase.from('characters').update({ data: char.data }).eq('id', char.id);
-    setSaving(false);
-    if (!error) {
-      setHasUnsavedChanges(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-      return true;
+    if (effectiveReadOnly || !charRef.current) return false;
+    if (debounceSaveTimerRef.current !== null) {
+      window.clearTimeout(debounceSaveTimerRef.current);
+      debounceSaveTimerRef.current = null;
     }
-    return false;
+    return persistCharacterToDb(charRef.current);
   }
 
   function handleRequestBack() {
-    if (hasUnsavedChanges) {
-      setIsExitConfirmOpen(true);
-    } else {
+    if (effectiveReadOnly || !hasUnsavedChanges) {
       onBack();
+    } else {
+      setIsExitConfirmOpen(true);
     }
   }
 
-  async function handleNameSave(newName: string) {
-    if (!char) return;
-    await supabase.from('characters').update({ name: newName }).eq('id', char.id);
-  }
-
   function applyOrigin(originName: string, choices: Record<string, string>) {
-    const oldOriginName = char?.data.identity.origin;
-    let newSkills = { ...char?.data.skills };
-    let newSpecialSkills = [...(char?.data.specialSkills || [])];
-    let newInspirations = [...(char?.data.identity.inspirations || [])];
-    let newAbilities = [...(char?.data.abilities || [])];
+    if (!charRef.current) return;
+    const currentChar = charRef.current;
+    const oldOriginName = currentChar.data.identity.origin;
+    let newSkills = { ...currentChar.data.skills };
+    let newSpecialSkills = [...(currentChar.data.specialSkills || [])];
+    let newInspirations = [...(currentChar.data.identity.inspirations || [])];
+    let newAbilities = [...(currentChar.data.abilities || [])];
 
     if (oldOriginName && oldOriginName !== originName) {
       const oldEffects = ORIGIN_EFFECTS[oldOriginName];
@@ -382,7 +927,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         if (oldEffects.inspiration) oldEffects.inspiration.forEach(insp => { newInspirations = newInspirations.filter(i => i !== insp); });
         if (oldEffects.specialAbilities) oldEffects.specialAbilities.forEach(disc => { const abilitiesToRemove = getAbilities().filter(a => a.data.source === disc && (a.data.class_rank || 0) <= 1); newAbilities = newAbilities.filter(ab => !abilitiesToRemove.find(x => x.name === ab.name)); });
       }
-      const oldChoices = char?.data.identity.originChoices || {};
+      const oldChoices = currentChar.data.identity.originChoices || {};
       Object.entries(oldChoices).forEach(([choiceId, skillName]) => {
         const choice = ORIGIN_CHOICES[oldOriginName]?.find(c => c.id === choiceId);
         if (choice) {
@@ -424,7 +969,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
       }
     });
 
-    patch({ identity: { ...char!.data.identity, origin: originName, inspirations: newInspirations, originChoices: choices }, skills: newSkills, specialSkills: newSpecialSkills, abilities: newAbilities });
+    patch({ identity: { ...currentChar.data.identity, origin: originName, inspirations: newInspirations, originChoices: choices }, skills: newSkills, specialSkills: newSpecialSkills, abilities: newAbilities });
   }
 
   const handleAdvance = () => {
@@ -432,10 +977,10 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     const currentSpendable = getSpendableXp(char.data);
 
     if (levelUpTarget.type === 'attribute') {
-      const current = char.data.attributes[levelUpTarget.key]; 
+      const current = char.data.attributes[levelUpTarget.key];
       const max = getMaxAttribute(char.data.progression.tier);
       const availablePts = getMaxAttributePoints(char.data.progression.tier) - getSpentAttributePoints(char.data.attributes);
-      
+
       if (current < max && availablePts > 0) {
         patch({ attributes: { ...char.data.attributes, [levelUpTarget.key]: current + 1 } });
       }
@@ -450,13 +995,13 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         if (isInspired) cost = Math.max(0, cost - 1);
 
         if (currentSpendable >= cost) {
-          patch({ 
-            skills: { ...char.data.skills, [levelUpTarget.key]: current + 1 }, 
+          patch({
+            skills: { ...char.data.skills, [levelUpTarget.key]: current + 1 },
           });
         }
       }
     } else if (levelUpTarget.type === 'specialSkill') {
-      const skill = char.data.specialSkills[levelUpTarget.index]; 
+      const skill = char.data.specialSkills[levelUpTarget.index];
       const compendiumAttr = getEntryByName(skill.name)?.data?.attribute;
       const attr = (compendiumAttr || skill.attribute || 'grt') as keyof typeof char.data.attributes;
       const originMin = getMinSkillRank(skill.name, char);
@@ -478,18 +1023,18 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
     if (!char || !levelUpTarget) return;
 
     if (levelUpTarget.type === 'attribute') {
-      const current = char.data.attributes[levelUpTarget.key]; 
+      const current = char.data.attributes[levelUpTarget.key];
       if (current > 1) patch({ attributes: { ...char.data.attributes, [levelUpTarget.key]: current - 1 } });
     } else if (levelUpTarget.type === 'skill') {
-      const current = char.data.skills[levelUpTarget.key] ?? 0; 
+      const current = char.data.skills[levelUpTarget.key] ?? 0;
       const min = getMinSkillRank(levelUpTarget.key, char);
       if (current > min) {
-        patch({ 
-          skills: { ...char.data.skills, [levelUpTarget.key]: current - 1 }, 
+        patch({
+          skills: { ...char.data.skills, [levelUpTarget.key]: current - 1 },
         });
       }
     } else if (levelUpTarget.type === 'specialSkill') {
-      const skill = char.data.specialSkills[levelUpTarget.index]; 
+      const skill = char.data.specialSkills[levelUpTarget.index];
       const min = getMinSkillRank(skill.name, char);
       if (skill.rank > min) {
         const next = [...char.data.specialSkills]; next[levelUpTarget.index] = { ...next[levelUpTarget.index], rank: skill.rank - 1 };
@@ -500,6 +1045,53 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
 
   return (
     <>
+      <PartyDateTransitionPopup
+        transition={dateTransition}
+        onDismiss={() => setDateTransition(null)}
+      />
+
+      <PartyNotificationPopup
+        notification={notificationQueue[0] || null}
+        queueCount={notificationQueue.length}
+        giveTargets={canEdit ? [{ id: char.id, name: char.name || 'Unnamed Character' }] : []}
+        onRespondGive={async (notif, accepted) => {
+          if (!accepted || !canEdit || !charRef.current) return;
+          const amount = Math.max(1, Math.trunc(notif.grantAmount || 0));
+          if (amount <= 0) return;
+
+          if (notif.grantResource === 'xp') {
+            patch({
+              progression: {
+                ...charRef.current.data.progression,
+                xp: (charRef.current.data.progression.xp ?? 0) + amount,
+              },
+            });
+          } else if (notif.grantResource === 'dp') {
+            patch({
+              trackers: {
+                ...charRef.current.data.trackers,
+                dp: Math.max(0, (charRef.current.data.trackers.dp ?? 0) + amount),
+              },
+            });
+          }
+
+          if (debounceSaveTimerRef.current !== null) {
+            window.clearTimeout(debounceSaveTimerRef.current);
+            debounceSaveTimerRef.current = null;
+          }
+          if (charRef.current) {
+            await persistCharacterToDb(charRef.current);
+          }
+        }}
+        onRespondCrisis={(_notif, accepted) => {
+          if (!accepted || !canEdit) return;
+          setIsCrisisNotifOpen(true);
+        }}
+        onDismiss={(notifId) => {
+          setNotificationQueue(prev => prev.filter(n => n.id !== notifId));
+        }}
+      />
+
       {pulseState !== 'none' && (
         <div className={`fixed inset-0 z-[100] pointer-events-none backdrop-blur-[2px] bg-cyan-950/10 transition-opacity duration-1000 ease-in-out ${
           pulseState === 'fading' ? 'opacity-0' : 'opacity-100'
@@ -508,7 +1100,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         </div>
       )}
 
-      <div className={`min-h-screen bg-gray-900 pb-20 font-sans text-gray-200 transition-all duration-1000 ${showFilter ? 'grayscale-[60%] contrast-[1.1]' : ''}`}>
+      <div className={`min-h-screen rev-canvas pb-20 font-sans transition-all duration-1000 ${showFilter ? 'grayscale-[60%] contrast-[1.1]' : ''}`}>
         <Header
           char={char}
           onBack={handleRequestBack}
@@ -516,12 +1108,12 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           saving={saving}
           saved={saved}
           hasUnsavedChanges={hasUnsavedChanges}
-          onNameSave={(name) => { setChar({ ...char, name }); handleNameSave(name); }}
           updateTracker={updateTracker}
           showPulse={pulseState !== 'none'}
+          readOnly={effectiveReadOnly}
+          onOpenSettings={() => setIsSheetSettingsOpen(true)}
         />
         <main className="w-full px-4 sm:px-6 pt-6 relative z-10">
-          
           {activeTab === 'gameplay' && (
             <GameplaySection
               char={char}
@@ -541,7 +1133,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           )}
 
           {activeTab === 'narrative' && <NarrativeSection char={char} patch={patch} openOriginModal={() => setIsOriginModalOpen(true)} onRemoveOrigin={() => applyOrigin('', {})} />}
-          
+
           {activeTab === 'progression' && (
             <ProgressionSection
               char={char}
@@ -592,6 +1184,47 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
         }}
       />
       <InventoryModal char={char} isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} patch={patch} />
+      {isCrisisNotifOpen && canEdit && (
+        <CrisisModal char={char} patch={patch} onClose={() => setIsCrisisNotifOpen(false)} />
+      )}
+
+      {currentUserId && (
+        <SettingsModal
+          isOpen={isSheetSettingsOpen}
+          onClose={() => setIsSheetSettingsOpen(false)}
+          userId={currentUserId}
+          userEmail={currentUserEmail}
+          currentUsername={currentUsername}
+          onUsernameUpdated={(nextName) => onUsernameUpdated?.(nextName)}
+          sheetConfig={{
+            char,
+            ownerId: char.user_id,
+            isOwner,
+            onSettingsSaved: ({ editors, dynamicTheme }) => {
+              if (!charRef.current) return;
+              const updated: Character = {
+                ...charRef.current,
+                allowed_editors: editors,
+                data: {
+                  ...charRef.current.data,
+                  allowedEditors: editors,
+                  dynamicTheme,
+                },
+              };
+              charRef.current = updated;
+              setChar(updated);
+              broadcast('sheet:permissions', {
+                senderId: clientSessionIdRef.current,
+                allowed_editors: editors,
+              });
+              broadcast('sheet:patch', {
+                senderId: clientSessionIdRef.current,
+                patch: { dynamicTheme },
+              });
+            },
+          }}
+        />
+      )}
 
       <PathModal char={char} isOpen={isPathModalOpen} onClose={() => setIsPathModalOpen(false)} patch={patch} classData={getEntryByName(char.data.identity.className)} />
       <DisciplineModal
@@ -606,7 +1239,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
           const ownedNames = new Set((char.data.abilities || []).map(a => a.name));
           const tasks: AbilityPickTask[] = [];
 
-          // Rank 0: 2 abilities
           const ownedRank0 = (char.data.abilities || []).filter(ab => {
             const entry = getEntryByName(ab.name);
             return entry?.data?.source === discName && Number(entry?.data?.class_rank ?? 0) === 0;
@@ -626,7 +1258,6 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
             });
           }
 
-          // Upper ranks 1 .. (tier - 1): 1 ability each
           for (let rank = 1; rank <= maxRank; rank++) {
             const ownedAtRank = (char.data.abilities || []).filter(ab => {
               const entry = getEntryByName(ab.name);
@@ -707,6 +1338,7 @@ export default function CharacterSheet({ id, onBack }: { id: string, onBack: () 
                   <button
                     type="button"
                     onClick={() => {
+                      dirtyRef.current = false;
                       setHasUnsavedChanges(false);
                       setIsExitConfirmOpen(false);
                       onBack();

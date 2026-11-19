@@ -1,9 +1,74 @@
+import type { ReverieCalendarDate } from './reverieCalendar';
+
+export type AllowedEditor = {
+  user_id: string;
+  username: string;
+  email: string;
+};
+
 export type Character = {
   id: string;
   user_id: string;
   name: string;
   data: CharacterData;
+  allowed_editors?: AllowedEditor[];
   created_at: string;
+  updated_at: string;
+};
+
+export type Party = {
+  id: string;
+  name: string;
+  description?: string;
+  calendar_date?: ReverieCalendarDate | null;
+  owner_id: string;
+  created_at: string;
+};
+
+export type PartyMember = {
+  id: string;
+  party_id: string;
+  user_id: string;
+  email: string;
+  status: 'pending' | 'accepted';
+};
+
+export type PartyMessage = {
+  id: string;
+  party_id: string;
+  user_id: string;
+  username: string;
+  content: string;
+  created_at: string;
+};
+
+export type PartyNotificationPayload = {
+  id: string;
+  partyId: string;
+  partyName: string;
+  senderName: string;
+  targetUserIds: string[];
+  type?: 'prompt' | 'give' | 'crisis';
+  title: string;
+  message: string;
+  skill?: string;
+  challengeLevel?: number;
+  grantResource?: 'xp' | 'dp';
+  grantAmount?: number;
+  createdAt: string;
+};
+
+export type PartyVitalsSyncPayload = {
+  character_id: string;
+  name?: string;
+  vigor: number;
+  vigorMax: number;
+  strain: number;
+  strainMax: number;
+  dp: number;
+  dpMax: number;
+  ap: number;
+  apMax: number;
   updated_at: string;
 };
 
@@ -95,6 +160,8 @@ export type CharacterData = {
     inUniverseDate?: string;
   }[];
   relationships: { id: string; name: string; faction: string; role: string; description: string; }[];
+  allowedEditors?: AllowedEditor[];
+  dynamicTheme?: boolean;
 };
 
 export type CompendiumEntry = {

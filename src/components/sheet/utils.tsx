@@ -10,10 +10,10 @@ export const ATTRIBUTE_DESCRIPTIONS = {
 };
 
 export const SKILL_GROUPS = {
-  grt: { color: 'text-red-500', border: 'border-red-900', bg: 'bg-red-950', skills: ['Athletics', 'Brawling', 'Endurance'] },
-  ref: { color: 'text-green-500', border: 'border-green-900', bg: 'bg-green-950', skills: ['Dexterity', 'Perception', 'Stealth'] },
-  int: { color: 'text-blue-500', border: 'border-blue-900', bg: 'bg-blue-950', skills: ['Knowledge', 'Reasoning', 'Survival'] },
-  psy: { color: 'text-purple-500', border: 'border-purple-900', bg: 'bg-purple-950', skills: ['Intuition', 'Persuasion', 'Willpower'] },
+  grt: { color: 'rev-keep-color text-red-500', border: 'rev-keep-color border-red-900', bg: 'rev-keep-color bg-red-950', skills: ['Athletics', 'Brawling', 'Endurance'] },
+  ref: { color: 'rev-keep-color text-green-500', border: 'rev-keep-color border-green-900', bg: 'rev-keep-color bg-green-950', skills: ['Dexterity', 'Perception', 'Stealth'] },
+  int: { color: 'rev-keep-color text-blue-500', border: 'rev-keep-color border-blue-900', bg: 'rev-keep-color bg-blue-950', skills: ['Knowledge', 'Reasoning', 'Survival'] },
+  psy: { color: 'rev-keep-color text-purple-500', border: 'rev-keep-color border-purple-900', bg: 'rev-keep-color bg-purple-950', skills: ['Intuition', 'Persuasion', 'Willpower'] },
 } as const;
 
 export const CORE_SKILL_DESCRIPTIONS: Record<string, string> = {
@@ -130,9 +130,9 @@ export const getSpeedData = (speed?: string, upkeep?: string) => {
 
 export const getTypeStyle = (type?: string) => {
   switch(type) {
-    case 'attack': return 'bg-red-900/50 text-red-300 border-red-700';
-    case 'defensive': return 'bg-blue-900/50 text-blue-300 border-blue-700';
-    case 'utility': return 'bg-purple-900/50 text-purple-300 border-purple-700';
+    case 'attack': return 'rev-keep-color rev-dark-card bg-red-900/50 text-red-300 border-red-700';
+    case 'defensive': return 'rev-keep-color rev-dark-card bg-blue-900/50 text-blue-300 border-blue-700';
+    case 'utility': return 'rev-keep-color rev-dark-card bg-purple-900/50 text-purple-300 border-purple-700';
     default: return 'bg-gray-800 text-gray-300 border-gray-600';
   }
 };
@@ -168,7 +168,7 @@ export const Tooltip = ({
     <div className={`relative inline-flex items-center cursor-help ${className}`} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShow(false)}>
       <div className={`${noTruncate ? 'w-full' : 'truncate w-full'} ${!noBorder ? 'border-b border-dotted border-gray-500' : ''}`}>{children}</div>
       {show && typeof document !== 'undefined' && createPortal(
-        <div className="fixed z-[9999] w-64 -translate-x-1/2 -translate-y-full mb-2 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl pointer-events-none text-center leading-tight normal-case font-normal italic whitespace-pre-line" style={{ left: coords.x, top: coords.y - 6 }}>
+        <div className="rev-dark-card fixed z-[9999] w-64 -translate-x-1/2 -translate-y-full mb-2 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl pointer-events-none text-center leading-tight normal-case font-normal italic whitespace-pre-line" style={{ left: coords.x, top: coords.y - 6 }}>
           {text || 'No description available.'}
           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
         </div>,

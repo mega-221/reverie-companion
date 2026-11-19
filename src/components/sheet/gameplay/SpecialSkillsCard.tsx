@@ -48,7 +48,7 @@ export default function SpecialSkillsCard({
       {/* Origin Missing Overlay */}
       {!hasOrigin && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
-          <div className="bg-red-950/90 border border-red-900 text-red-200 font-bold text-sm px-4 py-2 rounded-lg shadow-xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="rev-keep-color bg-red-950/90 border border-red-900 text-red-200 font-bold text-sm px-4 py-2 rounded-lg shadow-xl animate-in fade-in zoom-in-95 duration-200">
             Select an Origin to unlock skills.
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function SpecialSkillsCard({
                         <button 
                           onClick={() => setLevelUpTarget({ type: 'specialSkill', index: i })} 
                           disabled={!hasOrigin}
-                          className={`border bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base text-red-500 border-red-900 transition-colors ${hasOrigin ? 'hover:border-red-500' : 'cursor-not-allowed'}`}
+                          className={`rev-keep-color border bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base text-red-500 border-red-900 transition-colors ${hasOrigin ? 'hover:border-red-500' : 'cursor-not-allowed'}`}
                         >
                           {effectiveRank}
                         </button>
@@ -153,7 +153,7 @@ export default function SpecialSkillsCard({
                         onClick={() => setLevelUpTarget({ type: 'specialSkill', index: i })} 
                         disabled={!hasOrigin}
                         className={`border bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base transition-colors ${
-                          isPenalizedOrNegative ? 'text-red-500 border-red-900' : 'text-white border-gray-700'
+                          isPenalizedOrNegative ? 'rev-keep-color text-red-500 border-red-900' : 'text-white border-gray-700'
                         } ${hasOrigin ? 'hover:border-red-500' : 'cursor-not-allowed'}`}
                       >
                         {effectiveRank}

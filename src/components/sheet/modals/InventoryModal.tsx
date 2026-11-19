@@ -343,7 +343,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
     if (isArmour && (armourCat || data.subtype)) stats.push({ label: 'Category', value: armourCat || data.subtype, color: 'text-gray-200' });
     if (data.ap !== undefined) stats.push({ label: 'AP', value: data.ap, color: 'text-cyan-400' });
     if (resistsVal) stats.push({ label: 'Resists', value: resistsVal, color: 'text-amber-300' });
-    if (reqDisplay) stats.push({ label: 'Requires', value: reqDisplay, color: isArmour && !meetsCarry ? 'text-red-400' : 'text-gray-300' });
+    if (reqDisplay) stats.push({ label: 'Requires', value: reqDisplay, color: isArmour && !meetsCarry ? 'rev-keep-color text-red-400' : 'text-gray-300' });
     if (data.dmg) stats.push({ label: 'Damage', value: data.dmg, color: 'text-red-400' });
     if (data.range) stats.push({ label: 'Range', value: data.range, color: 'text-green-400' });
     if (data.burden !== undefined) stats.push({ label: 'Burden', value: data.burden, color: 'text-blue-400' });
@@ -369,7 +369,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
         {isArmour && armourCat && (
           <div className={`text-xs px-3 py-2 rounded border mb-2 ${
             !meetsCarry
-              ? 'bg-red-950/40 border-red-800/80 text-red-300'
+              ? 'rev-keep-color bg-red-950/40 border-red-800/80 text-red-300'
               : 'bg-black/30 border-gray-700 text-gray-300'
           }`}>
             <div>{ARMOUR_CATEGORY_RULES[armourCat].summary}</div>
@@ -489,11 +489,11 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
           <div className="flex items-center gap-4">
             <div className="flex flex-col items-end">
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Burden</span>
-              <span className={`text-sm font-bold ${isOverburdened || currentBurden < 0 ? 'text-red-500' : 'text-gray-300'}`}>
+              <span className={`text-sm font-bold ${isOverburdened || currentBurden < 0 ? 'rev-keep-color text-red-500' : 'text-gray-300'}`}>
                 {currentBurden} / {maxBurden}
               </span>
               {isOverburdened && (
-                <span className="text-[10px] font-bold text-red-400">
+                <span className="rev-keep-color text-[10px] font-bold text-red-400">
                   -{burdenPenalty} GRT/REF/Combat{isImmobilized ? ' • Immobilized' : ''}
                 </span>
               )}
@@ -591,7 +591,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                         onDragOver={(e) => { e.preventDefault(); if (!isBlocked) setDragOverSlot(key); }}
                         onDrop={(e) => !isBlocked && handleDropInModal(e, key)}
                         className={`bg-black/20 border rounded-lg overflow-hidden transition-all duration-200 ${
-                          isArmourWarning ? 'border-red-800/80' : 'border-gray-700'
+                          isArmourWarning ? 'rev-keep-color border-red-800/80' : 'border-gray-700'
                         } ${isExpanded ? 'ring-1 ring-red-900' : ''} ${isBlocked ? 'opacity-50 grayscale cursor-not-allowed' : ''} ${dragOverSlot === key ? 'ring-2 ring-red-500 bg-white/10' : ''}`}
                         draggable={!!equippedId && !isBlocked}
                         onDragStart={(e) => {
@@ -614,7 +614,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                             {key === 'armour' && equippedArmourInfo && (
                               <>
                                 {!equippedArmourInfo.meetsCarryReq && (
-                                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-950/70 border border-red-800 text-red-300">
+                                  <span className="rev-keep-color text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-950/70 border border-red-800 text-red-300">
                                     Carry {equippedArmourInfo.requiredCarry} Req
                                   </span>
                                 )}

@@ -40,7 +40,7 @@ export function ConfirmDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[300] rev-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onCancel}
     >
       <div
@@ -49,12 +49,15 @@ export function ConfirmDialog({
         className="sheet-modal max-w-sm animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-          <h3 className="font-cinzel font-bold text-lg text-gray-200 truncate pr-2">{title}</h3>
+        <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
+          <h3 className="font-cinzel font-bold text-lg truncate pr-2" style={{ color: 'var(--rev-text)' }}>
+            {title}
+          </h3>
           <button
             type="button"
             onClick={onCancel}
-            className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2 shrink-0"
+            className="font-bold text-2xl leading-none px-2 shrink-0"
+            style={{ color: 'var(--rev-text-muted)' }}
             aria-label="Close"
           >
             ×
@@ -62,13 +65,15 @@ export function ConfirmDialog({
         </div>
 
         <div className="p-5 flex flex-col gap-5">
-          <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">{message}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--rev-text-secondary)' }}>
+            {message}
+          </p>
 
           <div className="flex gap-2 w-full">
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 py-2.5 px-4 rounded-lg font-bold text-sm border border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors whitespace-nowrap"
+              className="flex-1 py-2.5 px-4 font-bold text-sm rev-btn-secondary whitespace-nowrap"
             >
               {cancelLabel}
             </button>
@@ -76,10 +81,8 @@ export function ConfirmDialog({
               type="button"
               onClick={onConfirm}
               autoFocus
-              className={`flex-1 py-2.5 px-4 rounded-lg font-bold text-sm border shadow-sm transition-colors whitespace-nowrap ${
-                tone === 'danger'
-                  ? 'bg-red-900 hover:bg-red-800 border-red-700 text-white'
-                  : 'bg-gray-700 hover:bg-gray-600 border-gray-500 text-white'
+              className={`flex-1 py-2.5 px-4 font-bold text-sm shadow-sm whitespace-nowrap ${
+                tone === 'danger' ? 'rev-btn-primary' : 'rev-btn-secondary'
               }`}
             >
               {confirmLabel}

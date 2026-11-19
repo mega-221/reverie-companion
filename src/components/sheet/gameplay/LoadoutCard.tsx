@@ -79,7 +79,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
     if (isArmour && (armourCat || data.subtype)) stats.push({ label: 'Category', value: armourCat || data.subtype, color: 'text-gray-200' });
     if (data.ap !== undefined) stats.push({ label: 'AP', value: data.ap, color: 'text-cyan-400' });
     if (resistsVal) stats.push({ label: 'Resists', value: resistsVal, color: 'text-amber-300' });
-    if (reqDisplay) stats.push({ label: 'Requires', value: reqDisplay, color: isArmour && !meetsCarry ? 'text-red-400' : 'text-gray-300' });
+    if (reqDisplay) stats.push({ label: 'Requires', value: reqDisplay, color: isArmour && !meetsCarry ? 'rev-keep-color text-red-400' : 'text-gray-300' });
     if (data.dmg) stats.push({ label: 'Damage', value: data.dmg, color: 'text-red-400' });
     if (data.range) stats.push({ label: 'Range', value: data.range, color: 'text-green-400' });
     if (data.burden !== undefined) stats.push({ label: 'Burden', value: data.burden, color: 'text-blue-400' });
@@ -99,7 +99,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
         {isArmour && armourCat && (
           <div className={`text-[11px] px-2.5 py-1.5 rounded border mb-2 ${
             !meetsCarry
-              ? 'bg-red-950/40 border-red-800/80 text-red-300'
+              ? 'rev-keep-color bg-red-950/40 border-red-800/80 text-red-300'
               : 'bg-black/30 border-gray-700 text-gray-300'
           }`}>
             <div>{ARMOUR_CATEGORY_RULES[armourCat].summary}</div>
@@ -140,7 +140,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
             isBlocked 
               ? 'bg-gray-900 border-gray-800 cursor-not-allowed opacity-50' 
               : isArmourWarning
-              ? 'bg-black/40 border-red-800/80 hover:border-red-600 active:opacity-60'
+              ? 'rev-keep-color bg-black/40 border-red-800/80 hover:border-red-600 active:opacity-60'
               : 'bg-black/40 border-gray-700 hover:border-gray-500 active:opacity-60'
           } ${dragOverSlot === key ? 'ring-2 ring-red-500 bg-white/10 border-red-500' : ''}`}
           draggable={!!equippedId && !isBlocked}
@@ -169,7 +169,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
               {key === 'armour' && armourInfo && (
                 <>
                   {!armourInfo.meetsCarryReq && (
-                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-950/70 border border-red-800 text-red-300">
+                    <span className="rev-keep-color text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-950/70 border border-red-800 text-red-300">
                       Carry {armourInfo.requiredCarry}
                     </span>
                   )}

@@ -6,7 +6,7 @@ import { useCompendium } from '../../CompendiumContext';
 import VitalsCard from './gameplay/VitalsCard';
 
 export default function Header({ 
-  char, onBack, onSave, saving, saved, hasUnsavedChanges, onNameSave, showPulse, updateTracker
+  char, onBack, onSave, saving, saved, hasUnsavedChanges, showPulse, updateTracker, readOnly, onOpenSettings
 }: { 
   char: Character, 
   onBack: () => void, 
@@ -14,67 +14,45 @@ export default function Header({
   saving: boolean, 
   saved: boolean,
   hasUnsavedChanges?: boolean,
-  onNameSave: (name: string) => void,
   showPulse?: boolean,
-  updateTracker: (k: 'vigor' | 'strain' | 'dp' | 'ap' | 'acc', amount: number) => void
+  updateTracker: (k: 'vigor' | 'strain' | 'dp' | 'ap' | 'acc', amount: number) => void,
+  readOnly?: boolean,
+  onOpenSettings?: () => void
 }) {
   const { getEntryByName } = useCompendium();
   const maxAp = apMax(char.data, getEntryByName);
   const currentAp = char.data.trackers.ap ?? 0;
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [tempName, setTempName] = useState('');
   const [vitalsOpen, setVitalsOpen] = useState(false);
 
   const convictionList = char.data.convictions.map(c => c.name).filter(Boolean);
   const classPathDisplay = [char.data.identity.className, char.data.identity.path].filter(Boolean).join(', ');
 
-  const handleSave = () => {
-    if (!tempName.trim() || tempName === char.name) { 
-      setIsEditingName(false); 
-      return; 
-    }
-    onNameSave(tempName);
-    setIsEditingName(false);
-  };
-
   return (
     <>
-      <header className="sticky top-0 z-40 bg-red-950 text-white shadow-md border-b border-red-900 w-full transition-colors duration-1000">
+      <header className="sticky top-0 z-40 rev-header-bar shadow-md w-full transition-colors duration-300">
         <div className="w-full px-3 sm:px-4 py-3 flex justify-between items-center overflow-x-hidden gap-2">
           <div className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1">
-            <button onClick={onBack} className="text-red-300 hover:text-white transition-colors text-xs sm:text-sm font-bold uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <button
+              onClick={onBack}
+              className="hover:text-white transition-colors text-xs sm:text-sm font-bold uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 shrink-0"
+              style={{ color: 'var(--rev-header-muted)' }}
+            >
               ← Back
             </button>
-            <div className="w-px h-5 bg-red-800 shrink-0"></div>
+            <div className="w-px h-5 shrink-0" style={{ backgroundColor: 'var(--rev-header-border)' }}></div>
             
-            {isEditingName ? (
-              <input 
-                type="text" 
-                className="text-lg sm:text-2xl font-cinzel font-bold bg-red-900 text-white border-b-2 border-red-400 focus:outline-none px-2 py-1 rounded w-36 sm:w-64" 
-                value={tempName} 
-                onChange={(e) => setTempName(e.target.value)} 
-                onBlur={handleSave} 
-                onKeyDown={(e) => e.key === 'Enter' && handleSave()} 
-                autoFocus 
-              />
-            ) : (
-              <h1 
-                onClick={() => { setTempName(char.name); setIsEditingName(true); }} 
-                className="text-lg sm:text-2xl font-cinzel first-letter:font-cinzelDeco font-bold truncate cursor-pointer hover:text-red-200 transition-colors shrink-0 max-w-[140px] sm:max-w-xs" 
-                title="Click to rename"
-              >
-                {char.name || 'Unnamed Character'}
-              </h1>
-            )}
+            <h1 className="text-lg sm:text-2xl font-cinzel first-letter:font-cinzelDeco font-bold truncate shrink-0 max-w-[140px] sm:max-w-xs">
+              {char.name || 'Unnamed Character'}
+            </h1>
 
             {(classPathDisplay || convictionList.length > 0) && (
-              <div className="hidden lg:flex items-center gap-3 text-sm italic text-red-200 min-w-0">
-                <div className="w-px h-5 bg-red-800 shrink-0"></div>
+              <div className="hidden lg:flex items-center gap-3 text-sm italic min-w-0" style={{ color: 'var(--rev-header-muted)' }}>
+                <div className="w-px h-5 shrink-0" style={{ backgroundColor: 'var(--rev-header-border)' }}></div>
                 {classPathDisplay && (
                   <span className="shrink-0 whitespace-nowrap">{classPathDisplay}</span>
                 )}
                 {classPathDisplay && convictionList.length > 0 && (
-                  <div className="w-px h-5 bg-red-800 shrink-0"></div>
+                  <div className="w-px h-5 shrink-0" style={{ backgroundColor: 'var(--rev-header-border)' }}></div>
                 )}
                 {convictionList.length > 0 && (
                   <span className="truncate">{convictionList.join(' • ')}</span>
@@ -99,7 +77,8 @@ export default function Header({
               onClick={() => setVitalsOpen(true)}
               title="Open quick vitals editor"
               aria-label="Open quick vitals"
-              className="md:hidden px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium shadow-sm bg-red-900 hover:bg-red-800 text-red-100 shrink-0 transition-colors"
+              className="md:hidden px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium shadow-sm text-white shrink-0 transition-colors"
+              style={{ backgroundColor: 'var(--rev-header-btn)', border: '1px solid var(--rev-header-border)' }}
             >
               Vitals
             </button>
@@ -108,52 +87,86 @@ export default function Header({
               type="button"
               onClick={() => setVitalsOpen(true)}
               title="Open quick vitals editor"
-              className="hidden md:flex gap-4 lg:gap-6 text-sm font-bold px-3 py-1.5 rounded border border-transparent hover:border-red-800 hover:bg-red-900/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 transition-colors"
+              className="hidden md:flex gap-4 lg:gap-6 text-sm font-bold px-3 py-1.5 rounded border border-transparent hover:bg-white/10 focus:outline-none transition-colors tabular-nums"
             >
               <span title="Vigor">
                 VG:{' '}
-                <span className={char.data.trackers.vigor < 0 ? 'text-red-400' : ''}>
+                <span className={char.data.trackers.vigor < 0 ? 'rev-keep-color text-red-400' : ''}>
                   {char.data.trackers.vigor}
                 </span>
                 /{vigorMax(char.data)}
               </span>
               <span title="Strain">
                 SN:{' '}
-                <span className={char.data.trackers.strain < 0 ? 'text-red-400' : ''}>
+                <span className={char.data.trackers.strain < 0 ? 'rev-keep-color text-red-400' : ''}>
                   {char.data.trackers.strain}
                 </span>
                 /{strainMax(char.data)}
               </span>
               <span title="Destiny">
                 DP:{' '}
-                <span className={char.data.trackers.dp < 0 ? 'text-red-400' : ''}>
+                <span className={char.data.trackers.dp < 0 ? 'rev-keep-color text-red-400' : ''}>
                   {char.data.trackers.dp}
                 </span>
                 /{dpMax(char.data)}
               </span>
             </button>
-            <div className="hidden sm:flex items-center gap-2 text-xs font-bold bg-red-900/50 px-3 py-1.5 rounded border border-red-800 shrink-0">
+            <div
+              className="hidden sm:flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded border shrink-0 tabular-nums"
+              style={{ backgroundColor: 'var(--rev-header-btn)', borderColor: 'var(--rev-header-border)' }}
+            >
               <span>Tier {char.data.progression.tier}</span>
-              <div className="w-px h-5 bg-red-800 shrink-0 mx-1"></div>
+              <div className="w-px h-5 shrink-0 mx-1" style={{ backgroundColor: 'var(--rev-header-border)' }}></div>
               <span>Lvl {char.data.progression.level}</span>
             </div>
-            <button 
-              onClick={onSave} 
-              disabled={saving} 
-              title={hasUnsavedChanges ? 'You have unsaved changes' : 'Save character'}
-              className={`px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium shadow-sm transition-colors flex items-center gap-1.5 ${
-                saved
-                  ? 'bg-green-600'
-                  : hasUnsavedChanges
-                  ? 'bg-red-700 hover:bg-red-600 ring-1 ring-white/40'
-                  : 'bg-red-700 hover:bg-red-600'
-              }`}
-            >
-              {hasUnsavedChanges && !saving && !saved && (
-                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
-              )}
-              <span>{saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}</span>
-            </button>
+            {readOnly ? (
+              <span className="px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider bg-black/30 border border-white/20 text-white shrink-0">
+                Read-Only View
+              </span>
+            ) : (
+              <button 
+                onClick={onSave} 
+                disabled={saving} 
+                title={hasUnsavedChanges ? 'You have unsaved changes' : 'Save character'}
+                className={`px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium shadow-sm transition-colors flex items-center gap-1.5 ${
+                  saved
+                    ? 'bg-green-600 text-white'
+                    : hasUnsavedChanges
+                    ? 'rev-btn-primary ring-1 ring-white/40'
+                    : 'rev-btn-primary'
+                }`}
+              >
+                {hasUnsavedChanges && !saving && !saved && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                )}
+                <span>{saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}</span>
+              </button>
+            )}
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                aria-label="Settings"
+                title="Settings"
+                className="p-1.5 rounded border text-white hover:opacity-90 transition-colors shrink-0"
+                style={{ backgroundColor: 'var(--rev-header-btn)', borderColor: 'var(--rev-header-border)' }}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -203,7 +216,7 @@ export default function Header({
                     >
                       −
                     </button>
-                    <span className={`px-2 text-sm font-bold tabular-nums ${currentAp < maxAp ? 'text-amber-400' : currentAp > maxAp ? 'text-cyan-300' : 'text-white'}`}>
+                    <span className={`px-2 text-sm font-bold tabular-nums ${currentAp < 0 ? 'rev-keep-color text-red-500' : currentAp < maxAp ? 'text-amber-400' : currentAp > maxAp ? 'text-cyan-300' : 'text-white'}`}>
                       {currentAp}{maxAp > 0 ? <span className="text-xs text-gray-500 font-normal">/{maxAp}</span> : null}
                     </span>
                     <button

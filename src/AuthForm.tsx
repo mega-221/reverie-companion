@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 
 export default function AuthForm() {
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -16,45 +17,78 @@ export default function AuthForm() {
     setMessage(null);
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) setError(error.message);
-      else setMessage('Account created! You can now sign in.');
+      if (!username.trim()) {
+        setError('Username is required for sign up.');
+        setLoading(false);
+        return;
+      }
+
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: { username: username.trim() }
+        }
+      });
+
+      if (signUpError) {
+        setError(signUpError.message);
+      } else {
+        if (signUpData.user) {
+          await supabase.from('profiles').upsert({
+            id: signUpData.user.id,
+            username: username.trim(),
+            email: email.trim().toLowerCase(),
+          });
+        }
+        setMessage('Account created! You can now sign in.');
+      }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setError(error.message);
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        setError(signInError.message);
+      } else if (signInData.user) {
+        // Ensure profile exists on sign in
+        const metaName = signInData.user.user_metadata?.username || email.split('@')[0];
+        await supabase.from('profiles').upsert({
+          id: signInData.user.id,
+          username: metaName,
+          email: email.trim().toLowerCase(),
+        }, { onConflict: 'id', ignoreDuplicates: true });
+      }
     }
     
     setLoading(false);
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4 font-sans text-gray-200">
+    <div className="min-h-screen rev-canvas flex flex-col items-center justify-center p-4 font-sans">
       
       <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-300">
         
         {/* Header */}
         <div className="text-center mb-10">
           <h1 
-            className="text-4xl sm:text-5xl text-gray-100 uppercase mb-3"
-            style={{ fontFamily: "'Spectral SC', serif", letterSpacing: '0.35em', paddingLeft: '0.35em' }}
+            className="text-4xl sm:text-5xl uppercase mb-3"
+            style={{ fontFamily: "'Spectral SC', serif", letterSpacing: '0.35em', color: 'var(--rev-text-bright)' }}
           >
             Reverie
           </h1>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-[0.4em]">
+          <p className="text-xs font-bold uppercase tracking-[0.4em]" style={{ color: 'var(--rev-text-faint)' }}>
             Companion
           </p>
         </div>
 
-        {/* Form Panel - Updated to match sheet-panel styling */}
-        <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-sm overflow-hidden">
+        {/* Form Panel */}
+        <div className="sheet-panel shadow-sm overflow-hidden">
           <div className="p-8 flex flex-col gap-5">
             
-            <h2 className="text-xl font-cinzel font-bold text-gray-200 border-b border-gray-700 pb-3 mb-2">
+            <h2 className="text-xl font-cinzel font-bold border-b rev-divider pb-3 mb-2" style={{ color: 'var(--rev-text)' }}>
               {isSignUp ? 'Create an Account' : 'Sign In'}
             </h2>
 
             {error && (
-              <div className="bg-red-950/40 border border-red-900 text-red-300 text-sm p-3 rounded-lg">
+              <div className="sheet-panel-red text-sm p-3" style={{ color: 'var(--rev-accent-text)' }}>
                 {error}
               </div>
             )}
@@ -66,24 +100,38 @@ export default function AuthForm() {
             )}
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <label className="flex flex-col text-sm font-bold text-gray-400">
+              {isSignUp && (
+                <label className="flex flex-col text-sm font-bold" style={{ color: 'var(--rev-text-muted)' }}>
+                  Username
+                  <input
+                    type="text"
+                    required
+                    className="rev-input p-3 mt-1 font-normal shadow-inner"
+                    placeholder="e.g. Alistair"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </label>
+              )}
+
+              <label className="flex flex-col text-sm font-bold" style={{ color: 'var(--rev-text-muted)' }}>
                 Email
                 <input
                   type="email"
                   required
-                  className="border border-gray-700 bg-black/40 p-3 rounded-lg mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200"
+                  className="rev-input p-3 mt-1 font-normal shadow-inner"
                   placeholder="soul@dunyor.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </label>
 
-              <label className="flex flex-col text-sm font-bold text-gray-400">
+              <label className="flex flex-col text-sm font-bold" style={{ color: 'var(--rev-text-muted)' }}>
                 Password
                 <input
                   type="password"
                   required
-                  className="border border-gray-700 bg-black/40 p-3 rounded-lg mt-1 font-normal shadow-inner focus:outline-none focus:border-red-500 text-gray-200"
+                  className="rev-input p-3 mt-1 font-normal shadow-inner"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -93,7 +141,7 @@ export default function AuthForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-4 bg-red-900 hover:bg-red-800 text-white font-bold py-3 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-4 rev-btn-primary font-bold py-3 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
               </button>
@@ -107,7 +155,8 @@ export default function AuthForm() {
                   setError(null);
                   setMessage(null);
                 }}
-                className="text-sm font-bold text-gray-500 hover:text-gray-300 transition-colors"
+                className="text-sm font-bold transition-colors"
+                style={{ color: 'var(--rev-text-faint)' }}
               >
                 {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
               </button>

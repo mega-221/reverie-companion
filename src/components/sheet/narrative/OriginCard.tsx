@@ -33,7 +33,7 @@ export default function OriginCard({
   });
 
   return (
-    <section className="sheet-panel p-3.5 sm:p-5 w-full min-h-[220px] lg:h-[420px] flex flex-col">
+    <section className="sheet-panel rev-nar-card p-3.5 sm:p-5 w-full min-h-[220px] lg:h-[420px] flex flex-col">
       {confirmDialog}
       <SectionHeader title="Origin" />
       <div className="flex flex-col gap-4 flex-1 min-h-0">

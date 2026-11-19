@@ -26,7 +26,7 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
       {/* Origin Missing Overlay */}
       {!hasOrigin && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
-          <div className="bg-red-950/90 border border-red-900 text-red-200 font-bold text-sm px-4 py-2 rounded-lg shadow-xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="rev-keep-color bg-red-950/90 border border-red-900 text-red-200 font-bold text-sm px-4 py-2 rounded-lg shadow-xl animate-in fade-in zoom-in-95 duration-200">
             Select an Origin to unlock skills.
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
                             className="w-fit shrink-0"
                             disabled={!hasOrigin}
                           >
-                            <span className={`${isSignature ? 'text-cyan-400' : 'text-yellow-500'} text-sm cursor-help`}>★</span>
+                            <span className={`rev-keep-color ${isSignature ? 'text-cyan-400' : 'text-yellow-500'} text-sm cursor-help`}>★</span>
                           </Tooltip>
                         )}
                         {originMin > 0 && <Tooltip text={`Minimum bound: ${originMin} (from Origin)`} noBorder className="w-fit shrink-0" disabled={!hasOrigin}><span className="text-gray-500 text-xs cursor-help">🔒</span></Tooltip>}
@@ -115,7 +115,7 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
                             className="w-fit shrink-0"
                             disabled={!hasOrigin}
                           >
-                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-700/80 text-amber-300 cursor-help">
+                            <span className="rev-keep-color rev-dark-card text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-700/80 text-amber-300 cursor-help">
                               DIS
                             </span>
                           </Tooltip>
@@ -135,7 +135,7 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
                             <button 
                               onClick={() => setLevelUpTarget({ type: 'skill', key: skill })} 
                               disabled={!hasOrigin}
-                              className={`border bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base text-red-500 border-red-900 transition-colors ${hasOrigin ? 'hover:border-red-500' : 'cursor-not-allowed'}`}
+                              className={`rev-keep-color border bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base text-red-500 border-red-900 transition-colors ${hasOrigin ? 'hover:border-red-500' : 'cursor-not-allowed'}`}
                             >
                               {effectiveRank}
                             </button>
@@ -146,7 +146,7 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
                             disabled={!hasOrigin}
                             className={`border bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base transition-colors ${
                               isPenalizedOrNegative
-                                ? 'text-red-500 border-red-900'
+                                ? 'rev-keep-color text-red-500 border-red-900'
                                 : 'text-white border-gray-700'
                             } ${hasOrigin ? 'hover:border-red-500' : 'cursor-not-allowed'}`}
                           >

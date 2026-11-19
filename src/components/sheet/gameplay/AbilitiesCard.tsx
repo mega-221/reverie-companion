@@ -69,9 +69,9 @@ export default function AbilitiesCard({
   };
 
   const renderStats = (entry: CompendiumEntry) => {
-    const stats = [{ label: 'Strain', value: `${entry.data.sn_cost ?? 0} SN`, color: 'text-blue-400' }];
-    if (entry.data.type === 'attack') stats.push({ label: 'Accuracy', value: entry.data.acc ?? '+0', color: 'text-green-400' }, { label: 'Damage', value: entry.data.dmg ?? '+0', color: 'text-red-400' });
-    if (entry.data.type === 'defensive') stats.push({ label: 'Evasion', value: entry.data.eva ?? '+0', color: 'text-purple-400' });
+    const stats = [{ label: 'Strain', value: `${entry.data.sn_cost ?? 0} SN`, color: 'rev-keep-color text-blue-400' }];
+    if (entry.data.type === 'attack') stats.push({ label: 'Accuracy', value: entry.data.acc ?? '+0', color: 'rev-keep-color text-green-400' }, { label: 'Damage', value: entry.data.dmg ?? '+0', color: 'rev-keep-color text-red-400' });
+    if (entry.data.type === 'defensive') stats.push({ label: 'Evasion', value: entry.data.eva ?? '+0', color: 'rev-keep-color text-purple-400' });
     stats.push({ label: 'Requires', value: entry.data.requirement || 'None', color: 'text-gray-300' });
     return stats;
   };
@@ -84,17 +84,17 @@ export default function AbilitiesCard({
           <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 cursor-help whitespace-nowrap">
             {speedData.speedLabel}
           </span>
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
+          <div className="rev-dark-card absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
             {speedData.speedTooltip}
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
           </div>
         </div>
         {speedData.upkeepLabel && (
           <div className="relative group inline-flex items-center shrink-0">
-            <span className="bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50 cursor-help whitespace-nowrap">
+            <span className="rev-keep-color rev-dark-card bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50 cursor-help whitespace-nowrap">
               {speedData.upkeepLabel}
             </span>
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
+            <div className="rev-dark-card absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
               {speedData.upkeepTooltip}
               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
             </div>
@@ -125,7 +125,7 @@ export default function AbilitiesCard({
                   const isExpanded = expandedClassAbility === ab.id;
                   const speedData = ab.data.speed ? getSpeedData(ab.data.speed, ab.data.upkeep) : null;
                   return (
-                    <div key={ab.id} className={`bg-gray-900 border border-gray-700 rounded-lg transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''} ${isLocked ? 'opacity-50 grayscale' : ''}`}>
+                    <div key={ab.id} className={`bg-gray-900 border ${isExpanded ? 'border-red-500 ring-1 ring-red-500/40 shadow-md' : 'border-gray-700'} rounded-lg transition-all duration-200 ${isLocked ? 'opacity-50 grayscale' : ''}`}>
                       <div className={`flex flex-col sm:flex-row sm:items-center p-2 select-none transition-colors cursor-pointer hover:bg-gray-800/50 ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'} gap-2`} onClick={() => setExpandedClassAbility(isExpanded ? null : ab.id)}>
                         
                         <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
@@ -164,7 +164,7 @@ export default function AbilitiesCard({
           )}
 
           <div>
-            <div className="flex justify-between items-center mb-2 gap-2">
+            <div className="flex flex-wrap justify-between items-center mb-2 gap-2">
               <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Discipline Abilities</div>
               <div className="flex items-center gap-2">
                 <Tooltip
@@ -173,14 +173,14 @@ export default function AbilitiesCard({
                   noBorder
                   noTruncate
                 >
-                  <span className="inline-flex items-center gap-1 text-[10px] leading-tight text-gray-300 font-bold bg-gray-900 px-2 py-0.5 rounded border border-gray-700 whitespace-nowrap">
+                  <span className="flex items-center gap-1 h-6 text-[10px] leading-none text-gray-300 font-bold bg-gray-900 px-2 rounded border border-gray-700 whitespace-nowrap">
                     <span>Available ability picks:</span>
-                    <span className={availableAbilityPicks < 0 ? 'text-red-400' : 'text-green-400'}>
+                    <span className={availableAbilityPicks < 0 ? 'rev-keep-color text-red-400' : 'rev-keep-color text-green-400'}>
                       {availableAbilityPicks}
                     </span>
                   </span>
                 </Tooltip>
-                <span className="inline-flex items-center text-[10px] leading-tight text-gray-300 font-bold bg-gray-900 px-2 py-0.5 rounded border border-gray-700 whitespace-nowrap">
+                <span className="inline-flex items-center h-6 text-[10px] leading-none text-gray-300 font-bold bg-gray-900 px-2 rounded border border-gray-700 whitespace-nowrap">
                   Active: {equippedAbilities}/6
                 </span>
               </div>
@@ -196,7 +196,7 @@ export default function AbilitiesCard({
                 return (
                   <div 
                     key={i} 
-                    className={`bg-gray-900 border border-gray-700 rounded-lg transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''} ${draggedAbilityIndex === i ? 'opacity-40 border-dashed border-gray-500' : ''} ${dragOverAbilityIndex === i && draggedAbilityIndex !== i ? (draggedAbilityIndex! < i ? 'border-b-2 border-b-red-500' : 'border-t-2 border-t-red-500') : ''} ${isLocked ? 'opacity-50 grayscale' : ''} ${isInactive && !isLocked ? 'opacity-60' : ''}`} 
+                    className={`bg-gray-900 border ${isExpanded ? 'border-red-500 ring-1 ring-red-500/40 shadow-md' : 'border-gray-700'} rounded-lg transition-all duration-200 ${draggedAbilityIndex === i ? 'opacity-40 border-dashed border-gray-500' : ''} ${dragOverAbilityIndex === i && draggedAbilityIndex !== i ? (draggedAbilityIndex! < i ? 'border-b-2 border-b-red-500' : 'border-t-2 border-t-red-500') : ''} ${isLocked ? 'opacity-50 grayscale' : ''} ${isInactive && !isLocked ? 'opacity-60' : ''}`} 
                     onDragOver={(e) => handleDragOver(e, i)} 
                     onDrop={(e) => handleDrop(e, i)}
                   >
@@ -318,7 +318,7 @@ export default function AbilitiesCard({
                   </div>
                 );
               })}
-              <button className="border border-dashed border-gray-600 px-4 py-2 text-sm rounded-lg hover:bg-gray-700 w-full mt-2 text-gray-400 font-medium transition-colors" onClick={() => {
+              <button className="border border-dashed border-gray-600 px-4 py-2 text-sm rounded-lg hover:bg-white/5 w-full mt-2 text-gray-400 font-medium transition-colors" onClick={() => {
                 setModalAbilityIndex(char.data.abilities.length);
                 setIsAbilityModalOpen(true);
               }}>+ add ability</button>
@@ -333,7 +333,7 @@ export default function AbilitiesCard({
             const isExpanded = expandedBasicAbility === ab.id;
             const speedData = ab.data.speed ? getSpeedData(ab.data.speed, ab.data.upkeep) : null;
             return (
-              <div key={ab.id} className={`bg-gray-900 border border-gray-700 rounded-lg transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''}`}>
+              <div key={ab.id} className={`bg-gray-900 border ${isExpanded ? 'border-red-500 ring-1 ring-red-500/40 shadow-md' : 'border-gray-700'} rounded-lg transition-all duration-200`}>
                 <div className={`flex flex-col sm:flex-row sm:items-center p-2 cursor-pointer select-none hover:bg-gray-800/50 transition-colors ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'} gap-2`} onClick={() => setExpandedBasicAbility(isExpanded ? null : ab.id)}>
                   
                   <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">

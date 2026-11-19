@@ -120,10 +120,10 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
 
   const getSeasonColor = (season?: string) => {
     switch(season) {
-      case 'Vamor': return 'text-red-500'; 
-      case 'Bruma': return 'text-orange-400'; 
-      case 'Trumst': return 'text-blue-400'; 
-      case 'Halice': return 'text-green-500'; 
+      case 'Vamor': return 'rev-keep-color text-red-500'; 
+      case 'Bruma': return 'rev-keep-color text-orange-400'; 
+      case 'Trumst': return 'rev-keep-color text-blue-400'; 
+      case 'Halice': return 'rev-keep-color text-green-500'; 
       default: return 'text-gray-300';
     }
   };
@@ -181,7 +181,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
             >
               <div className="flex flex-col items-center w-full">
                 <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-1">XP</span>
-                <span className={`font-bold text-lg leading-none ${getSpendableXp(char.data) < 0 ? 'text-red-400' : 'text-gray-100'}`}>
+                <span className={`font-bold text-lg leading-none ${getSpendableXp(char.data) < 0 ? 'rev-keep-color text-red-400' : 'text-gray-100'}`}>
                   {getSpendableXp(char.data)}
                 </span>
               </div>
@@ -241,7 +241,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
                   <div className="flex justify-center w-full">
                     {hasFail && f ? (
                       <Tooltip text={failStatement} className="w-auto" noBorder>
-                        <span className="bg-black text-white font-bold uppercase tracking-[0.2em] text-sm leading-tight px-3 py-1 select-none inline-block shadow-sm cursor-help">
+                        <span className="rev-dark-card vital-keep-white bg-black text-white font-bold uppercase tracking-[0.2em] text-sm leading-tight px-3 py-1 select-none inline-block shadow-sm cursor-help">
                           {f.name}
                         </span>
                       </Tooltip>
@@ -274,7 +274,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
               <span className="hidden sm:inline">Accuracy</span>
               <span className="sm:hidden">ACC</span>
             </span>
-            <span className={`font-bold text-lg sm:text-xl leading-none ${effectiveAcc < 0 ? 'text-red-500' : 'text-white'}`}>
+            <span className={`font-bold text-lg sm:text-xl leading-none ${effectiveAcc < 0 ? 'rev-keep-color text-red-500' : 'text-white'}`}>
               {effectiveAcc}
             </span>
           </div>
@@ -286,7 +286,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
             <span className="hidden sm:inline">Evasion</span>
             <span className="sm:hidden">EVA</span>
           </span>
-          <span className={`font-bold text-lg sm:text-xl leading-none ${effectiveEva < 0 ? 'text-red-500' : 'text-white'}`}>{effectiveEva}</span>
+          <span className={`font-bold text-lg sm:text-xl leading-none ${effectiveEva < 0 ? 'rev-keep-color text-red-500' : 'text-white'}`}>{effectiveEva}</span>
         </div>
 
         {/* ARMOUR */}
@@ -312,7 +312,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
             <span
               className={`font-bold text-lg sm:text-xl leading-none tabular-nums ${
                 currentAp < 0
-                  ? 'text-red-500'
+                  ? 'rev-keep-color text-red-500'
                   : maxAp > 0 && currentAp < maxAp
                   ? 'text-amber-400'
                   : currentAp > maxAp
@@ -340,7 +340,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
               <span className="hidden sm:inline">Movement</span>
               <span className="sm:hidden">MOV</span>
             </span>
-            <span className={`font-bold text-lg sm:text-xl leading-none ${effectiveMov < 0 ? 'text-red-500' : 'text-white'}`}>
+            <span className={`font-bold text-lg sm:text-xl leading-none ${effectiveMov < 0 ? 'rev-keep-color text-red-500' : 'text-white'}`}>
               {effectiveMov}
             </span>
           </div>
@@ -358,7 +358,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
               <span className="hidden sm:inline">Burden</span>
               <span className="sm:hidden">BRD</span>
             </span>
-            <span className={`font-bold text-lg sm:text-xl leading-none ${isOverburdened || currentBurdenVal < 0 ? 'text-red-500' : 'text-white'}`}>
+            <span className={`font-bold text-lg sm:text-xl leading-none ${isOverburdened || currentBurdenVal < 0 ? 'rev-keep-color text-red-500' : 'text-white'}`}>
               {currentBurdenVal}<span className="text-[9px] sm:text-[10px] text-gray-500 font-normal">/{maxBurdenVal}</span>
             </span>
           </div>
@@ -415,7 +415,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
                       <span
                         className={`text-xl ${
                           currentAp < 0
-                            ? 'text-red-500'
+                            ? 'rev-keep-color text-red-500'
                             : maxAp > 0 && currentAp < maxAp
                             ? 'text-amber-400'
                             : currentAp > maxAp
@@ -503,7 +503,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
                     </div>
                     <div>
                       <div className="text-[10px] text-gray-500 font-bold uppercase">Carry Req</div>
-                      <div className={`text-sm font-bold ${armourInfo.meetsCarryReq ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`text-sm font-bold ${armourInfo.meetsCarryReq ? 'rev-keep-color text-green-400' : 'rev-keep-color text-red-400'}`}>
                         {armourInfo.requiredCarry > 0 ? `${armourInfo.characterCarry}/${armourInfo.requiredCarry}` : 'None'}
                       </div>
                     </div>
@@ -520,7 +520,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
                       <p className="text-amber-300">• -{armourInfo.armourMovementPenalty} tile Movement ({armourInfo.category} Armour)</p>
                     )}
                     {!armourInfo.meetsCarryReq && (
-                      <p className="text-red-400 font-semibold">
+                      <p className="rev-keep-color text-red-400 font-semibold">
                         • Carry {armourInfo.requiredCarry} required (you have {armourInfo.characterCarry}): -{armourInfo.combatRollPenalty} penalty to combat rolls &amp; -1 tile Movement.
                       </p>
                     )}

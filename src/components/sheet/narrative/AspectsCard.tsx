@@ -36,9 +36,9 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     headerBorder: 'border-red-900',
     cardBorder: 'border-red-900/60',
     quoteBorder: 'border-l-red-500',
-    badgeClass: 'bg-red-950/70 text-red-500 border-red-900',
+    badgeClass: 'rev-dark-card bg-red-950/70 text-red-500 border-red-900',
     dotClass: 'bg-red-500',
-    filterActiveClass: 'bg-red-950/80 text-red-500 border-red-700',
+    filterActiveClass: 'rev-dark-card bg-red-950/80 text-red-500 border-red-700',
   },
   Reflex: {
     headerBg: 'bg-green-950/80',
@@ -46,9 +46,9 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     headerBorder: 'border-green-900',
     cardBorder: 'border-green-900/60',
     quoteBorder: 'border-l-green-500',
-    badgeClass: 'bg-green-950/70 text-green-500 border-green-900',
+    badgeClass: 'rev-dark-card bg-green-950/70 text-green-500 border-green-900',
     dotClass: 'bg-green-500',
-    filterActiveClass: 'bg-green-950/80 text-green-500 border-green-700',
+    filterActiveClass: 'rev-dark-card bg-green-950/80 text-green-500 border-green-700',
   },
   Intellect: {
     headerBg: 'bg-blue-950/80',
@@ -56,9 +56,9 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     headerBorder: 'border-blue-900',
     cardBorder: 'border-blue-900/60',
     quoteBorder: 'border-l-blue-500',
-    badgeClass: 'bg-blue-950/70 text-blue-500 border-blue-900',
+    badgeClass: 'rev-dark-card bg-blue-950/70 text-blue-500 border-blue-900',
     dotClass: 'bg-blue-500',
-    filterActiveClass: 'bg-blue-950/80 text-blue-500 border-blue-700',
+    filterActiveClass: 'rev-dark-card bg-blue-950/80 text-blue-500 border-blue-700',
   },
   Psyche: {
     headerBg: 'bg-purple-950/80',
@@ -66,9 +66,9 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     headerBorder: 'border-purple-900',
     cardBorder: 'border-purple-900/60',
     quoteBorder: 'border-l-purple-500',
-    badgeClass: 'bg-purple-950/70 text-purple-500 border-purple-900',
+    badgeClass: 'rev-dark-card bg-purple-950/70 text-purple-500 border-purple-900',
     dotClass: 'bg-purple-500',
-    filterActiveClass: 'bg-purple-950/80 text-purple-500 border-purple-700',
+    filterActiveClass: 'rev-dark-card bg-purple-950/80 text-purple-500 border-purple-700',
   },
   // Tactics: Dark Magenta 2 (#741b47)
   Tactics: {
@@ -77,9 +77,9 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     headerBorder: 'border-[#992b61]',
     cardBorder: 'border-[#741b47]/80',
     quoteBorder: 'border-l-[#a64d79]',
-    badgeClass: 'bg-[#741b47]/90 text-fuchsia-100 border-[#992b61]',
+    badgeClass: 'rev-dark-card bg-[#741b47]/90 text-fuchsia-100 border-[#992b61]',
     dotClass: 'bg-[#a64d79]',
-    filterActiveClass: 'bg-[#741b47] text-fuchsia-100 border-[#a64d79]',
+    filterActiveClass: 'rev-dark-card bg-[#741b47] text-fuchsia-100 border-[#a64d79]',
   },
   // Virtue: Dark Orange 2 (#b45f06)
   Virtue: {
@@ -88,9 +88,9 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     headerBorder: 'border-[#d47514]',
     cardBorder: 'border-[#b45f06]/80',
     quoteBorder: 'border-l-[#e69138]',
-    badgeClass: 'bg-[#b45f06]/90 text-amber-50 border-[#d47514]',
+    badgeClass: 'rev-dark-card bg-[#b45f06]/90 text-amber-50 border-[#d47514]',
     dotClass: 'bg-[#e69138]',
-    filterActiveClass: 'bg-[#b45f06] text-amber-50 border-[#e69138]',
+    filterActiveClass: 'rev-dark-card bg-[#b45f06] text-amber-50 border-[#e69138]',
   },
   // Comfort: Dark Cyan 2 (#134f5c)
   Comfort: {
@@ -99,9 +99,9 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     headerBorder: 'border-[#1d6e80]',
     cardBorder: 'border-[#134f5c]/80',
     quoteBorder: 'border-l-[#45818e]',
-    badgeClass: 'bg-[#134f5c]/90 text-cyan-50 border-[#1d6e80]',
+    badgeClass: 'rev-dark-card bg-[#134f5c]/90 text-cyan-50 border-[#1d6e80]',
     dotClass: 'bg-[#45818e]',
-    filterActiveClass: 'bg-[#134f5c] text-cyan-50 border-[#45818e]',
+    filterActiveClass: 'rev-dark-card bg-[#134f5c] text-cyan-50 border-[#45818e]',
   },
   // Degradation: Black (#000000)
   Degradation: {
@@ -110,9 +110,9 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     headerBorder: 'border-zinc-700',
     cardBorder: 'border-zinc-700',
     quoteBorder: 'border-l-zinc-500',
-    badgeClass: 'bg-black text-gray-200 border-zinc-700',
+    badgeClass: 'rev-dark-card bg-black text-gray-200 border-zinc-700',
     dotClass: 'bg-zinc-400',
-    filterActiveClass: 'bg-black text-gray-100 border-zinc-500',
+    filterActiveClass: 'rev-dark-card bg-black text-gray-100 border-zinc-500',
   },
 };
 
@@ -682,7 +682,7 @@ export default function AspectsCard({
                 >
                 {/* ZONE 1: Category Header Band (fixed height, standardized across all cards) */}
                 <div
-                  className={`grid grid-cols-3 items-center px-3.5 h-9 border-b shrink-0 ${
+                  className={`rev-dark-card grid grid-cols-3 items-center px-3.5 h-9 border-b shrink-0 ${
                     isAbandoned
                       ? 'bg-zinc-900 border-zinc-700'
                       : `${style.headerBg} ${style.headerBorder}`

@@ -74,11 +74,11 @@ export default function VitalsCard({ char, updateTracker }: { char: Character, u
         return (
           <div key={key} className="flex flex-col items-center w-full gap-2 py-3">
             
-            <span className={`font-bold uppercase text-lg transition-all duration-500 ease-out ${trackingClass} ${titleColor}`}>
+            <span className={`vital-static font-bold uppercase text-lg transition-all duration-500 ease-out ${trackingClass} ${titleColor}`}>
               {label}
             </span>
 
-            <div className="flex w-full gap-1">
+            <div className="vital-static flex w-full gap-1">
               {Array.from({ length: totalBars }).map((_, i) => {
                 let isFilled = false;
                 let isTVG = false;
@@ -93,7 +93,7 @@ export default function VitalsCard({ char, updateTracker }: { char: Character, u
                   if (isVigor && i >= max) isTVG = true;
                 }
 
-                let segmentClass = "flex-1 h-3.5 rounded-sm transition-all duration-300 ";
+                let segmentClass = "vital-static flex-1 h-3.5 rounded-sm transition-all duration-300 ";
                 
                 if (isFilled) {
                   if (isTVG) {
@@ -111,22 +111,22 @@ export default function VitalsCard({ char, updateTracker }: { char: Character, u
               })}
             </div>
 
-            <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm w-32 h-9 mt-1 overflow-hidden">
+            <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg shadow-sm min-w-[10.5rem] w-auto h-9 mt-1 overflow-hidden">
               <button 
                 onClick={() => updateTracker(key, -1)} 
-                className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white font-bold text-lg shrink-0 transition-colors duration-75"
+                className="w-9 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white font-bold text-lg shrink-0 transition-colors duration-75"
               >
                 −
               </button>
               
-              <div className="flex-1 text-center font-bold text-white flex items-baseline justify-center gap-1 select-none">
-                <span className={`text-xl ${current < 0 ? 'text-red-500' : ''}`}>{current}</span>
-                <span className="text-xs text-gray-500 font-normal">/ {max}</span>
+              <div className="flex-1 px-2.5 text-center font-bold text-white flex items-baseline justify-center gap-1 select-none tabular-nums whitespace-nowrap">
+                <span className={`vital-static text-xl leading-none ${current < 0 ? 'text-red-500' : ''}`}>{current}</span>
+                <span className="text-xs text-gray-500 font-normal leading-none">/ {max}</span>
               </div>
               
               <button 
                 onClick={() => updateTracker(key, 1)} 
-                className="w-10 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white font-bold text-lg shrink-0 transition-colors duration-75"
+                className="w-9 h-full flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white font-bold text-lg shrink-0 transition-colors duration-75"
               >
                 +
               </button>

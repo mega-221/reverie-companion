@@ -119,7 +119,7 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
             <div className="text-3xl font-bold text-white mb-2">{currentRank} <span className="text-lg text-gray-500 font-normal">/ {maxRank}</span></div>
             
             {totalPenalty > 0 && (
-              <div className="text-xs text-red-400 font-bold bg-red-950/40 px-2 py-1 rounded border border-red-900/50 mb-2 text-center">
+              <div className="rev-keep-color text-xs text-red-400 font-bold bg-red-950/40 px-2 py-1 rounded border border-red-900/50 mb-2 text-center">
                 Effective Rank: {currentRank - totalPenalty} <br/>
                 <span className="text-[10px] font-normal text-red-300">
                   {[
@@ -149,9 +149,9 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
             
             {levelUpTarget.type === 'attribute' && (
               isMaxed ? (
-                <div className="text-xs text-red-400 font-bold bg-red-900/30 px-2 py-1 rounded">Tier Limit Reached</div>
+                <div className="rev-keep-color text-xs text-red-400 font-bold bg-red-900/30 px-2 py-1 rounded">Tier Limit Reached</div>
               ) : isOutOfAttrPts ? (
-                <div className="text-xs text-red-400 font-bold bg-red-900/30 px-2 py-1 rounded">No Attribute Points Available</div>
+                <div className="rev-keep-color text-xs text-red-400 font-bold bg-red-900/30 px-2 py-1 rounded">No Attribute Points Available</div>
               ) : (
                 <div className="text-xs text-green-400 font-bold bg-green-900/30 px-2 py-1 rounded">
                   {availableAttrPts} Point(s) Available
@@ -169,14 +169,14 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
             {levelUpTarget.type === 'attribute' ? (
               <>
                 <span>Attribute Points:</span>
-                <span className={availableAttrPts < 0 ? "text-red-400" : availableAttrPts > 0 && !isMaxed ? "text-green-400" : "text-gray-400"}>
+                <span className={availableAttrPts < 0 ? "rev-keep-color text-red-400" : availableAttrPts > 0 && !isMaxed ? "text-green-400" : "text-gray-400"}>
                   {availableAttrPts} / {getMaxAttributePoints(char.data.progression.tier)}
                 </span>
               </>
             ) : (
               <>
                 <span>Spendable XP:</span>
-                <span className={availableSpendableXp < 0 ? "text-red-400" : availableSpendableXp >= xpCost && !isMaxed ? "text-yellow-400" : "text-gray-400"}>
+                <span className={availableSpendableXp < 0 ? "rev-keep-color text-red-400" : availableSpendableXp >= xpCost && !isMaxed ? "text-yellow-400" : "text-gray-400"}>
                   {availableSpendableXp}
                 </span>
               </>
@@ -259,7 +259,7 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
                       </div>
                     )}
                     {choiceError && (
-                      <div className="mb-3 bg-red-950/40 border border-red-900 text-red-300 text-xs font-bold px-3 py-2 rounded">
+                      <div className="rev-keep-color mb-3 bg-red-950/40 border border-red-900 text-red-300 text-xs font-bold px-3 py-2 rounded">
                         {choiceError}
                       </div>
                     )}
@@ -526,9 +526,9 @@ export function AbilityModal({
                     const isRankLocked = !activeTask && (ab.data.class_rank || 0) > classRank;
                     const isAlreadyLearned = isGuided && ownedAbilityNames.has(ab.name);
                     
-                    const statsToShow = [{ label: 'Strain', value: `${ab.data.sn_cost ?? 0} SN`, color: 'text-blue-400' }];
-                    if (ab.data.type === 'attack') statsToShow.push({ label: 'Accuracy', value: ab.data.acc ?? '+0', color: 'text-green-400' }, { label: 'Damage', value: ab.data.dmg ?? '+0', color: 'text-red-400' });
-                    if (ab.data.type === 'defensive') statsToShow.push({ label: 'Evasion', value: ab.data.eva ?? '+0', color: 'text-purple-400' });
+                    const statsToShow = [{ label: 'Strain', value: `${ab.data.sn_cost ?? 0} SN`, color: 'rev-keep-color text-blue-400' }];
+                    if (ab.data.type === 'attack') statsToShow.push({ label: 'Accuracy', value: ab.data.acc ?? '+0', color: 'rev-keep-color text-green-400' }, { label: 'Damage', value: ab.data.dmg ?? '+0', color: 'rev-keep-color text-red-400' });
+                    if (ab.data.type === 'defensive') statsToShow.push({ label: 'Evasion', value: ab.data.eva ?? '+0', color: 'rev-keep-color text-purple-400' });
                     statsToShow.push({ label: 'Requires', value: ab.data.requirement || 'None', color: 'text-gray-300' });
 
                     return (
@@ -539,10 +539,10 @@ export function AbilityModal({
                             {isAlreadyLearned && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-400 border border-gray-600">Learned</span>}
                             {ab.data.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
                             {speedData && <span className="bg-black/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">{speedData.speedLabel}</span>}
-                            {speedData?.upkeepLabel && <span className="bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50">{speedData.upkeepLabel}</span>}
+                            {speedData?.upkeepLabel && <span className="rev-keep-color rev-dark-card bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50">{speedData.upkeepLabel}</span>}
                             {ab.data.range && <span className="bg-black/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">{ab.data.range}</span>}
                             {ab.data.class_rank !== undefined && (
-                              <span className={`bg-black/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-gray-600 ${isRankLocked ? 'text-red-400' : 'text-gray-300'}`}>
+                              <span className={`bg-black/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-gray-600 ${isRankLocked ? 'rev-keep-color text-red-400' : 'text-gray-300'}`}>
                                 {isRankLocked ? `Rank ${ab.data.class_rank} (Locked)` : `Rank ${ab.data.class_rank}`}
                               </span>
                             )}

@@ -156,7 +156,7 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
                     </div>
                     <div className="flex items-center gap-4 shrink-0 ml-3">
                       <div className="text-right">
-                        <span className="block text-sm font-bold text-red-400 leading-none mb-1">{inj.weeksLeft}w left</span>
+                        <span className="rev-keep-color block text-sm font-bold text-red-400 leading-none mb-1">{inj.weeksLeft}w left</span>
                         <span className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sev {inj.severity}</span>
                       </div>
                       <span className="text-gray-500 text-xs">▼</span>
@@ -204,9 +204,10 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
                    onChange={e => updateInjury(expandedInjury, { name: e.target.value })} 
                  />
                  <button 
-                   onClick={() => deleteInjury(expandedInjury)} 
-                   className="text-red-500 hover:text-red-400 font-bold text-xl leading-none px-2 shrink-0 bg-red-950/30 rounded"
-                   title="Delete Injury"
+                   onClick={() => setExpandedInjury(null)} 
+                   className="text-gray-400 hover:text-white font-bold text-xl leading-none px-2 shrink-0 transition-colors"
+                   title="Close"
+                   aria-label="Close injury editor"
                  >
                    ×
                  </button>
@@ -274,16 +275,24 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
              </div>
              
              {/* Footer & Done */}
-             <div className="flex justify-between items-center pt-3 border-t border-gray-700/50 mt-4 shrink-0">
-               <span className="text-sm font-bold text-red-400">
+             <div className="flex justify-between items-center pt-3 border-t border-gray-700/50 mt-4 shrink-0 gap-2">
+               <span className="rev-keep-color text-sm font-bold text-red-400">
                  {char.data.trackers.injuries[expandedInjury].weeksLeft} week{char.data.trackers.injuries[expandedInjury].weeksLeft !== 1 ? 's' : ''} left
                </span>
-               <button 
-                 onClick={() => setExpandedInjury(null)} 
-                 className="bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white text-xs font-bold px-6 py-1.5 rounded-lg transition-colors shadow-sm"
-               >
-                 Done
-               </button>
+               <div className="flex items-center gap-2 shrink-0">
+                 <button 
+                   onClick={() => deleteInjury(expandedInjury)} 
+                   className="rev-keep-color bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-400 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                 >
+                   Delete
+                 </button>
+                 <button 
+                   onClick={() => setExpandedInjury(null)} 
+                   className="bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white text-xs font-bold px-5 py-1.5 rounded-lg transition-colors shadow-sm"
+                 >
+                   Done
+                 </button>
+               </div>
              </div>
           </div>
         )}

@@ -267,7 +267,7 @@ function ReflectModal({ char, patch, index, onClose }: { char: Character, patch:
   );
 }
 
-function CrisisModal({ char, patch, onClose }: { char: Character, patch: any, onClose: () => void }) {
+export function CrisisModal({ char, patch, onClose }: { char: Character, patch: any, onClose: () => void }) {
   const { getFailings, getEntryByName } = useCompendium();
   const compendiumFailings = getFailings();
 
@@ -932,7 +932,7 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
 
                 {/* FRONT: Conviction */}
                 <div
-                  className={`absolute inset-0 [backface-visibility:hidden] border-[3px] border-double rounded-xl flex flex-col shadow-[inset_0_0_60px_rgba(0,0,0,0.8)] overflow-hidden ${isFlipped ? 'pointer-events-none z-0' : 'pointer-events-auto z-10'} ${
+                  className={`rev-dark-card absolute inset-0 [backface-visibility:hidden] border-[3px] border-double rounded-xl flex flex-col shadow-[inset_0_0_60px_rgba(0,0,0,0.8)] overflow-hidden ${isFlipped ? 'pointer-events-none z-0' : 'pointer-events-auto z-10'} ${
                     hasConv ? `bg-gradient-to-b ${getSeasonGradient(conviction?.season)}` : 'border-cyan-900/40 bg-[#020810] shadow-[inset_0_0_30px_rgba(8,145,178,0.15)]'
                   }`}
                   style={hasConv ? { borderColor: `${seasonColor}aa` } : {}}
@@ -1057,7 +1057,7 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
 
                 {/* BACK: Failing */}
                 <div
-                  className={`absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] border-[3px] border-double rounded-xl flex flex-col shadow-[inset_0_0_60px_rgba(0,0,0,0.8)] overflow-hidden ${!isFlipped ? 'pointer-events-none z-0' : 'pointer-events-auto z-10'} ${
+                  className={`rev-dark-card absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] border-[3px] border-double rounded-xl flex flex-col shadow-[inset_0_0_60px_rgba(0,0,0,0.8)] overflow-hidden ${!isFlipped ? 'pointer-events-none z-0' : 'pointer-events-auto z-10'} ${
                     hasFail ? 'border-red-900/50 bg-[#090303]' : 'border-cyan-900/40 bg-[#020810] shadow-[inset_0_0_30px_rgba(8,145,178,0.15)]'
                   }`}
                 >

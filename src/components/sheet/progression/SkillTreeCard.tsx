@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Character } from '../../../types';
 import { Tooltip } from '../utils';
 import {
@@ -78,7 +79,7 @@ function TierLevelDiamonds({
   isCurrentTier: boolean;
 }) {
   const maxLevels = 4;
-  const activeColor = isCurrentTier ? '#a855f7' : '#94a3b8';
+  const activeColor = isCurrentTier ? 'var(--rev-tier-accent)' : '#94a3b8';
 
   return (
     <div className="flex items-center justify-center relative z-20">
@@ -298,23 +299,31 @@ function TierChurchCard({
     .map(t => availableNodes.find(n => n.type === t))
     .filter((n): n is AdvancementNodeDef => Boolean(n));
 
-  const cardAccentHex = isCurrentTier ? '#a855f7' : isTierUnlocked ? '#94a3b8' : '#164e63';
+  const cardAccentColor = isCurrentTier ? 'var(--rev-tier-accent)' : isTierUnlocked ? '#94a3b8' : '#164e63';
 
   return (
     <div
-      className={`relative h-[628px] max-w-[380px] mx-auto w-full md:max-w-none flex flex-col border-[3px] border-double rounded-b-xl shadow-[inset_0_0_50px_rgba(0,0,0,0.85)] overflow-hidden transition-all duration-300 ${
-        isCurrentTier
-          ? 'bg-gradient-to-b from-slate-900 via-[#10131b] to-[#06070b]'
-          : isTierUnlocked
-          ? 'bg-gradient-to-b from-gray-900/95 via-[#0d1016] to-[#06070a]'
-          : 'border-cyan-950/60 bg-[#05080d] opacity-75'
+      className={`rev-dark-card ${
+        !isTierUnlocked ? 'rev-locked-tier' : ''
+      } relative h-[628px] max-w-[380px] mx-auto w-full md:max-w-none flex flex-col border-[3px] border-double rounded-b-xl shadow-[inset_0_0_50px_rgba(0,0,0,0.85)] overflow-hidden transition-all duration-300 ${
+        !isTierUnlocked ? 'border-cyan-950/60 bg-[#05080d] opacity-75' : ''
       }`}
       style={{
         containerType: 'inline-size',
         borderTopLeftRadius: '50cqw',
         borderTopRightRadius: '50cqw',
-        ...(isTierUnlocked
-          ? { borderColor: isCurrentTier ? '#a855f777' : '#64748b55' }
+        ...(isCurrentTier
+          ? {
+              background:
+                'linear-gradient(to bottom, var(--rev-tier-bg-top) 0%, var(--rev-tier-bg-mid) 52%, var(--rev-bg-deep) 100%)',
+              borderColor: 'color-mix(in srgb, var(--rev-tier-accent) 55%, transparent)',
+            }
+          : isTierUnlocked
+          ? {
+              background:
+                'linear-gradient(to bottom, var(--rev-surface) 0%, var(--rev-bg-deep) 100%)',
+              borderColor: 'var(--rev-border-strong)',
+            }
           : {}),
       }}
     >
@@ -322,7 +331,7 @@ function TierChurchCard({
       <div
         className="absolute inset-[6px] border rounded-b-lg pointer-events-none opacity-25 z-10"
         style={{
-          borderColor: cardAccentHex,
+          borderColor: cardAccentColor,
           borderTopLeftRadius: 'calc(50cqw - 6px)',
           borderTopRightRadius: 'calc(50cqw - 6px)',
         }}
@@ -333,7 +342,9 @@ function TierChurchCard({
         <div
           className="absolute inset-0 z-10 pointer-events-none opacity-20"
           style={{
-            background: `radial-gradient(circle at top center, ${cardAccentHex}66 0%, transparent 55%)`,
+            background: isCurrentTier
+              ? 'radial-gradient(circle at top center, color-mix(in srgb, var(--rev-tier-accent) 40%, transparent) 0%, transparent 55%)'
+              : 'radial-gradient(circle at top center, rgba(148, 163, 184, 0.35) 0%, transparent 55%)',
           }}
         />
       )}
@@ -350,7 +361,8 @@ function TierChurchCard({
           <div
             className="absolute inset-0"
             style={{
-              background: 'radial-gradient(circle at center, rgba(168, 85, 247, 0.10) 0%, transparent 55%)',
+              background:
+                'radial-gradient(circle at center, color-mix(in srgb, var(--rev-tier-accent) 12%, transparent) 0%, transparent 55%)',
               animation: 'drift 12s ease-in-out infinite',
             }}
           />
@@ -358,24 +370,24 @@ function TierChurchCard({
             <div
               className="absolute bottom-0 left-1/4 w-1 h-1 rounded-full"
               style={{
-                backgroundColor: '#c084fc',
-                boxShadow: '0 0 5px #c084fc',
+                backgroundColor: 'var(--rev-tier-accent)',
+                boxShadow: '0 0 5px var(--rev-tier-accent)',
                 animation: 'floatUp 4.5s linear infinite',
               }}
             />
             <div
               className="absolute bottom-8 right-1/4 w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: '#e9d5ff',
-                boxShadow: '0 0 8px #e9d5ff',
+                backgroundColor: 'var(--rev-tier-text)',
+                boxShadow: '0 0 8px var(--rev-tier-text)',
                 animation: 'floatCyan 3.4s linear infinite 1s',
               }}
             />
             <div
               className="absolute bottom-4 left-1/2 w-1 h-1 rounded-full"
               style={{
-                backgroundColor: '#a855f7',
-                boxShadow: '0 0 6px #a855f7',
+                backgroundColor: 'var(--rev-tier-accent)',
+                boxShadow: '0 0 6px var(--rev-tier-accent)',
                 animation: 'floatUp 3.8s linear infinite 2s',
               }}
             />
@@ -391,7 +403,10 @@ function TierChurchCard({
       {/* Standardized Arch Header Segment */}
       <div className="relative z-20 h-[136px] pt-7 pb-2 px-5 text-center flex flex-col items-center justify-between shrink-0">
         <div className="h-4 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest">
-          <span className={isCurrentTier ? 'text-purple-300' : isTierUnlocked ? 'text-slate-300' : 'text-cyan-700'}>
+          <span
+            className={isCurrentTier ? '' : isTierUnlocked ? 'text-slate-300' : 'text-cyan-700'}
+            style={isCurrentTier ? { color: 'var(--rev-tier-text)' } : undefined}
+          >
             Tier {tierDef.tier}
           </span>
           <span className="text-gray-600">•</span>
@@ -475,8 +490,9 @@ function TierChurchCard({
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600/70 to-gray-600/70" />
           <div
             className={`w-1.5 h-1.5 rotate-45 ${
-              isCurrentTier ? 'bg-purple-400' : isTierUnlocked ? 'bg-slate-400' : 'bg-cyan-900/70'
+              isCurrentTier ? '' : isTierUnlocked ? 'bg-slate-400' : 'bg-cyan-900/70'
             }`}
+            style={isCurrentTier ? { backgroundColor: 'var(--rev-tier-accent)' } : undefined}
           />
           <div className="h-px flex-1 bg-gradient-to-l from-transparent via-gray-600/70 to-gray-600/70" />
         </div>
@@ -503,7 +519,7 @@ function TierChurchCard({
           <button
             type="button"
             onClick={() => onRefundTier(tierDef.tier)}
-            className="w-full py-1.5 rounded-lg bg-[#0c1017] hover:bg-red-950/60 border border-gray-700/80 hover:border-red-800 text-[10px] font-bold uppercase tracking-widest text-gray-300 hover:text-red-200 transition-colors"
+            className="w-full py-1.5 rev-tier-refund-btn text-[10px] font-bold uppercase tracking-widest"
           >
             Refund Tier ({tierAdvCount})
           </button>
@@ -539,21 +555,30 @@ export default function SkillTreeCard({
     beyondTiers.push(getTierDefinition(t));
   }
 
+  const allVisibleTiers = [...TIER_DEFINITIONS, ...beyondTiers];
+  const [selectedMobileTier, setSelectedMobileTier] = useState<number>(() =>
+    Math.max(1, currentTier || 1)
+  );
+  const activeMobileTierDef =
+    allVisibleTiers.find(t => t.tier === selectedMobileTier) ||
+    allVisibleTiers.find(t => t.tier === Math.max(1, currentTier || 1)) ||
+    allVisibleTiers[0];
+
   return (
-    <section className="relative bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm w-full overflow-hidden">
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-gray-700 pb-3 mb-5">
+    <section className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-6 shadow-sm w-full overflow-hidden">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-gray-700 pb-3 mb-4 sm:mb-5">
         <h3 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 text-gray-200">
           Advancement Constellation
         </h3>
-        <div className="flex items-center gap-2 text-xs font-bold">
-          <span className="px-3 py-1 rounded bg-black/35 border border-gray-700 text-gray-300 tabular-nums">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+          <span className="px-2.5 sm:px-3 py-1 rounded bg-black/35 border border-gray-700 text-gray-300 tabular-nums">
             Advancements{' '}
             <strong
               className={
                 unspentPoints > 0
                   ? 'text-red-400'
                   : unspentPoints < 0
-                  ? 'text-red-400'
+                  ? 'rev-keep-color text-red-400'
                   : 'text-gray-100'
               }
             >
@@ -566,15 +591,69 @@ export default function SkillTreeCard({
             </span>
           )}
           {unspentPoints < 0 && (
-            <span className="text-red-300 bg-red-950/50 border border-red-800/80 px-2.5 py-1 rounded">
+            <span className="rev-keep-color text-red-300 bg-red-950/50 border border-red-800/80 px-2.5 py-1 rounded">
               {unspentPoints} Deficit
             </span>
           )}
         </div>
       </div>
 
-      {/* Regular Progression: Tiers 1–5 Half-Circle Arched Cards */}
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-stretch">
+      {/* Mobile Tier Switcher Deck (< 640px) */}
+      <div className="relative z-10 sm:hidden flex flex-col gap-4">
+        <div className="grid grid-cols-5 gap-1.5">
+          {allVisibleTiers.map(tierDef => {
+            const isSelected = activeMobileTierDef?.tier === tierDef.tier;
+            const isUnlocked = currentTier >= tierDef.tier;
+            const isActiveTier = currentTier === tierDef.tier;
+            const tierCount = advancements.filter(a => a.tier === tierDef.tier).length;
+
+            return (
+              <button
+                key={tierDef.tier}
+                type="button"
+                onClick={() => setSelectedMobileTier(tierDef.tier)}
+                className={`py-2 px-1 border text-center transition-all flex flex-col items-center justify-center gap-0.5 ${
+                  isSelected
+                    ? 'rev-btn-primary shadow-sm'
+                    : isUnlocked
+                    ? 'bg-black/30 border-gray-700 text-gray-300'
+                    : 'bg-black/20 border-gray-800 text-gray-500 opacity-70'
+                }`}
+                style={{
+                  borderRadius: 'var(--rev-radius-control)',
+                  ...(isActiveTier && !isSelected
+                    ? { borderColor: 'var(--rev-tier-accent)' }
+                    : {}),
+                }}
+              >
+                <span className="font-cinzel font-bold text-xs leading-none">
+                  T{tierDef.tier}
+                </span>
+                <span className="text-[9px] font-bold leading-none opacity-80 tabular-nums">
+                  {tierCount > 0 ? `${tierCount} pt` : isActiveTier ? 'Now' : isUnlocked ? 'Open' : 'Lock'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {activeMobileTierDef && (
+          <div className="flex flex-col items-center">
+            <TierChurchCard
+              tierDef={activeMobileTierDef}
+              currentLevel={currentLevel}
+              currentTier={currentTier}
+              advancements={advancements}
+              unspentPoints={unspentPoints}
+              onInvest={onInvest}
+              onRefundTier={onRefundTier}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Tablet / Desktop Grid: Tiers 1–5 Half-Circle Arched Cards */}
+      <div className="relative z-10 hidden sm:grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-stretch rev-tier-grid">
         {TIER_DEFINITIONS.map(tierDef => (
           <TierChurchCard
             key={tierDef.tier}
@@ -589,9 +668,9 @@ export default function SkillTreeCard({
         ))}
       </div>
 
-      {/* Beyond Tier 5: Dynamically added below regular progression only if reached */}
+      {/* Beyond Tier 5: Dynamically added below regular progression on sm+ */}
       {beyondTiers.length > 0 && (
-        <div className="relative z-10 mt-6 pt-6 border-t border-gray-700/80">
+        <div className="relative z-10 hidden sm:block mt-6 pt-6 border-t border-gray-700/80">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-base font-cinzel text-purple-300 tracking-wide">
               Endgame & Beyond
@@ -599,7 +678,7 @@ export default function SkillTreeCard({
             <span className="text-xs text-gray-400">Tiers 6+</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-stretch">
+          <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-4 items-stretch rev-tier-grid">
             {beyondTiers.map(tierDef => (
               <TierChurchCard
                 key={tierDef.tier}

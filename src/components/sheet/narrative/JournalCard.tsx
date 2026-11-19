@@ -2,76 +2,24 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Character } from '../../../types';
 import { useConfirm } from '../ConfirmDialog';
+import {
+  REVERIE_MONTHS,
+  parseReverieDate,
+  formatReverieDate,
+  calendarSortKey,
+  type ReverieCalendarDate,
+} from '../../../reverieCalendar';
+
+export { REVERIE_MONTHS };
 
 type Entry = NonNullable<Character['data']['journal']>[number];
 type Fields = Pick<Entry, 'title' | 'content' | 'inUniverseDate'>;
-
-export const REVERIE_MONTHS = [
-  'Wind’s Grace',
-  'Nature’s Bloom',
-  'Life’s Genesis',
-  'Sun’s Zenith',
-  'Forge’s Fire',
-  'Midyear’s Chills',
-  'Harvest’s Bounty',
-  'Frost’s Arrival',
-  'Light’s Fall',
-  'Night’s Veil',
-  'Moon’s Glow',
-  'Morning’s Rise',
-] as const;
-
-type CalendarDate = {
-  day: number; // 1..30
-  monthIndex: number; // 0..11
-  year: number;
-};
-
-const normalizeApostrophes = (s: string) => s.replace(/[’']/g, "'").toLowerCase().trim();
-
-function ordinalDay(day: number): string {
-  const mod100 = day % 100;
-  if (mod100 >= 11 && mod100 <= 13) return `${day}th`;
-  switch (day % 10) {
-    case 1: return `${day}st`;
-    case 2: return `${day}nd`;
-    case 3: return `${day}rd`;
-    default: return `${day}th`;
-  }
-}
-
-function parseReverieDate(raw?: string): CalendarDate | null {
-  if (!raw) return null;
-  const match = raw.trim().match(/^(\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?\s+(.+?),\s*(-?\d+)\.?\s*AS$/i);
-  if (!match) return null;
-
-  const day = Number(match[1]);
-  const monthRaw = normalizeApostrophes(match[2]);
-  const year = Number(match[3]);
-
-  const monthIndex = REVERIE_MONTHS.findIndex(m => normalizeApostrophes(m) === monthRaw);
-  if (monthIndex < 0 || !Number.isInteger(day) || day < 1 || day > 30 || !Number.isFinite(year)) {
-    return null;
-  }
-
-  return { day, monthIndex, year };
-}
-
-function formatReverieDate(d: CalendarDate): string {
-  const safeDay = Math.max(1, Math.min(30, Math.round(d.day)));
-  const safeMonth = ((d.monthIndex % 12) + 12) % 12;
-  const safeYear = Number.isFinite(d.year) ? Math.trunc(d.year) : 421;
-  return `${ordinalDay(safeDay)} of ${REVERIE_MONTHS[safeMonth]}, ${safeYear}. AS`;
-}
+type CalendarDate = ReverieCalendarDate;
 
 function formatEntryDate(raw?: string): string | undefined {
   if (!raw) return undefined;
   const parsed = parseReverieDate(raw);
   return parsed ? formatReverieDate(parsed) : raw;
-}
-
-function calendarSortKey(d: CalendarDate): number {
-  return d.year * 360 + d.monthIndex * 30 + d.day;
 }
 
 function CalendarSelector({

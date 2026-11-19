@@ -116,7 +116,7 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
 
   return (
     // Height matches OriginCard (420px) on lg desktop
-    <section className="sheet-panel p-3.5 sm:p-5 w-full min-h-[320px] lg:h-[420px] flex flex-col">
+    <section className="sheet-panel rev-nar-card p-3.5 sm:p-5 w-full min-h-[320px] lg:h-[420px] flex flex-col">
       {confirmDialog}
       <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-3 shrink-0 gap-2">
         <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Relationships</h2>
