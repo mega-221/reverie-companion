@@ -104,7 +104,7 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
                             className="w-fit shrink-0"
                             disabled={!hasOrigin}
                           >
-                            <span className={`rev-keep-color ${isSignature ? 'text-cyan-400' : 'text-yellow-500'} text-sm cursor-help`}>★</span>
+                            <span className={`rev-keep-color rev-skill-star ${isSignature ? 'text-cyan-400' : 'text-yellow-500'} text-sm cursor-help`}>★</span>
                           </Tooltip>
                         )}
                         {originMin > 0 && <Tooltip text={`Minimum bound: ${originMin} (from Origin)`} noBorder className="w-fit shrink-0" disabled={!hasOrigin}><span className="text-gray-500 text-xs cursor-help">🔒</span></Tooltip>}

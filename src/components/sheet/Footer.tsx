@@ -17,11 +17,16 @@ export default function Footer({ activeTab, setActiveTab, showFilter }: { active
             <button
               key={tabKey}
               onClick={() => setActiveTab(tabKey)}
-              className="flex-1 py-4 transition-colors border-t-4"
+              data-active={isActive ? 'true' : 'false'}
+              className="rev-footer-tab flex-1 py-4 transition-colors border-t-4"
               style={{
                 borderTopColor: isActive ? 'var(--rev-accent-border)' : 'transparent',
-                backgroundColor: isActive ? 'var(--rev-surface)' : 'transparent',
-                color: isActive ? 'var(--rev-text-bright)' : 'var(--rev-text-muted)',
+                ...(isActive
+                  ? {
+                      backgroundColor: 'var(--rev-surface)',
+                      color: 'var(--rev-text-bright)',
+                    }
+                  : {}),
               }}
             >
               {label}

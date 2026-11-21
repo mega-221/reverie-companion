@@ -125,7 +125,7 @@ export default function SpecialSkillsCard({
                       className="w-fit shrink-0"
                       disabled={!hasOrigin}
                     >
-                      <span className={`${isSignature ? 'text-cyan-400' : 'text-yellow-500'} text-xs cursor-help`}>★</span>
+                      <span className={`rev-keep-color rev-skill-star ${isSignature ? 'text-cyan-400' : 'text-yellow-500'} text-xs cursor-help`}>★</span>
                     </Tooltip>
                   )}
                   {originMin > 0 && <Tooltip text={`Minimum bound: ${originMin} (from Origin)`} noBorder className="w-fit shrink-0" disabled={!hasOrigin}><span className="text-gray-500 text-[10px] cursor-help">🔒</span></Tooltip>}

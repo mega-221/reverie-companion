@@ -234,7 +234,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
           className={`flex-1 text-center py-1.5 text-xs font-bold uppercase tracking-wider rounded-md border transition-all duration-75 ${
             activeLoadoutTab === 'combat' 
               ? 'bg-red-900/30 text-red-200 border-red-700' 
-              : 'bg-black/20 text-gray-500 border-transparent hover:bg-white/5'
+              : 'rev-tab-inactive bg-black/20 text-gray-500 border-transparent hover:bg-white/5'
           }`}
         >
           Combat
@@ -244,7 +244,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
           className={`flex-1 text-center py-1.5 text-xs font-bold uppercase tracking-wider rounded-md border transition-all duration-75 ${
             activeLoadoutTab === 'equipment' 
               ? 'bg-red-900/30 text-red-200 border-red-700' 
-              : 'bg-black/20 text-gray-500 border-transparent hover:bg-white/5'
+              : 'rev-tab-inactive bg-black/20 text-gray-500 border-transparent hover:bg-white/5'
           }`}
         >
           Equipment

@@ -9,7 +9,6 @@ export interface TierDefinition {
   attrLimit: number;
   skillLimit: number;
   milestoneBonuses: string[];
-  description: string;
 }
 
 export interface AdvancementNodeDef {
@@ -47,7 +46,6 @@ export const TIER_DEFINITIONS: TierDefinition[] = [
     attrLimit: 2,
     skillLimit: 2,
     milestoneBonuses: ['+1 VL', '+1 SL', '+1 Attr Pt', '1 Starting Discipline'],
-    description: 'The faceless masses. Frail and untested against Dunyor.',
   },
   {
     tier: 2,
@@ -57,7 +55,6 @@ export const TIER_DEFINITIONS: TierDefinition[] = [
     attrLimit: 2,
     skillLimit: 3,
     milestoneBonuses: ['+1 VL', '+1 SL', '+1 Attr Pt', '+1 DP Max'],
-    description: 'Recommended starting point for longer campaigns.',
   },
   {
     tier: 3,
@@ -67,7 +64,6 @@ export const TIER_DEFINITIONS: TierDefinition[] = [
     attrLimit: 3,
     skillLimit: 3,
     milestoneBonuses: ['+1 VL', '+1 SL', '+1 Attr Pt', '+1 DP Max', 'Class Path'],
-    description: 'Access to tools and paths that turn the tide.',
   },
   {
     tier: 4,
@@ -77,7 +73,6 @@ export const TIER_DEFINITIONS: TierDefinition[] = [
     attrLimit: 3,
     skillLimit: 4,
     milestoneBonuses: ['+1 VL', '+1 SL', '+1 Attr Pt', '+1 DP Max'],
-    description: 'Competent across fields; tested by moral sacrifice.',
   },
   {
     tier: 5,
@@ -87,7 +82,6 @@ export const TIER_DEFINITIONS: TierDefinition[] = [
     attrLimit: 4,
     skillLimit: 4,
     milestoneBonuses: ['+1 VL', '+1 SL', '+1 Attr Pt', '+1 DP Max'],
-    description: 'Exceptional individuals in their chosen developments.',
   },
 ];
 
@@ -101,7 +95,6 @@ export const getTierDefinition = (tier: number): TierDefinition => {
       attrLimit: 2,
       skillLimit: 2,
       milestoneBonuses: ['5 Base VL', '5 Base SL'],
-      description: 'Before the first step. Gain 5 XP to reach Level 1 and enter Tier 1.',
     };
   }
 
@@ -118,7 +111,6 @@ export const getTierDefinition = (tier: number): TierDefinition => {
     attrLimit: 4,
     skillLimit: 4,
     milestoneBonuses: ['+1 VL', '+1 SL'],
-    description: 'Endgame tier. Tiers beyond 5 grant only +1 VL and +1 SL.',
   };
 };
 

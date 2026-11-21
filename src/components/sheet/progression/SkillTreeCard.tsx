@@ -416,11 +416,9 @@ function TierChurchCard({
         </div>
 
         <div className="w-full h-11 flex items-center justify-center px-1">
-          <Tooltip text={tierDef.description} className="w-full justify-center" noBorder noTruncate>
-            <div className={`font-cinzel font-bold text-base uppercase tracking-[0.08em] leading-tight line-clamp-2 text-center ${isTierUnlocked ? 'text-white drop-shadow-md' : 'text-cyan-700/80'}`}>
-              {tierDef.title}
-            </div>
-          </Tooltip>
+          <div className={`font-cinzel font-bold text-base uppercase tracking-[0.08em] leading-tight line-clamp-2 text-center ${isTierUnlocked ? 'text-white drop-shadow-md' : 'text-cyan-700/80'}`}>
+            {tierDef.title}
+          </div>
         </div>
 
         <div className="h-5 flex items-center justify-center">

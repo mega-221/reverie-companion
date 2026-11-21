@@ -149,7 +149,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
             value={char.data.identity.quote || ''}
             onChange={e => patch({ identity: { ...char.data.identity, quote: e.target.value } })}
             placeholder="Add a custom quote, description or an epitaph..."
-            className="w-full bg-transparent text-sm italic text-gray-300 resize-none focus:outline-none border-none p-0 focus:ring-0 leading-snug text-left"
+            className="w-full bg-transparent text-sm italic text-gray-300 placeholder:text-gray-500 resize-none focus:outline-none border-none p-0 focus:ring-0 leading-snug text-left"
             rows={2}
           />
         </div>
@@ -162,17 +162,17 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
         
         {/* Left Block: Class, Path & Progression */}
         <div className="w-full md:pr-3 flex flex-col gap-3">
-          <div className="flex justify-between items-center bg-black/20 p-2.5 rounded border border-gray-700/50 w-full">
+          <div className="rev-stat-box flex justify-between items-center bg-black/20 p-2.5 rounded border border-gray-700/50 w-full">
             <div className="flex flex-col items-center flex-1">
               <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-1">Tier</span>
               <span className="text-gray-100 font-bold text-lg leading-none">{tier}</span>
             </div>
-            <div className="w-px h-7 bg-gray-700"></div>
+            <div className="rev-stat-divider w-px h-7 bg-gray-700"></div>
             <div className="flex flex-col items-center flex-1">
               <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-1">Level</span>
               <span className="text-gray-100 font-bold text-lg leading-none">{level}</span>
             </div>
-            <div className="w-px h-7 bg-gray-700"></div>
+            <div className="rev-stat-divider w-px h-7 bg-gray-700"></div>
             <Tooltip
               text={`Spendable XP: ${getSpendableXp(char.data)}\nTotal Earned XP: ${char.data.progression.xp ?? 0}`}
               className="flex flex-col items-center flex-1"
@@ -269,7 +269,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
           noBorder
           noTruncate
         >
-          <div className="w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
+          <div className="rev-stat-box w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
             <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
               <span className="hidden sm:inline">Accuracy</span>
               <span className="sm:hidden">ACC</span>
@@ -281,7 +281,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
         </Tooltip>
 
         {/* EVASION */}
-        <div className="flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
+        <div className="rev-stat-box flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
           <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
             <span className="hidden sm:inline">Evasion</span>
             <span className="sm:hidden">EVA</span>
@@ -302,7 +302,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
             className={`w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border transition-colors cursor-pointer hover:bg-white/5 ${
               maxAp > 0 && currentAp < maxAp
                 ? 'border-amber-700/70 hover:border-amber-500'
-                : 'border-gray-700/50 hover:border-gray-500'
+                : 'rev-stat-box border-gray-700/50 hover:border-gray-500'
             }`}
           >
             <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
@@ -335,7 +335,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
           noBorder
           noTruncate
         >
-          <div className="w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
+          <div className="rev-stat-box w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
             <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
               <span className="hidden sm:inline">Movement</span>
               <span className="sm:hidden">MOV</span>
@@ -353,7 +353,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
           noBorder
           noTruncate
         >
-          <div className="w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
+          <div className="rev-stat-box w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
             <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
               <span className="hidden sm:inline">Burden</span>
               <span className="sm:hidden">BRD</span>

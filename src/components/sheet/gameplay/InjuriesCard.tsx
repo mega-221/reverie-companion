@@ -107,7 +107,7 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
           <button 
             onClick={tickDownAll} 
             disabled={char.data.trackers.injuries.length === 0}
-            className="text-xs font-bold text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-900 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rev-heal-btn text-xs font-bold text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-900 px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Heal Week
           </button>

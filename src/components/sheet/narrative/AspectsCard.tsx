@@ -120,11 +120,11 @@ const DEFAULT_CATEGORY_STYLE: CategoryStyle = {
   headerBg: 'bg-gray-900',
   headerText: 'text-gray-200',
   headerBorder: 'border-gray-700',
-  cardBorder: 'border-gray-700',
+  cardBorder: 'border-[#374151]',
   quoteBorder: 'border-l-gray-500',
-  badgeClass: 'bg-gray-800 text-gray-300 border-gray-600',
+  badgeClass: 'rev-dark-card rev-keep-color bg-gray-800 text-gray-300 border-gray-600',
   dotClass: 'bg-gray-400',
-  filterActiveClass: 'bg-red-900/50 text-red-200 border-red-700',
+  filterActiveClass: 'rev-dark-card rev-keep-color bg-red-900/50 text-red-200 border-red-700',
 };
 
 function cleanCategoryLabel(raw?: string): string {
@@ -290,7 +290,7 @@ function AspectSelectorModal({
               return (
                 <div key={category}>
                   <div
-                    className={`bg-black/20 text-xs font-bold uppercase tracking-widest py-2 border-b border-gray-700 mb-2 px-2 rounded-t ${style.headerText}`}
+                    className={`rev-aspect-card bg-black/20 text-xs font-bold uppercase tracking-widest py-2 border-b border-gray-700 mb-2 px-2 rounded-t ${style.headerText}`}
                   >
                     {category}
                   </div>
@@ -309,7 +309,7 @@ function AspectSelectorModal({
                       return (
                         <div
                           key={aspect.id}
-                          className={`bg-black/20 border rounded-lg overflow-hidden transition-all duration-200 ${
+                          className={`rev-aspect-card bg-black/20 border rounded-lg overflow-hidden transition-all duration-200 ${
                             isExpanded
                               ? 'ring-1 ring-red-900 shadow-md border-gray-600'
                               : isCurrent
@@ -364,7 +364,7 @@ function AspectSelectorModal({
 
                               <div className="space-y-2">
                                 {upside && (
-                                  <div className="flex items-start gap-2.5 bg-emerald-950/20 border border-emerald-900/50 rounded-md px-3 py-2">
+                                  <div className="rev-keep-color flex items-start gap-2.5 bg-emerald-950/20 border border-emerald-900/50 rounded-md px-3 py-2">
                                     <span className="shrink-0 font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-700/70 text-emerald-300">
                                       [+]
                                     </span>
@@ -375,7 +375,7 @@ function AspectSelectorModal({
                                 )}
 
                                 {downside && (
-                                  <div className="flex items-start gap-2.5 bg-red-950/20 border border-red-900/50 rounded-md px-3 py-2">
+                                  <div className="rev-keep-color flex items-start gap-2.5 bg-red-950/20 border border-red-900/50 rounded-md px-3 py-2">
                                     <span className="shrink-0 font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-red-950/80 border border-red-700/70 text-red-300">
                                       [-]
                                     </span>
@@ -654,7 +654,7 @@ export default function AspectsCard({
                       setLeavingIndex(null);
                     }
                   }}
-                  className={`w-[290px] h-[355px] sm:h-auto sm:min-h-[330px] shrink-0 bg-gray-900 border rounded-xl overflow-hidden flex-col shadow-md transition-colors duration-200 ${
+                  className={`rev-aspect-card w-[290px] h-[355px] sm:h-auto sm:min-h-[330px] shrink-0 bg-gray-900 border rounded-xl overflow-hidden flex-col shadow-md transition-colors duration-200 ${
                     isMobileActive
                       ? `relative flex ${
                           slideDir === 'next'
@@ -759,7 +759,7 @@ export default function AspectsCard({
                       <div className="px-4 py-3 flex-1 flex flex-col overflow-y-auto no-scrollbar">
                         <div className="my-auto flex flex-col gap-2.5">
                           {/* Positive [+] slot */}
-                          <div className="flex items-start gap-2 bg-emerald-950/20 border border-emerald-900/45 rounded-md px-2.5 py-2 min-h-[3.25rem]">
+                          <div className="rev-keep-color flex items-start gap-2 bg-emerald-950/20 border border-emerald-900/45 rounded-md px-2.5 py-2 min-h-[3.25rem]">
                             <span
                               className="shrink-0 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-950/90 border border-emerald-700/70 text-emerald-300"
                               title="Positive effect"
@@ -771,9 +771,9 @@ export default function AspectsCard({
                             </span>
                           </div>
 
-                          {/* Negative [-] slot (always standardized) */}
-                          {downside ? (
-                            <div className="flex items-start gap-2 bg-red-950/20 border border-red-900/45 rounded-md px-2.5 py-2 min-h-[3.25rem]">
+                          {/* Negative [-] slot */}
+                          {downside && (
+                            <div className="rev-keep-color flex items-start gap-2 bg-red-950/20 border border-red-900/45 rounded-md px-2.5 py-2 min-h-[3.25rem]">
                               <span
                                 className="shrink-0 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-950/90 border border-red-700/70 text-red-300"
                                 title="Negative effect"
@@ -782,18 +782,6 @@ export default function AspectsCard({
                               </span>
                               <span className="text-xs text-red-100/90 leading-snug pt-0.5">
                                 {downside}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 bg-black/20 border border-gray-800/80 rounded-md px-2.5 py-2 min-h-[3.25rem]">
-                              <span
-                                className="shrink-0 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-900 border border-gray-700 text-gray-500"
-                                title="Negative effect"
-                              >
-                                [-]
-                              </span>
-                              <span className="text-xs text-gray-500 italic">
-                                No drawback
                               </span>
                             </div>
                           )}
@@ -985,7 +973,7 @@ export default function AspectsCard({
                               type="button"
                               disabled={!canAffordDp}
                               onClick={() => restoreAspect(i)}
-                              className={`w-full py-2 rounded border text-xs font-bold uppercase tracking-widest transition-colors ${
+                              className={`rev-keep-color w-full py-2 rounded border text-xs font-bold uppercase tracking-widest transition-colors ${
                                 canAffordDp
                                   ? 'border-emerald-800/70 bg-emerald-950/35 hover:bg-emerald-900/50 text-emerald-300 hover:text-emerald-200'
                                   : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'
@@ -997,7 +985,7 @@ export default function AspectsCard({
                               Available DP:{' '}
                               <span
                                 className={
-                                  canAffordDp ? 'text-cyan-400 font-bold' : 'text-red-400 font-bold'
+                                  canAffordDp ? 'rev-keep-color text-cyan-400 font-bold' : 'rev-keep-color text-red-400 font-bold'
                                 }
                               >
                                 {availableDp} / {dpCost}
@@ -1018,7 +1006,7 @@ export default function AspectsCard({
                       <button
                         type="button"
                         onClick={() => eraseAspect(i, slot.name)}
-                        className="w-full py-2 rounded border border-red-900/60 bg-red-950/30 hover:bg-red-900/50 text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-widest transition-colors"
+                        className="rev-keep-color w-full py-2 rounded border border-red-900/60 bg-red-950/30 hover:bg-red-900/50 text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-widest transition-colors"
                       >
                         Erase Aspect
                       </button>

@@ -1100,7 +1100,7 @@ export default function CharacterSheet({
         </div>
       )}
 
-      <div className={`min-h-screen rev-canvas pb-20 font-sans transition-all duration-1000 ${showFilter ? 'grayscale-[60%] contrast-[1.1]' : ''}`}>
+      <div className={`min-h-screen rev-canvas rev-sheet-root pb-20 font-sans transition-all duration-1000 ${showFilter ? 'grayscale-[60%] contrast-[1.1]' : ''}`}>
         <Header
           char={char}
           onBack={handleRequestBack}

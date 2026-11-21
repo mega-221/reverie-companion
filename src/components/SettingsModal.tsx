@@ -393,20 +393,22 @@ export default function SettingsModal({
                 </span>
               </div>
 
-              {(['standard', 'seasons'] as const).map((cat) => {
+              {([
+                { key: 'standard', label: 'Core' },
+                { key: 'seasons', label: 'Seasons' },
+                { key: 'planes', label: 'Planes' },
+              ] as const).map(({ key: cat, label }) => {
                 const group = presets.filter(p => p.category === cat);
                 if (group.length === 0) return null;
                 return (
                   <div key={cat} className="flex flex-col gap-2">
-                    {cat === 'seasons' && (
-                      <span
-                        className="text-[11px] font-bold uppercase tracking-widest pt-1"
-                        style={{ color: 'var(--rev-accent-text)' }}
-                      >
-                        Seasons
-                      </span>
-                    )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <span
+                      className="text-[11px] font-bold uppercase tracking-widest pt-1"
+                      style={{ color: 'var(--rev-accent-text)' }}
+                    >
+                      {label}
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 sm:auto-rows-fr gap-2.5">
                       {group.map((preset) => {
                         const isActive = preset.id === themeId;
                         const [s1, s2, s3] = preset.swatches || [
@@ -419,47 +421,42 @@ export default function SettingsModal({
                             key={preset.id}
                             type="button"
                             onClick={() => setThemeId(preset.id)}
-                            className="text-left p-3 transition-all flex flex-col gap-2"
+                            className="w-full h-full text-left p-3 transition-all flex flex-col justify-between gap-2"
                             style={{
                               backgroundColor: isActive ? 'var(--rev-accent-soft)' : 'var(--rev-surface-inset)',
                               border: `1px solid ${isActive ? 'var(--rev-accent-border)' : 'var(--rev-border)'}`,
                               borderRadius: preset.shapes.radiusPanel,
                             }}
                           >
-                            <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center justify-between gap-2 w-full">
                               <span
-                                className="font-cinzel font-bold text-sm truncate"
+                                className="font-cinzel font-bold text-sm truncate min-w-0"
                                 style={{ color: isActive ? 'var(--rev-accent-text)' : 'var(--rev-text-bright)' }}
                               >
                                 {preset.name}
                               </span>
                               <div className="flex items-center gap-1 shrink-0" aria-hidden="true">
-                                <span
-                                  className="w-3.5 h-3.5 border border-white/25"
-                                  style={{
-                                    backgroundColor: s1,
-                                    borderRadius: preset.shapes.radiusBadge,
-                                  }}
-                                />
-                                <span
-                                  className="w-3.5 h-3.5 border border-white/25"
-                                  style={{
-                                    backgroundColor: s2,
-                                    borderRadius: preset.shapes.radiusBadge,
-                                  }}
-                                />
-                                <span
-                                  className="w-3.5 h-3.5 border border-white/25"
-                                  style={{
-                                    backgroundColor: s3,
-                                    borderRadius: preset.shapes.radiusBadge,
-                                  }}
-                                />
+                                {[s1, s2, s3].map((swatchColor, swatchIdx) => (
+                                  <span
+                                    key={swatchIdx}
+                                    className="block shrink-0 border border-white/25 box-border"
+                                    style={{
+                                      width: '14px',
+                                      height: '14px',
+                                      minWidth: '14px',
+                                      minHeight: '14px',
+                                      backgroundColor: swatchColor,
+                                      borderRadius: preset.shapes.radiusBadge,
+                                    }}
+                                  />
+                                ))}
                               </div>
                             </div>
-                            <span className="text-[11px] leading-snug" style={{ color: 'var(--rev-text-muted)' }}>
-                              {preset.subtitle}
-                            </span>
+                            {preset.subtitle && (
+                              <span className="text-[11px] leading-snug" style={{ color: 'var(--rev-text-muted)' }}>
+                                {preset.subtitle}
+                              </span>
+                            )}
                           </button>
                         );
                       })}

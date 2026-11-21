@@ -132,7 +132,7 @@ export default function ProgressionSummaryCard({
             Progression & Advancements
           </h2>
           <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-            Tier {currentTier} — <span className={currentTier > 0 ? 'text-purple-300 font-semibold' : 'text-slate-300 font-semibold'}>{activeTierDef.title}</span> · {activeTierDef.description}
+            Tier {currentTier} — <span className={currentTier > 0 ? 'text-purple-300 font-semibold' : 'text-slate-300 font-semibold'}>{activeTierDef.title}</span>
           </p>
         </div>
       </div>

@@ -64,11 +64,7 @@ export default function TierUnlockedModal({
 
         {/* Body */}
         <div className="p-5 sm:px-6 overflow-y-auto space-y-5">
-          {tierDef.description && (
-            <p className="text-xs italic text-gray-400 border-l-2 border-purple-700/60 pl-3 leading-relaxed">
-              {tierDef.description}
-            </p>
-          )}
+
 
           {/* Boons Gained */}
           <div>
