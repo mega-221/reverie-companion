@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import {
   DEFAULT_CALENDAR_DATE,
   REVERIE_MONTHS,
@@ -30,20 +32,15 @@ export default function PartyCalendar({
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [draft, setDraft] = useState<ReverieCalendarDate>(current);
 
+  useBodyScrollLock(isPopupOpen);
+
   useEffect(() => {
     if (!isPopupOpen) {
       setDraft(normalizeCalendarDate(calendarDate || DEFAULT_CALENDAR_DATE));
     }
   }, [calendarDate, isPopupOpen]);
 
-  useEffect(() => {
-    if (!isPopupOpen) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !saving) setIsPopupOpen(false);
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [isPopupOpen, saving]);
+  useEscapeKey(isPopupOpen && !saving, () => setIsPopupOpen(false));
 
   async function commitDate(nextRaw: ReverieCalendarDate) {
     if (!isLeader || saving) return;
@@ -125,7 +122,7 @@ export default function PartyCalendar({
       <div className="inline-flex flex-wrap items-center gap-2 mt-1.5">
         {calendarIcon}
         <span
-          className="font-cinzel font-bold text-sm sm:text-base tabular-nums whitespace-normal"
+          className="font-bold text-sm sm:text-base tabular-nums whitespace-normal"
           style={{ color: 'var(--rev-text)' }}
         >
           {formatReverieDate(current)}
@@ -165,7 +162,7 @@ export default function PartyCalendar({
                     In-Game Calendar
                   </span>
                   <span
-                    className="font-cinzel font-bold text-base tabular-nums mt-0.5"
+                    className="font-bold text-base tabular-nums mt-0.5"
                     style={{ color: 'var(--rev-text-bright)' }}
                   >
                     {formatReverieDate(current)}
@@ -174,7 +171,7 @@ export default function PartyCalendar({
                 <button
                   type="button"
                   onClick={() => setIsPopupOpen(false)}
-                  className="font-bold text-xl leading-none px-1.5 self-start"
+                  className="font-bold text-xl leading-none px-1.5 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors self-start"
                   style={{ color: 'var(--rev-text-muted)' }}
                   aria-label="Close calendar"
                 >

@@ -13,6 +13,9 @@ import { useConfirm } from './components/sheet/ConfirmDialog';
 import { useCompendium } from './CompendiumContext';
 import { vigorMax, strainMax, dpMax, apMax } from './calc';
 import { sendEphemeralBroadcast, useVisibilityRealtime } from './hooks/useVisibilityRealtime';
+import { useBodyScrollLock } from './hooks/useBodyScrollLock';
+import { useEscapeKey } from './hooks/useEscapeKey';
+import { safeCharacterData, saveAndMirrorCharacter } from './utils/characterSync';
 import PartyCalendar from './components/party/PartyCalendar';
 import PartyChat from './components/party/PartyChat';
 import NotifyPlayersModal from './components/party/NotifyPlayersModal';
@@ -31,29 +34,6 @@ export type SharedCharacterEntry = {
   username?: string;
 };
 
-function safeVitalsData(raw: Partial<CharacterData> | undefined): CharacterData {
-  return {
-    identity: raw?.identity || { origin: '', className: '', path: '', quote: '', inspirations: [], originChoices: {} },
-    progression: raw?.progression || { tier: 0, level: 0, xp: 0, advancements: [] },
-    attributes: raw?.attributes || { grt: 1, ref: 1, int: 1, psy: 1 },
-    skills: raw?.skills || {},
-    specialSkills: Array.isArray(raw?.specialSkills) ? raw!.specialSkills : [],
-    convictions: Array.isArray(raw?.convictions) ? raw!.convictions : [],
-    failings: Array.isArray(raw?.failings) ? raw!.failings : [],
-    aspects: Array.isArray(raw?.aspects) ? raw!.aspects : [],
-    abilities: Array.isArray(raw?.abilities) ? raw!.abilities : [],
-    disciplines: Array.isArray(raw?.disciplines) ? raw!.disciplines : [],
-    items: Array.isArray(raw?.items) ? raw!.items : [],
-    possessions: Array.isArray(raw?.possessions) ? raw!.possessions : [],
-    equipment: raw?.equipment || { mainHand: '', mainHandMode: '', offHand: '', armour: '', extra: [] },
-    bonus: raw?.bonus || { vm: 0, sl: 0, dp: 0, eva: 0, ap: 0 },
-    trackers: raw?.trackers || { vigor: 5, strain: 0, dp: 2, ap: 0, acc: 0, injuries: [] },
-    notes: raw?.notes || '',
-    journal: Array.isArray(raw?.journal) ? raw!.journal : [],
-    relationships: Array.isArray(raw?.relationships) ? raw!.relationships : [],
-    allowedEditors: Array.isArray(raw?.allowedEditors) ? raw!.allowedEditors : [],
-  };
-}
 
 function CompactVitalMeter({
   kind,
@@ -222,6 +202,8 @@ export default function PartyDetail({
   const [notificationQueue, setNotificationQueue] = useState<PartyNotificationPayload[]>([]);
   const [dateTransition, setDateTransition] = useState<PartyDateTransition | null>(null);
   const [crisisChar, setCrisisChar] = useState<Character | null>(null);
+
+  useBodyScrollLock(isEditPartyOpen || isInviteOpen || isShareOpen);
 
   const [incomingChatMessages, setIncomingChatMessages] = useState<PartyMessage[]>([]);
   const [deletedChatIds, setDeletedChatIds] = useState<string[]>([]);
@@ -484,19 +466,13 @@ export default function PartyDetail({
     },
   });
 
-  useEffect(() => {
-    const anyModal = isInviteOpen || isShareOpen || isEditPartyOpen;
-    if (!anyModal) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (!inviting) setIsInviteOpen(false);
-        if (!sharing) setIsShareOpen(false);
-        if (!savingMeta) setIsEditPartyOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [isInviteOpen, isShareOpen, isEditPartyOpen, inviting, sharing, savingMeta]);
+  useEscapeKey(isInviteOpen || isShareOpen || isEditPartyOpen, () => {
+    if (!inviting) setIsInviteOpen(false);
+    if (!sharing) setIsShareOpen(false);
+    if (!savingMeta) setIsEditPartyOpen(false);
+  });
+
+  useEscapeKey(isLeaderMenuOpen, () => setIsLeaderMenuOpen(false));
 
   useEffect(() => {
     if (!isLeaderMenuOpen) return;
@@ -505,15 +481,8 @@ export default function PartyDetail({
         setIsLeaderMenuOpen(false);
       }
     };
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsLeaderMenuOpen(false);
-    };
     window.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('keydown', handleEscape);
-    return () => {
-      window.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('keydown', handleEscape);
-    };
+    return () => window.removeEventListener('mousedown', handleClickOutside);
   }, [isLeaderMenuOpen]);
 
   async function handleSendNotification(payload: PartyNotificationPayload) {
@@ -705,7 +674,7 @@ export default function PartyDetail({
 
   if (loading) {
     return (
-      <div className="w-full p-12 text-center font-cinzel" style={{ color: 'var(--rev-text-muted)' }}>
+      <div className="w-full p-12 text-center" style={{ color: 'var(--rev-text-muted)' }}>
         <p className="animate-pulse">Loading party...</p>
       </div>
     );
@@ -749,7 +718,7 @@ export default function PartyDetail({
       throw new Error(fetchErr?.message || 'Could not load target character.');
     }
 
-    const baseData = safeVitalsData((liveChar as Character).data);
+    const baseData = safeCharacterData((liveChar as Character).data);
     let nextData: CharacterData;
     let deltaPatch: Partial<CharacterData>;
 
@@ -775,23 +744,15 @@ export default function PartyDetail({
       return;
     }
 
-    const updatedAt = new Date().toISOString();
-    const { error: updateErr } = await supabase
-      .from('characters')
-      .update({ data: nextData, updated_at: updatedAt })
-      .eq('id', targetCharacterId);
+    const { error: updateErr, updatedAt } = await saveAndMirrorCharacter({
+      characterId: targetCharacterId,
+      name: liveChar.name,
+      data: nextData,
+    });
 
     if (updateErr) {
       throw new Error(updateErr.message);
     }
-
-    await supabase
-      .from('party_characters')
-      .update({
-        character_name: liveChar.name,
-        character_data: nextData,
-      })
-      .eq('character_id', targetCharacterId);
 
     setSharedChars(prev =>
       prev.map(entry =>
@@ -852,7 +813,7 @@ export default function PartyDetail({
     const raw = liveChar as Character;
     setCrisisChar({
       ...raw,
-      data: safeVitalsData(raw.data),
+      data: safeCharacterData(raw.data),
     });
   };
 
@@ -862,25 +823,16 @@ export default function PartyDetail({
       ...crisisChar.data,
       ...updates,
     };
-    const updatedAt = new Date().toISOString();
-
-    const { error: updateErr } = await supabase
-      .from('characters')
-      .update({ data: nextData, updated_at: updatedAt })
-      .eq('id', crisisChar.id);
+    const { error: updateErr, updatedAt } = await saveAndMirrorCharacter({
+      characterId: crisisChar.id,
+      name: crisisChar.name,
+      data: nextData,
+    });
 
     if (updateErr) {
       setError(updateErr.message);
       return;
     }
-
-    await supabase
-      .from('party_characters')
-      .update({
-        character_name: crisisChar.name,
-        character_data: nextData,
-      })
-      .eq('character_id', crisisChar.id);
 
     const updatedChar: Character = {
       ...crisisChar,
@@ -967,7 +919,7 @@ export default function PartyDetail({
           </button>
           <div className="hidden sm:block w-px h-6 mt-1 shrink-0" style={{ backgroundColor: 'var(--rev-border)' }}></div>
           <div className="min-w-0 w-full">
-            <h2 className="text-2xl sm:text-3xl font-cinzel font-bold break-words" style={{ color: 'var(--rev-text-bright)' }}>
+            <h2 className="text-2xl sm:text-3xl font-spectral font-bold break-words" style={{ color: 'var(--rev-text-bright)' }}>
               {party.name}
             </h2>
             <p className="text-xs mt-0.5 whitespace-pre-wrap break-words" style={{ color: 'var(--rev-text-muted)' }}>
@@ -1113,7 +1065,7 @@ export default function PartyDetail({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
         {/* Members Column */}
         <div className="sheet-panel p-4 sm:p-5 flex flex-col gap-4 lg:col-span-4 xl:col-span-3 min-w-0">
-          <h3 className="font-cinzel font-bold text-lg border-b rev-divider pb-2 tabular-nums" style={{ color: 'var(--rev-text)' }}>
+          <h3 className="font-spectral font-bold text-lg border-b rev-divider pb-2 tabular-nums" style={{ color: 'var(--rev-text)' }}>
             Party Roster ({members.length})
           </h3>
           <ul className="flex flex-col gap-2.5">
@@ -1140,7 +1092,7 @@ export default function PartyDetail({
                   {isLeader && !isOwner && (
                     <button
                       onClick={() => handleRemoveMember(m.id)}
-                      className="text-xs font-bold text-red-400 hover:text-red-300 ml-2 shrink-0"
+                      className="text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/15 px-2 py-1 rounded ml-2 shrink-0 transition-colors"
                       title="Remove member"
                     >
                       Remove
@@ -1154,7 +1106,7 @@ export default function PartyDetail({
 
         {/* Shared Characters Column */}
         <div className="sheet-panel p-4 sm:p-5 flex flex-col gap-4 lg:col-span-8 xl:col-span-5 min-w-0">
-          <h3 className="font-cinzel font-bold text-lg border-b rev-divider pb-2 tabular-nums" style={{ color: 'var(--rev-text)' }}>
+          <h3 className="font-spectral font-bold text-lg border-b rev-divider pb-2 tabular-nums" style={{ color: 'var(--rev-text)' }}>
             Shared Party Characters ({sharedChars.length})
           </h3>
 
@@ -1167,7 +1119,7 @@ export default function PartyDetail({
               {sharedChars.map(s => {
                 const c = s.character;
                 if (!c) return null;
-                const safeData = safeVitalsData(c.data);
+                const safeData = safeCharacterData(c.data);
                 const identity = safeData.identity;
                 const progression = safeData.progression;
                 const classPath = [identity.className, identity.path].filter(Boolean).join(' · ');
@@ -1208,7 +1160,7 @@ export default function PartyDetail({
                     <div className="flex flex-col gap-1 min-w-0">
                       <div className="flex justify-between items-start gap-2">
                         <span
-                          className="font-cinzel font-bold text-base truncate transition-colors"
+                          className="font-bold text-base truncate transition-colors"
                           style={{ color: 'var(--rev-text-bright)' }}
                         >
                           {liveVitals?.name || c.name || 'Unnamed Character'}
@@ -1308,13 +1260,13 @@ export default function PartyDetail({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
-              <h2 className="font-cinzel font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
+              <h2 className="font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
                 Edit Party
               </h2>
               {!savingMeta && (
                 <button
                   onClick={() => setIsEditPartyOpen(false)}
-                  className="font-bold text-2xl leading-none px-2"
+                  className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
                   style={{ color: 'var(--rev-text-muted)' }}
                   aria-label="Close"
                 >
@@ -1386,13 +1338,13 @@ export default function PartyDetail({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
-              <h2 className="font-cinzel font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
+              <h2 className="font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
                 Invite Member
               </h2>
               {!inviting && (
                 <button
                   onClick={() => setIsInviteOpen(false)}
-                  className="font-bold text-2xl leading-none px-2"
+                  className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
                   style={{ color: 'var(--rev-text-muted)' }}
                   aria-label="Close"
                 >
@@ -1453,13 +1405,13 @@ export default function PartyDetail({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
-              <h2 className="font-cinzel font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
+              <h2 className="font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
                 Share Your Characters
               </h2>
               {!sharing && (
                 <button
                   onClick={() => setIsShareOpen(false)}
-                  className="font-bold text-2xl leading-none px-2"
+                  className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
                   style={{ color: 'var(--rev-text-muted)' }}
                   aria-label="Close"
                 >
@@ -1506,7 +1458,7 @@ export default function PartyDetail({
                             className="w-4 h-4 rounded cursor-pointer"
                             style={{ accentColor: 'var(--rev-accent)' }}
                           />
-                          <span className="font-cinzel font-bold text-sm">{c.name || 'Unnamed Character'}</span>
+                          <span className="font-bold text-sm">{c.name || 'Unnamed Character'}</span>
                         </div>
                         <span className="text-[11px] font-bold uppercase tracking-wider tabular-nums" style={{ color: 'var(--rev-text-muted)' }}>
                           Tier {progression.tier} · Lvl {progression.level}

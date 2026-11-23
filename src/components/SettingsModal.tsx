@@ -3,6 +3,10 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../supabase';
 import { useTheme } from '../theme/ThemeContext';
 import { getThemeById, resolveDynamicConvictionThemeId } from '../theme/themes';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useAutoSaveSetting, type AutoSaveMode } from '../hooks/useAutoSaveSetting';
+import { saveAndMirrorCharacter } from '../utils/characterSync';
 import type { AllowedEditor, Character } from '../types';
 
 type ProfileSuggestion = {
@@ -36,13 +40,14 @@ export default function SettingsModal({
   sheetConfig?: SheetSettingsConfig;
 }) {
   const { themeId, presets, setThemeId } = useTheme();
-  const [activeTab, setActiveTab] = useState<'general' | 'sheet'>('general');
+  const [autoSaveMode, setAutoSaveMode] = useAutoSaveSetting();
+  const [activeTab, setActiveTab] = useState<'general' | 'profile' | 'sheet'>('general');
 
-  // General tab state
+  // Profile tab state
   const [username, setUsername] = useState(currentUsername);
-  const [savingGeneral, setSavingGeneral] = useState(false);
-  const [generalSuccess, setGeneralSuccess] = useState<string | null>(null);
-  const [generalError, setGeneralError] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // Sheet tab state
   const [editors, setEditors] = useState<AllowedEditor[]>([]);
@@ -53,14 +58,16 @@ export default function SettingsModal({
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [partySuggestions, setPartySuggestions] = useState<ProfileSuggestion[]>([]);
 
-  const isBusy = savingGeneral || savingSheet || lookingUp;
+  const isBusy = savingProfile || savingSheet || lookingUp;
+
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (!isOpen) return;
     setActiveTab('general');
     setUsername(currentUsername);
-    setGeneralSuccess(null);
-    setGeneralError(null);
+    setProfileSuccess(null);
+    setProfileError(null);
   }, [currentUsername, isOpen]);
 
   useEffect(() => {
@@ -142,25 +149,15 @@ export default function SettingsModal({
     sheetConfig?.isOwner,
   ]);
 
-  // ESC key handler
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isBusy) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isBusy, onClose]);
+  useEscapeKey(isOpen && !isBusy, onClose);
 
-  async function handleSaveGeneral(e: React.FormEvent) {
+  async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
-    if (!username.trim() || savingGeneral) return;
+    if (!username.trim() || savingProfile) return;
 
-    setSavingGeneral(true);
-    setGeneralSuccess(null);
-    setGeneralError(null);
+    setSavingProfile(true);
+    setProfileSuccess(null);
+    setProfileError(null);
 
     const trimmed = username.trim();
 
@@ -182,16 +179,16 @@ export default function SettingsModal({
 
       if (profErr) throw profErr;
 
-      setGeneralSuccess('Settings updated.');
+      setProfileSuccess('Profile updated.');
       onUsernameUpdated(trimmed);
       setTimeout(() => {
-        setGeneralSuccess(null);
+        setProfileSuccess(null);
         onClose();
       }, 900);
     } catch (err: any) {
-      setGeneralError(err?.message || 'Failed to update settings.');
+      setProfileError(err?.message || 'Failed to update profile.');
     } finally {
-      setSavingGeneral(false);
+      setSavingProfile(false);
     }
   }
 
@@ -248,25 +245,17 @@ export default function SettingsModal({
       dynamicTheme,
     };
 
-    const { error: updateErr } = await supabase
-      .from('characters')
-      .update({
-        allowed_editors: editors,
-        data: nextData,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', sheetConfig.char.id);
+    const { error: updateErr } = await saveAndMirrorCharacter({
+      characterId: sheetConfig.char.id,
+      data: nextData,
+      allowedEditors: editors,
+    });
 
     if (updateErr) {
       setSavingSheet(false);
       setSheetError(updateErr.message);
       return;
     }
-
-    await supabase
-      .from('party_characters')
-      .update({ character_data: nextData })
-      .eq('character_id', sheetConfig.char.id);
 
     setSavingSheet(false);
     sheetConfig.onSettingsSaved({ editors, dynamicTheme });
@@ -295,14 +284,14 @@ export default function SettingsModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
-          <h2 className="font-cinzel font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
+          <h2 className="font-spectral font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
             Settings
           </h2>
           {!isBusy && (
             <button
               type="button"
               onClick={onClose}
-              className="font-bold text-2xl leading-none px-2 transition-colors"
+              className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 transition-colors"
               style={{ color: 'var(--rev-text-muted)' }}
               aria-label="Close"
             >
@@ -311,19 +300,30 @@ export default function SettingsModal({
           )}
         </div>
 
-        {sheetConfig && (
-          <div className="flex border-b rev-divider rev-inset-soft px-4 gap-2 pt-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab('general')}
-              className="px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors"
-              style={{
-                borderColor: activeTab === 'general' ? 'var(--rev-accent)' : 'transparent',
-                color: activeTab === 'general' ? 'var(--rev-text-bright)' : 'var(--rev-text-muted)',
-              }}
-            >
-              General
-            </button>
+        <div className="flex border-b rev-divider rev-inset-soft px-4 gap-2 pt-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('general')}
+            className="px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors"
+            style={{
+              borderColor: activeTab === 'general' ? 'var(--rev-accent)' : 'transparent',
+              color: activeTab === 'general' ? 'var(--rev-text-bright)' : 'var(--rev-text-muted)',
+            }}
+          >
+            General
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('profile')}
+            className="px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors"
+            style={{
+              borderColor: activeTab === 'profile' ? 'var(--rev-accent)' : 'transparent',
+              color: activeTab === 'profile' ? 'var(--rev-text-bright)' : 'var(--rev-text-muted)',
+            }}
+          >
+            Profile
+          </button>
+          {sheetConfig && (
             <button
               type="button"
               onClick={() => setActiveTab('sheet')}
@@ -335,52 +335,68 @@ export default function SettingsModal({
             >
               Sheet
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
-        {activeTab === 'general' || !sheetConfig ? (
-          <form onSubmit={handleSaveGeneral} className="p-6 flex flex-col gap-5 overflow-y-auto">
-            {generalError && (
-              <div className="sheet-panel-red text-sm p-3" style={{ color: 'var(--rev-accent-text)' }}>
-                {generalError}
+        {activeTab === 'general' ? (
+          <div className="p-6 flex flex-col gap-5 overflow-y-auto">
+            {/* Automatic Saving */}
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <span
+                  className="text-xs font-bold uppercase tracking-wider"
+                  style={{ color: 'var(--rev-text-muted)' }}
+                >
+                  Automatic Saving
+                </span>
+                <span className="text-[11px]" style={{ color: 'var(--rev-text-faint)' }}>
+                  Applies immediately
+                </span>
               </div>
-            )}
-
-            {generalSuccess && (
-              <div className="bg-green-950/50 border border-green-900 text-green-300 text-sm p-3 rounded-lg">
-                {generalSuccess}
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { value: '3m', label: '3 Minutes', badge: 'Default' },
+                    { value: '3s', label: '3 Seconds', badge: null },
+                    { value: 'off', label: 'Off', badge: null },
+                  ] as const
+                ).map((opt) => {
+                  const isActive = autoSaveMode === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setAutoSaveMode(opt.value as AutoSaveMode)}
+                      className="px-3 py-2.5 text-center transition-all flex flex-col items-center justify-center gap-0.5 rounded-lg"
+                      style={{
+                        backgroundColor: isActive ? 'var(--rev-accent-soft)' : 'var(--rev-surface-inset)',
+                        border: `1px solid ${isActive ? 'var(--rev-accent-border)' : 'var(--rev-border)'}`,
+                      }}
+                    >
+                      <span
+                        className="text-xs font-bold"
+                        style={{ color: isActive ? 'var(--rev-accent-text)' : 'var(--rev-text-bright)' }}
+                      >
+                        {opt.label}
+                      </span>
+                      {opt.badge && (
+                        <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--rev-text-faint)' }}>
+                          {opt.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-            )}
-
-            <div className="flex flex-col gap-1.5">
-              <label
-                className="text-xs font-bold uppercase tracking-wider"
-                style={{ color: 'var(--rev-text-muted)' }}
-              >
-                Email Address
-              </label>
-              <input
-                type="email"
-                disabled
-                value={userEmail}
-                className="rev-input p-3 text-sm cursor-not-allowed select-none opacity-75"
-              />
+              <p className="text-[11px] leading-snug" style={{ color: 'var(--rev-text-muted)' }}>
+                {autoSaveMode === '3m' && 'Saves character edits to your account every 3 minutes.'}
+                {autoSaveMode === '3s' && 'Saves character edits shortly after each change.'}
+                {autoSaveMode === 'off' && 'Manual Save button only. Real-time party sheet sync remains active.'}
+              </p>
             </div>
 
-            <label className="flex flex-col text-sm font-bold" style={{ color: 'var(--rev-text-muted)' }}>
-              Username
-              <input
-                type="text"
-                required
-                className="rev-input p-3 mt-1 font-normal shadow-inner text-base"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={savingGeneral}
-              />
-            </label>
-
             {/* Theme Switcher */}
-            <div className="flex flex-col gap-3 pt-3 border-t rev-divider">
+            <div className="flex flex-col gap-3 pt-4 border-t rev-divider">
               <div className="flex items-baseline justify-between gap-2">
                 <span
                   className="text-xs font-bold uppercase tracking-wider"
@@ -430,7 +446,7 @@ export default function SettingsModal({
                           >
                             <div className="flex items-center justify-between gap-2 w-full">
                               <span
-                                className="font-cinzel font-bold text-sm truncate min-w-0"
+                                className="font-bold text-sm truncate min-w-0"
                                 style={{ color: isActive ? 'var(--rev-accent-text)' : 'var(--rev-text-bright)' }}
                               >
                                 {preset.name}
@@ -470,21 +486,72 @@ export default function SettingsModal({
               <button
                 type="button"
                 onClick={onClose}
-                disabled={savingGeneral}
+                className="flex-1 py-3 font-bold text-sm rev-btn-secondary"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ) : activeTab === 'profile' || !sheetConfig ? (
+          <form onSubmit={handleSaveProfile} className="p-6 flex flex-col gap-5 overflow-y-auto">
+            {profileError && (
+              <div className="sheet-panel-red text-sm p-3" style={{ color: 'var(--rev-accent-text)' }}>
+                {profileError}
+              </div>
+            )}
+
+            {profileSuccess && (
+              <div className="bg-green-950/50 border border-green-900 text-green-300 text-sm p-3 rounded-lg">
+                {profileSuccess}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                className="text-xs font-bold uppercase tracking-wider"
+                style={{ color: 'var(--rev-text-muted)' }}
+              >
+                Email Address
+              </label>
+              <input
+                type="email"
+                disabled
+                value={userEmail}
+                className="rev-input p-3 text-sm cursor-not-allowed select-none opacity-75"
+              />
+            </div>
+
+            <label className="flex flex-col text-sm font-bold" style={{ color: 'var(--rev-text-muted)' }}>
+              Username
+              <input
+                type="text"
+                required
+                className="rev-input p-3 mt-1 font-normal shadow-inner text-base"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={savingProfile}
+              />
+            </label>
+
+            <div className="flex gap-3 w-full mt-1 pt-3 border-t rev-divider">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={savingProfile}
                 className="flex-1 py-3 font-bold text-sm rev-btn-secondary disabled:opacity-50"
               >
                 Close
               </button>
               <button
                 type="submit"
-                disabled={!username.trim() || savingGeneral}
+                disabled={!username.trim() || savingProfile}
                 className={`flex-1 py-3 font-bold text-sm flex items-center justify-center ${
-                  !username.trim() || savingGeneral
+                  !username.trim() || savingProfile
                     ? 'rev-btn-secondary opacity-40 cursor-not-allowed'
                     : 'rev-btn-primary shadow-sm'
                 }`}
               >
-                {savingGeneral ? 'Saving...' : 'Save'}
+                {savingProfile ? 'Saving...' : 'Save'}
               </button>
             </div>
           </form>

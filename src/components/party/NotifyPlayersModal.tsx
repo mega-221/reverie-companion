@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { PartyMember, PartyNotificationPayload } from '../../types';
 import { CORE_SKILLS, SPECIAL_SKILLS } from '../sheet/utils';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 
 const QUICK_PRESETS = [
   {
@@ -58,6 +60,7 @@ export default function NotifyPlayersModal({
   memberUsernames: Map<string, string>;
   onSendNotification: (payload: PartyNotificationPayload) => Promise<void> | void;
 }) {
+  useBodyScrollLock(Boolean(isOpen));
   const acceptedMembers = members.filter(
     m => m.status === 'accepted' && m.user_id && m.user_id !== '00000000-0000-0000-0000-000000000000'
   );
@@ -68,14 +71,14 @@ export default function NotifyPlayersModal({
   const [mode, setMode] = useState<'prompt' | 'give' | 'crisis'>('prompt');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(defaultTargets));
   const [selectedSkill, setSelectedSkill] = useState<string>('Perception');
-  const [challengeLevel, setChallengeLevel] = useState<number>(2);
+  const [challengeLevel, setChallengeLevel] = useState<number>(12);
   const [grantResource, setGrantResource] = useState<'xp' | 'dp'>('xp');
   const [grantAmount, setGrantAmount] = useState<number>(5);
   const [title, setTitle] = useState('Skill Check');
-  const [message, setMessage] = useState('Roll Perception for Challenge Level 2.');
+  const [message, setMessage] = useState('Roll Perception for Challenge Level 12.');
   const [activeSkillMeta, setActiveSkillMeta] = useState<{ skill?: string; challengeLevel?: number }>({
     skill: 'Perception',
-    challengeLevel: 2,
+    challengeLevel: 12,
   });
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,14 +92,7 @@ export default function NotifyPlayersModal({
     setError(null);
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !sending) onClose();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [isOpen, sending, onClose]);
+  useEscapeKey(isOpen && !sending, onClose);
 
   const applyGiveDefaults = (res: 'xp' | 'dp', amt: number) => {
     const safeAmt = Math.max(1, Math.min(999, Math.trunc(amt) || 1));
@@ -218,14 +214,14 @@ export default function NotifyPlayersModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
-          <h2 className="font-cinzel font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
+          <h2 className="font-spectral font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
             Notify Players
           </h2>
           {!sending && (
             <button
               type="button"
               onClick={onClose}
-              className="font-bold text-2xl leading-none px-2"
+              className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
               style={{ color: 'var(--rev-text-muted)' }}
               aria-label="Close"
             >
@@ -382,7 +378,7 @@ export default function NotifyPlayersModal({
                 </select>
 
                 <span className="text-xs" style={{ color: 'var(--rev-text-muted)' }}>
-                  Challenge Level
+                  CL
                 </span>
                 <input
                   type="number"
@@ -391,21 +387,33 @@ export default function NotifyPlayersModal({
                   value={challengeLevel}
                   onChange={(e) => {
                     const parsed = Number.parseInt(e.target.value, 10);
-                    const nextLvl = Number.isFinite(parsed) ? Math.max(1, Math.min(20, parsed)) : 1;
+                    const nextLvl = Number.isFinite(parsed) ? Math.max(1, Math.min(20, parsed)) : 12;
                     setChallengeLevel(nextLvl);
                     applySkillRollPreset(selectedSkill, nextLvl);
                   }}
-                  className="w-16 rev-input px-2 py-1.5 text-xs font-bold text-center tabular-nums"
+                  className="w-14 rev-input px-2 py-1.5 text-xs font-bold text-center tabular-nums"
                   aria-label="Challenge Level"
                 />
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() => applySkillRollPreset(selectedSkill, challengeLevel)}
-                  className="px-3 py-1.5 text-xs font-bold rev-btn-secondary"
-                >
-                  Apply
-                </button>
+              {/* CL Increment Pills (10, 12, 14, 16, 18, 20) */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--rev-text-muted)' }}>Suggested CL:</span>
+                {[10, 12, 14, 16, 18, 20].map((clVal) => (
+                  <button
+                    key={clVal}
+                    type="button"
+                    onClick={() => {
+                      setChallengeLevel(clVal);
+                      applySkillRollPreset(selectedSkill, clVal);
+                    }}
+                    className={`px-2 py-0.5 rounded text-xs font-bold tabular-nums transition-colors ${
+                      challengeLevel === clVal ? 'rev-btn-primary' : 'rev-btn-secondary'
+                    }`}
+                  >
+                    {clVal}
+                  </button>
+                ))}
               </div>
 
               <div className="flex flex-wrap gap-1.5 pt-1">

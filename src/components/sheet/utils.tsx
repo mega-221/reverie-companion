@@ -1,20 +1,24 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  ATTRIBUTE_NAMES,
+  ATTRIBUTE_DESCRIPTIONS,
+  SKILL_GROUPS,
+  SPECIAL_SKILL_ATTRIBUTES,
+  SEASONS,
+  CORE_SKILLS,
+  SPECIAL_SKILLS,
+} from '../../constants/reverie';
 
-export const ATTRIBUTE_NAMES = { grt: 'Grit', ref: 'Reflex', int: 'Intellect', psy: 'Psyche' };
-export const ATTRIBUTE_DESCRIPTIONS = {
-  grt: "Your physical body. The resilience and power of flesh and bone.",
-  ref: "Your uncontrolled impulses. The precise senses and natural instincts.",
-  int: "Your pointed mind. The library of knowledge and its application.",
-  psy: "Your own soul. The internal will and the poetry to communicate it."
+export {
+  ATTRIBUTE_NAMES,
+  ATTRIBUTE_DESCRIPTIONS,
+  SKILL_GROUPS,
+  SPECIAL_SKILL_ATTRIBUTES,
+  SEASONS,
+  CORE_SKILLS,
+  SPECIAL_SKILLS,
 };
-
-export const SKILL_GROUPS = {
-  grt: { color: 'rev-keep-color text-red-500', border: 'rev-keep-color border-red-900', bg: 'rev-keep-color bg-red-950', skills: ['Athletics', 'Brawling', 'Endurance'] },
-  ref: { color: 'rev-keep-color text-green-500', border: 'rev-keep-color border-green-900', bg: 'rev-keep-color bg-green-950', skills: ['Dexterity', 'Perception', 'Stealth'] },
-  int: { color: 'rev-keep-color text-blue-500', border: 'rev-keep-color border-blue-900', bg: 'rev-keep-color bg-blue-950', skills: ['Knowledge', 'Reasoning', 'Survival'] },
-  psy: { color: 'rev-keep-color text-purple-500', border: 'rev-keep-color border-purple-900', bg: 'rev-keep-color bg-purple-950', skills: ['Intuition', 'Persuasion', 'Willpower'] },
-} as const;
 
 export const CORE_SKILL_DESCRIPTIONS: Record<string, string> = {
   Athletics: "Raw physicality. Your ability to influence the world with your body's power.",
@@ -46,17 +50,7 @@ export const SPECIAL_SKILL_DESCRIPTIONS: Record<string, string> = {
   Whisper: "Planar entanglement. Your ability to interact with non-humans and the unknowable."
 };
 
-export const SPECIAL_SKILL_ATTRIBUTES: Record<string, 'grt' | 'ref' | 'int' | 'psy'> = {
-  Carry: 'grt', Discipline: 'grt', Stance: 'grt',
-  Interface: 'ref', Pilot: 'ref', Scout: 'ref',
-  Engineering: 'int', Lore: 'int', Medicine: 'int',
-  Authority: 'psy', Deception: 'psy', Whisper: 'psy'
-};
-
-export const SEASONS = ['Vamor', 'Bruma', 'Trumst', 'Halice'];
 export const SKILL_XP_COSTS = [1, 1, 2, 2, 3, 3, 4, 4];
-export const CORE_SKILLS = ['Athletics', 'Brawling', 'Endurance', 'Dexterity', 'Perception', 'Stealth', 'Knowledge', 'Reasoning', 'Survival', 'Intuition', 'Persuasion', 'Willpower'];
-export const SPECIAL_SKILLS = ['Carry', 'Discipline', 'Stance', 'Interface', 'Pilot', 'Scout', 'Engineering', 'Lore', 'Medicine', 'Authority', 'Deception', 'Whisper'];
 
 export type OriginChoice = { id: string; label: string; options: string[]; type: 'inspiration' | 'starting'; rank?: number };
 export const ORIGIN_CHOICES: Record<string, OriginChoice[]> = {
@@ -138,7 +132,7 @@ export const getTypeStyle = (type?: string) => {
 };
 
 export const SectionHeader = ({ title }: { title: string }) => (
-  <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">
+  <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">
     {title}
   </h2>
 );

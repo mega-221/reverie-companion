@@ -45,10 +45,10 @@ export default function OriginCard({
               {originName || 'No origin selected'}
             </span>
           </div>
-          <div className="flex items-center gap-2 border-l border-gray-700 pl-3 ml-3 shrink-0">
+          <div className="flex items-center gap-1.5 border-l border-gray-700 pl-2.5 ml-3 shrink-0">
             <button 
               onClick={openOriginModal} 
-              className="text-gray-400 text-sm px-1 hover:text-white transition-colors" 
+              className="text-gray-400 text-sm p-1 rounded hover:text-white hover:bg-white/10 transition-colors" 
               title="Select/Change Origin"
             >
               ✎
@@ -66,7 +66,7 @@ export default function OriginCard({
                     onRemoveOrigin();
                   }
                 }} 
-                className="text-red-500 font-bold px-1 text-lg leading-none hover:text-red-400 transition-colors" 
+                className="text-red-500 font-bold p-1 rounded text-lg leading-none hover:text-red-400 hover:bg-red-500/15 transition-colors" 
                 title="Remove Origin"
               >
                 ×

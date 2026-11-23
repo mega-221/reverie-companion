@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import {
   calendarTotalDays,
   dateFromTotalDays,
@@ -71,6 +72,8 @@ export default function PartyDateTransitionPopup({
   const closingRef = useRef(false);
   const timersRef = useRef<number[]>([]);
   const animRafRef = useRef<number | null>(null);
+
+  useBodyScrollLock(Boolean(rendered));
 
   const frames = useMemo(() => {
     if (!rendered) return [];
@@ -230,7 +233,7 @@ export default function PartyDateTransitionPopup({
         <div className="p-6 sm:p-8 flex flex-col items-center justify-center text-center gap-4">
           <div className="w-full min-h-[3.5rem] flex items-center justify-center px-2">
             <span
-              className="font-cinzel font-bold text-2xl sm:text-3xl tabular-nums transition-colors duration-200"
+              className="font-spectral font-bold text-2xl sm:text-3xl tabular-nums transition-colors duration-200"
               style={{ color: animFinished ? 'var(--rev-text-bright)' : 'var(--rev-accent-text)' }}
             >
               {currentLabel}

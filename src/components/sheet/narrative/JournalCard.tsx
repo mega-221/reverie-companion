@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Character } from '../../../types';
 import { useConfirm } from '../ConfirmDialog';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../../../hooks/useEscapeKey';
 import {
   REVERIE_MONTHS,
   parseReverieDate,
@@ -34,18 +36,13 @@ function CalendarSelector({
   const [draft, setDraft] = useState<CalendarDate>(() => parsed ?? { day: 1, monthIndex: 0, year: 421 });
   const containerRef = useRef<HTMLDivElement>(null);
 
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (parsed) setDraft(parsed);
   }, [value]);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [open]);
+  useEscapeKey(open, () => setOpen(false));
 
   const shiftMonth = (delta: number) => {
     setDraft(prev => {
@@ -125,7 +122,7 @@ function CalendarSelector({
               onChange('');
               setOpen(false);
             }}
-            className="px-2 py-2 text-gray-500 hover:text-red-400 font-bold text-sm border-l border-gray-700 transition-colors shrink-0"
+            className="px-2 py-2 text-gray-500 hover:text-red-400 hover:bg-red-500/15 font-bold text-sm border-l border-gray-700 transition-colors shrink-0 rounded-r"
             title="Clear date"
           >
             ×
@@ -144,13 +141,13 @@ function CalendarSelector({
               className="w-full max-w-xs bg-gray-900 border border-gray-700 rounded-xl shadow-2xl p-3.5 animate-in fade-in zoom-in-95 duration-150"
             >
               <div className="flex items-center justify-between border-b border-gray-800 pb-2 mb-3">
-                <span className="text-xs font-cinzel font-bold uppercase tracking-widest text-gray-300">
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-300">
                   Select Date
                 </span>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="text-gray-400 hover:text-white font-bold text-lg leading-none px-1"
+                  className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-lg leading-none px-1.5 py-0.5 transition-colors"
                   aria-label="Close calendar"
                 >
                   ×
@@ -509,13 +506,13 @@ export default function JournalCard({ char, patch }: { char: Character, patch: a
     patch({ journal: journal.filter(j => j.id !== id) });
   };
 
-  const iconBtn = 'font-bold px-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity';
+  const iconBtn = 'font-bold px-1.5 py-0.5 rounded opacity-80 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-all';
 
   return (
     <section className="sheet-panel p-3.5 sm:p-5 w-full h-full flex flex-col">
       {confirmDialog}
       <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-4 shrink-0 gap-3">
-        <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Journal</h2>
+        <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Journal</h2>
         <div className="flex items-center gap-2 shrink-0">
           {journal.length > 1 && (
             <button
@@ -565,7 +562,7 @@ export default function JournalCard({ char, patch }: { char: Character, patch: a
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 text-gray-500 hover:text-gray-200 font-bold text-sm px-1"
+                className="absolute right-2 text-gray-500 hover:text-gray-200 hover:bg-white/10 rounded font-bold text-sm p-0.5 leading-none transition-colors"
                 title="Clear search"
                 aria-label="Clear journal search"
               >
@@ -644,13 +641,13 @@ export default function JournalCard({ char, patch }: { char: Character, patch: a
                     >
                       <div className="min-w-0 flex-1">
                         {entry.title ? (
-                          <h3 className="font-bold text-gray-200 text-base font-cinzel truncate">{entry.title}</h3>
+                          <h3 className="font-bold text-gray-200 text-base truncate">{entry.title}</h3>
                         ) : (
-                          <h3 className="italic text-gray-500 text-sm font-cinzel">Untitled Entry</h3>
+                          <h3 className="italic text-gray-500 text-sm">Untitled Entry</h3>
                         )}
                         <div className="flex flex-wrap items-baseline gap-x-2 mt-0.5">
                           {formattedInUniverseDate && (
-                            <span className="text-xs text-red-400 font-cinzel tabular-nums">{formattedInUniverseDate}</span>
+                            <span className="text-xs text-red-400 font-medium tabular-nums">{formattedInUniverseDate}</span>
                           )}
                           <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider tabular-nums">
                             {new Date(entry.date).toLocaleDateString()}
@@ -658,8 +655,8 @@ export default function JournalCard({ char, patch }: { char: Character, patch: a
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => { setEditingId(entry.id); setIsAdding(false); }} className={`${iconBtn} text-gray-400 hover:text-gray-200 text-xs`}>Edit</button>
-                        <button onClick={() => removeEntry(entry.id)} className={`${iconBtn} text-red-500 hover:text-red-400`} title="Delete Entry">×</button>
+                        <button onClick={() => { setEditingId(entry.id); setIsAdding(false); }} className={`${iconBtn} text-gray-400 hover:text-gray-200 hover:bg-white/10 text-xs`}>Edit</button>
+                        <button onClick={() => removeEntry(entry.id)} className={`${iconBtn} text-red-500 hover:text-red-400 hover:bg-red-500/15`} title="Delete Entry">×</button>
                         <button
                           type="button"
                           onClick={() => toggleExpand(entry.id)}

@@ -10,7 +10,9 @@ import {
   normalizeArmourCategory,
 } from '../../../calc';
 import { ARMOUR_SUBTYPES, ARMOUR_CATEGORY_RULES, type ArmourCategory } from '../../../armourCatalog';
+import { KeywordText } from '../../common/KeywordText';
 import { equipItem as sharedEquipItem, unequipSlot as sharedUnequipSlot, equipExtraItem, unequipExtraSlot } from '../../../inventory';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 
 const WEAPON_SUBTYPES = ['Sword', 'Axe', 'Blunt', 'Polearm', 'Bow', 'Stealth', 'Pistol', 'Rifle', 'Eidoloscope', 'Leech', 'Instrument', 'Focus', 'Unconventional'] as const;
 
@@ -57,6 +59,8 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
   const [customCategory, setCustomCategory] = useState('equipment');
   const [customSubtype, setCustomSubtype] = useState('');
   const [customExtra, setCustomExtra] = useState<Record<string, any>>({});
+
+  useBodyScrollLock(Boolean(isOpen));
 
   if (!isOpen) return null;
 
@@ -382,7 +386,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
         )}
         {data.effect && data.effect !== '-' && !data.effect.startsWith('Resists ') && (
           <div className="text-sm italic text-gray-200 border-l-2 border-gray-700 pl-3 mt-2 mb-2">
-            {data.effect}
+            <KeywordText text={data.effect} mode="effect" />
           </div>
         )}
       </>
@@ -485,7 +489,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
       <div className="sheet-modal max-w-4xl max-h-[85vh] h-full animate-in zoom-in-95 duration-200">
         
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-          <h2 className="font-cinzel font-bold text-2xl text-gray-200">Inventory</h2>
+          <h2 className="font-bold text-2xl text-gray-200">Inventory</h2>
           <div className="flex items-center gap-4">
             <div className="flex flex-col items-end">
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Burden</span>
@@ -498,7 +502,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                 </span>
               )}
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2 transition-all duration-75 active:opacity-60">×</button>
+            <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-all duration-75 active:opacity-60">×</button>
           </div>
         </div>
 
@@ -671,7 +675,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                           </div>
                           <div className="flex gap-2">
                             {extraId && <span className="text-gray-500 text-[10px]">{isExpanded ? '▲' : '▼'}</span>}
-                            <button onClick={(e) => { e.stopPropagation(); removeExtraSlot(idx); }} className="text-red-500 font-bold px-1 hover:text-red-400">×</button>
+                            <button onClick={(e) => { e.stopPropagation(); removeExtraSlot(idx); }} className="text-red-500 font-bold p-1 rounded hover:text-red-400 hover:bg-red-500/15 transition-colors">×</button>
                           </div>
                         </div>
                         
@@ -757,7 +761,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                               {item.customName && (
                                 <span className="text-[11px] text-gray-500 italic truncate shrink">({item.name})</span>
                               )}
-                              <button onClick={(e) => { e.stopPropagation(); setEditingItem(itemKey); setRenameValue(item.customName || ''); }} className="text-gray-500 hover:text-gray-300 transition-colors shrink-0" title="Rename single item">
+                              <button onClick={(e) => { e.stopPropagation(); setEditingItem(itemKey); setRenameValue(item.customName || ''); }} className="text-gray-500 hover:text-gray-200 p-1 rounded hover:bg-white/10 transition-colors shrink-0" title="Rename single item">
                                 ✎
                               </button>
                               {item.customName && (
@@ -884,7 +888,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                               {item.customName && (
                                 <span className="text-[11px] text-gray-500 italic truncate shrink">({item.name})</span>
                               )}
-                              <button onClick={(e) => { e.stopPropagation(); setEditingItem(itemKey); setRenameValue(item.customName || ''); }} className="text-gray-500 hover:text-gray-300 transition-colors shrink-0" title="Rename single item">
+                              <button onClick={(e) => { e.stopPropagation(); setEditingItem(itemKey); setRenameValue(item.customName || ''); }} className="text-gray-500 hover:text-gray-200 p-1 rounded hover:bg-white/10 transition-colors shrink-0" title="Rename single item">
                                 ✎
                               </button>
                               {item.customName && (

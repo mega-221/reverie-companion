@@ -4,6 +4,9 @@ import { useCompendium } from '../../../CompendiumContext';
 import { getSpeedData, getTypeStyle, ORIGIN_EFFECTS, Tooltip } from '../utils';
 import { useConfirm } from '../ConfirmDialog';
 import { getAvailableAbilityPicks } from '../../../calc';
+import { KeywordText } from '../../common/KeywordText';
+import { SpeedTagPills } from '../../common/SpeedTagPills';
+import { splitLines } from '../../../constants/reverie';
 
 export default function AbilitiesCard({ 
   char, patch, setModalAbilityIndex, setIsAbilityModalOpen 
@@ -76,41 +79,13 @@ export default function AbilitiesCard({
     return stats;
   };
 
-  const renderSpeedTags = (speedData: any) => {
-    if (!speedData) return null;
-    return (
-      <>
-        <div className="relative group inline-flex items-center shrink-0">
-          <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 cursor-help whitespace-nowrap">
-            {speedData.speedLabel}
-          </span>
-          <div className="rev-dark-card absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
-            {speedData.speedTooltip}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
-          </div>
-        </div>
-        {speedData.upkeepLabel && (
-          <div className="relative group inline-flex items-center shrink-0">
-            <span className="rev-keep-color rev-dark-card bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50 cursor-help whitespace-nowrap">
-              {speedData.upkeepLabel}
-            </span>
-            <div className="rev-dark-card absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
-              {speedData.upkeepTooltip}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
-            </div>
-          </div>
-        )}
-      </>
-    );
-  };
-
   return (
     <section className="sheet-panel p-4 w-full h-full flex flex-col lg:col-span-2">
       {confirmDialog}
       <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
         <div className="flex gap-6 items-center">
-          <button onClick={() => setActiveAbilityTab('discipline')} className={`text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'discipline' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Learned Abilities</button>
-          <button onClick={() => setActiveAbilityTab('basic')} className={`text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'basic' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Basic Abilities</button>
+          <button onClick={() => setActiveAbilityTab('discipline')} className={`text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'discipline' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Learned Abilities</button>
+          <button onClick={() => setActiveAbilityTab('basic')} className={`text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'basic' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Basic Abilities</button>
         </div>
       </div>
       
@@ -135,7 +110,7 @@ export default function AbilitiesCard({
                         <div className="flex items-center justify-between w-full sm:flex-1 min-w-0 gap-2">
                           <div className={`flex gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
                             {ab.data.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
-                            {renderSpeedTags(speedData)}
+                            <SpeedTagPills speedData={speedData} />
                             {ab.data.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{ab.data.range}</span>}
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap ${isLocked ? 'bg-gray-800 text-gray-500 border-gray-600' : 'bg-gray-800 text-gray-300 border-gray-600'}`}>{isLocked ? `Rank ${ab.data.class_rank} Req` : 'Class'}</span>
                           </div>
@@ -152,7 +127,11 @@ export default function AbilitiesCard({
                             {renderStats(ab).map((stat, idx) => <div key={idx} className={`flex-1 flex flex-col items-center justify-center min-w-[80px] ${idx !== renderStats(ab).length - 1 ? 'border-r border-gray-700' : ''}`}><span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">{stat.label}</span><span className={`text-sm font-bold ${stat.color}`}>{stat.value}</span></div>)}
                           </div>
                           <div className="italic text-gray-200 border-l-2 border-gray-700 pl-3 mt-4">
-                            {ab.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                            {splitLines(ab.data.description).map((line, idx) => (
+                              <span key={idx} className="block mb-1 last:mb-0">
+                                <KeywordText text={line} mode="effect" />
+                              </span>
+                            ))}
                           </div>
                         </div>
                       )}
@@ -236,7 +215,7 @@ export default function AbilitiesCard({
                       <div className="flex items-center justify-between w-full sm:flex-1 min-w-0 gap-2">
                         <div className={`flex gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
                           {compendiumEntry?.data?.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${getTypeStyle(compendiumEntry.data.type)}`}>{compendiumEntry.data.type}</span>}
-                          {renderSpeedTags(speedData)}
+                          <SpeedTagPills speedData={speedData} />
                           {compendiumEntry?.data?.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{compendiumEntry.data.range}</span>}
                           
                           {compendiumEntry?.data?.class_rank !== undefined && (
@@ -251,7 +230,7 @@ export default function AbilitiesCard({
                         <div className="flex items-center shrink-0 border-l border-gray-700 pl-2">
                           <span className="px-2 text-gray-500 hover:text-white font-bold">{isExpanded ? '▲' : '▼'}</span>
                           <button 
-                            className="px-1 text-gray-400 hover:text-white font-bold text-sm transition-colors" 
+                            className="p-1 rounded text-gray-400 hover:text-white hover:bg-white/10 font-bold text-sm transition-colors" 
                             onClick={(e) => { 
                               e.stopPropagation(); 
                               setModalAbilityIndex(i); 
@@ -262,7 +241,7 @@ export default function AbilitiesCard({
                             ✎
                           </button>
                           <button 
-                            className="px-1 text-red-500 font-bold text-lg hover:text-red-400 transition-colors" 
+                            className="p-1 rounded text-red-500 font-bold text-lg hover:text-red-400 hover:bg-red-500/15 transition-colors" 
                             onClick={async (e) => { 
                               e.stopPropagation(); 
                               const ok = await askConfirm({
@@ -311,7 +290,11 @@ export default function AbilitiesCard({
                           {renderStats(compendiumEntry).map((stat, idx) => <div key={idx} className={`flex-1 flex flex-col items-center justify-center min-w-[80px] ${idx !== renderStats(compendiumEntry).length - 1 ? 'border-r border-gray-700' : ''}`}><span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">{stat.label}</span><span className={`text-sm font-bold ${stat.color}`}>{stat.value}</span></div>)}
                         </div>
                         <div className="italic text-gray-200 border-l-2 border-gray-700 pl-3 mt-4">
-                          {compendiumEntry.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                          {splitLines(compendiumEntry.data.description).map((line, idx) => (
+                            <span key={idx} className="block mb-1 last:mb-0">
+                              <KeywordText text={line} mode="effect" />
+                            </span>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -343,7 +326,7 @@ export default function AbilitiesCard({
                   <div className="flex items-center justify-between w-full sm:flex-1 min-w-0 gap-2">
                     <div className={`flex gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
                       {ab.data.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
-                      {renderSpeedTags(speedData)}
+                      <SpeedTagPills speedData={speedData} />
                       {ab.data.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{ab.data.range}</span>}
                       <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">Basic</span>
                     </div>
@@ -360,7 +343,11 @@ export default function AbilitiesCard({
                       {renderStats(ab).map((stat, idx) => <div key={idx} className={`flex-1 flex flex-col items-center justify-center min-w-[80px] ${idx !== renderStats(ab).length - 1 ? 'border-r border-gray-700' : ''}`}><span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">{stat.label}</span><span className={`text-sm font-bold ${stat.color}`}>{stat.value}</span></div>)}
                     </div>
                     <div className="italic text-gray-200 border-l-2 border-gray-700 pl-3 mt-4">
-                      {ab.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                      {splitLines(ab.data.description).map((line, idx) => (
+                        <span key={idx} className="block mb-1 last:mb-0">
+                          <KeywordText text={line} mode="effect" />
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}

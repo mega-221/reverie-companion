@@ -12,15 +12,17 @@ import {
 } from '../../../calc';
 import { useConfirm } from '../ConfirmDialog';
 import { getSignatureSkills, isSkillInspired, getSkillMaxRank } from '../progression/progressionData';
+import type { DragSkillTarget } from '../Header';
 
 export default function SpecialSkillsCard({ 
-  char, setLevelUpTarget, setIsSpecialSkillModalOpen, setModalSpecialSkillIndex, patch 
+  char, setLevelUpTarget, setIsSpecialSkillModalOpen, setModalSpecialSkillIndex, patch, dragHoverSkill
 }: { 
   char: Character, 
   setLevelUpTarget: (t: LevelUpTarget) => void, 
   setIsSpecialSkillModalOpen: (b: boolean) => void, 
   setModalSpecialSkillIndex: (i: number) => void, 
-  patch: (p: any) => void 
+  patch: (p: any) => void,
+  dragHoverSkill?: DragSkillTarget | null
 }) {
   const { getEntryByName } = useCompendium();
   const { askConfirm, confirmDialog } = useConfirm();
@@ -57,7 +59,7 @@ export default function SpecialSkillsCard({
       <div className={`sheet-panel p-4 h-full flex flex-col transition-all duration-200 ${!hasOrigin ? 'opacity-50 grayscale' : ''}`}>
         
         <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
-          <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Special Skills</h2>
+          <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Special Skills</h2>
         </div>
 
         <div className="flex flex-col gap-2 flex-1">
@@ -105,8 +107,23 @@ export default function SpecialSkillsCard({
               penaltySources.push(`Overburdened (-${burdenPenalty})`);
             }
 
+            const isDragHover =
+              Boolean(s.name) &&
+              dragHoverSkill?.kind === 'special' &&
+              dragHoverSkill?.name === s.name;
+
             return (
-              <div key={i} className="flex-1 flex items-center w-full bg-black/20 border border-gray-700 rounded-lg px-2 min-h-[38px]">
+              <div
+                key={i}
+                data-roll-skill={s.name ? 'true' : undefined}
+                data-roll-skill-kind={s.name ? 'special' : undefined}
+                data-roll-skill-name={s.name || undefined}
+                className={`flex-1 flex items-center w-full bg-black/20 border rounded-lg px-2 min-h-[38px] transition-all ${
+                  isDragHover
+                    ? 'border-emerald-400 ring-2 ring-emerald-400 bg-emerald-500/20 shadow-[0_0_16px_rgba(16,185,129,0.35)]'
+                    : 'border-gray-700'
+                }`}
+              >
                 
                 <div className="flex-1 min-w-0 flex items-center gap-1">
                   <Tooltip text={SPECIAL_SKILL_DESCRIPTIONS[s.name] || ''} className="w-full" noBorder disabled={!hasOrigin}>
@@ -170,13 +187,13 @@ export default function SpecialSkillsCard({
                         setIsSpecialSkillModalOpen(true);
                       }}
                       disabled={originMin > 0 || !hasOrigin}
-                      className={`text-gray-400 text-xs px-1 transition-colors ${originMin === 0 && hasOrigin ? 'hover:text-white' : 'cursor-not-allowed opacity-50'}`}
+                      className={`text-gray-400 text-xs p-1 rounded transition-colors ${originMin === 0 && hasOrigin ? 'hover:text-white hover:bg-white/10' : 'cursor-not-allowed opacity-50'}`}
                       title="Replace Skill"
                     >
                       ✎
                     </button>
                     <button
-                      className={`text-red-500 font-bold px-1 text-sm shrink-0 ${originMin === 0 && hasOrigin ? 'hover:text-red-400' : 'cursor-not-allowed opacity-50'}`}
+                      className={`text-red-500 font-bold p-1 rounded text-sm shrink-0 transition-colors ${originMin === 0 && hasOrigin ? 'hover:text-red-400 hover:bg-red-500/15' : 'cursor-not-allowed opacity-50'}`}
                       disabled={originMin > 0 || !hasOrigin}
                       onClick={() => handleDelete(i, s.name)}
                       title="Remove Skill"

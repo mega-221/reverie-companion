@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Character, CompendiumEntry } from '../../../types';
 import { useCompendium } from '../../../CompendiumContext';
 import { dpMax, aspectSlotMax } from '../../../calc';
 import { useConfirm } from '../ConfirmDialog';
 import { SKILL_GROUPS } from '../utils';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../../../hooks/useEscapeKey';
+import { splitLines } from '../../../constants/reverie';
 
 const ASPECT_CATEGORY_ORDER = [
   'Grit',
@@ -173,14 +176,9 @@ function AspectSelectorModal({
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
+  useBodyScrollLock(Boolean(isOpen));
+
+  useEscapeKey(Boolean(isOpen), onClose);
 
   if (!isOpen) return null;
 
@@ -223,7 +221,7 @@ function AspectSelectorModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-          <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Aspect</h2>
+          <h2 className="font-bold text-xl text-gray-200">Select Aspect</h2>
           <div className="flex items-center gap-3">
             {isAdoption && (
               <div className="text-xs font-bold tabular-nums bg-black/40 border border-gray-700 rounded px-2.5 py-1 text-gray-300">
@@ -236,7 +234,7 @@ function AspectSelectorModal({
             <button
               type="button"
               onClick={onClose}
-              className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2"
+              className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors"
               aria-label="Close"
             >
               ×
@@ -352,9 +350,7 @@ function AspectSelectorModal({
                                 <div
                                   className={`text-sm italic text-gray-200 border-l-2 pl-3 leading-relaxed ${style.quoteBorder}`}
                                 >
-                                  {lore
-                                    .split(/\r?\n|\\n/)
-                                    .map((line: string, idx: number) => (
+                                  {splitLines(lore).map((line: string, idx: number) => (
                                       <span key={idx} className="block mb-1 last:mb-0">
                                         {line}
                                       </span>
@@ -567,7 +563,7 @@ export default function AspectsCard({
       {/* Header matching ConvictionsCard */}
       <div className="flex flex-wrap justify-between items-end mb-4 sm:mb-6 border-b border-gray-700 pb-2 gap-3 shrink-0">
         <div className="flex items-baseline gap-3 min-w-0">
-          <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">
+          <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">
             Aspects
           </h2>
           <span
@@ -695,7 +691,7 @@ export default function AspectsCard({
                       setExpandedReqs((prev) => ({ ...prev, [slotKey]: false }));
                       setEditingIndex(i);
                     }}
-                    className="justify-self-start text-gray-200/90 hover:text-white transition-colors text-xs px-1"
+                    className="justify-self-start text-gray-200/90 hover:text-white hover:bg-white/10 rounded transition-colors text-xs p-1 leading-none"
                     title="Edit Aspect"
                   >
                     ✎
@@ -734,7 +730,7 @@ export default function AspectsCard({
                           title={isLoreOpen ? 'Close lore' : 'Read more'}
                         >
                           <h3
-                            className={`font-cinzel font-bold text-base leading-tight text-center line-clamp-2 transition-colors ${
+                            className={`font-bold text-base leading-tight text-center line-clamp-2 transition-colors ${
                               isAbandoned
                                 ? 'text-gray-400 line-through group-hover:text-gray-200'
                                 : 'text-gray-100 group-hover:text-white'
@@ -880,9 +876,7 @@ export default function AspectsCard({
                           <blockquote
                             className={`bg-black/30 border-l-2 rounded-r-md pl-3 pr-2.5 py-2.5 text-xs italic text-gray-200 leading-relaxed ${style.quoteBorder}`}
                           >
-                            {lore
-                              .split(/\r?\n|\\n/)
-                              .map((line: string, idx: number) => (
+                            {splitLines(lore).map((line: string, idx: number) => (
                                 <span key={idx} className="block mb-1.5 last:mb-0">
                                   {line}
                                 </span>
@@ -932,7 +926,7 @@ export default function AspectsCard({
                         <button
                           type="button"
                           onClick={() => setPickerIndex(i)}
-                          className="text-gray-300 hover:text-white text-xs font-bold border-l border-gray-700 pl-2.5 shrink-0"
+                          className="text-gray-300 hover:text-white hover:bg-white/10 rounded text-xs font-bold border-l border-gray-700 pl-2.5 pr-1.5 py-1 shrink-0 transition-colors"
                           title="Change Aspect"
                         >
                           ✎ Swap

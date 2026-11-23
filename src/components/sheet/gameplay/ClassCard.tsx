@@ -4,6 +4,8 @@ import { useConfirm } from '../ConfirmDialog';
 import { disciplineSlotMax } from '../../../calc';
 import { Tooltip } from '../utils';
 import { calculateTierFromLevel } from '../progression/progressionData';
+import { KeywordText } from '../../common/KeywordText';
+import { splitLines } from '../../../constants/reverie';
 
 export default function ClassCard({ 
   char, patch, setIsClassModalOpen, setIsPathModalOpen, setIsDisciplineModalOpen, setModalDisciplineIndex 
@@ -33,7 +35,7 @@ export default function ClassCard({
     <section className="sheet-panel p-4 w-full flex flex-col h-full gap-4">
       {confirmDialog}
       <div className="flex justify-between items-center border-b border-gray-700 pb-3 shrink-0 gap-2">
-        <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Class & Path</h2>
+        <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Class & Path</h2>
         <Tooltip
           text="Class Rank equals Tier - 1 (0 to 4). Unlocks Class Passives, Class Abilities, and Path (Rank 2)."
           className="w-fit shrink-0"
@@ -58,7 +60,7 @@ export default function ClassCard({
           <div className="flex items-center gap-1 border-l border-gray-700 pl-2 ml-2 shrink-0">
             <button 
               onClick={() => setIsClassModalOpen(true)} 
-              className="text-gray-400 text-xs px-1 hover:text-white transition-colors" 
+              className="text-gray-400 text-xs p-1 rounded hover:text-white hover:bg-white/10 transition-colors" 
               title="Select/Change Class"
             >
               ✎
@@ -76,7 +78,7 @@ export default function ClassCard({
                     patch({ identity: { ...char.data.identity, className: '', path: '' } });
                   }
                 }} 
-                className="text-red-500 font-bold px-1 text-sm hover:text-red-400 transition-colors" 
+                className="text-red-500 font-bold p-1 rounded text-sm hover:text-red-400 hover:bg-red-500/15 transition-colors" 
                 title="Remove Class"
               >
                 ×
@@ -109,7 +111,7 @@ export default function ClassCard({
             <button 
               onClick={() => canEditPath && setIsPathModalOpen(true)} 
               disabled={!canEditPath}
-              className={`text-gray-400 text-xs px-1 transition-colors ${canEditPath ? 'hover:text-white' : 'cursor-not-allowed'}`} 
+              className={`text-gray-400 text-xs p-1 rounded transition-colors ${canEditPath ? 'hover:text-white hover:bg-white/10' : 'cursor-not-allowed'}`} 
               title={!isPathUnlocked ? 'Class rank 2 required' : !hasClass ? 'Select a Class first' : 'Select/Change Path'}
             >
               ✎
@@ -127,7 +129,7 @@ export default function ClassCard({
                     patch({ identity: { ...char.data.identity, path: '' } });
                   }
                 }} 
-                className="text-red-500 font-bold px-1 text-sm hover:text-red-400 transition-colors" 
+                className="text-red-500 font-bold p-1 rounded text-sm hover:text-red-400 hover:bg-red-500/15 transition-colors" 
                 title="Remove Path"
               >
                 ×
@@ -150,8 +152,10 @@ export default function ClassCard({
                     <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border bg-gray-800 ${isLocked ? 'text-gray-500 border-gray-600' : 'text-gray-400 border-gray-600'}`}>{isLocked ? `Rank ${passive.data.class_rank} Req` : 'Passive'}</span>
                   </div>
                   <div className="text-xs italic leading-snug text-gray-300">
-                    {passive.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => (
-                      <span key={idx} className="block mb-1 last:mb-0">{line}</span>
+                    {splitLines(passive.data.description).map((line: string, idx: number) => (
+                      <span key={idx} className="block mb-1 last:mb-0">
+                        <KeywordText text={line} mode="effect" />
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -180,13 +184,13 @@ export default function ClassCard({
               <div className="flex items-center gap-1 border-l border-gray-700 pl-2 ml-1 shrink-0">
                 <button 
                   onClick={() => { setModalDisciplineIndex(i); setIsDisciplineModalOpen(true); }} 
-                  className="text-gray-400 text-xs px-1 hover:text-white transition-colors" 
+                  className="text-gray-400 text-xs p-1 rounded hover:text-white hover:bg-white/10 transition-colors" 
                   title="Replace Discipline"
                 >
                   ✎
                 </button>
                 <button 
-                  className="text-red-500 font-bold px-1 text-sm hover:text-red-400 transition-colors" 
+                  className="text-red-500 font-bold p-1 rounded text-sm hover:text-red-400 hover:bg-red-500/15 transition-colors" 
                   onClick={async () => {
                     const ok = await askConfirm({
                       title: 'Remove Discipline',

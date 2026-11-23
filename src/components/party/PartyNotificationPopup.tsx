@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { PartyNotificationPayload } from '../../types';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 
 export type GiveTargetCharacter = {
   id: string;
@@ -13,6 +15,7 @@ export default function PartyNotificationPopup({
   giveTargets,
   onRespondGive,
   onRespondCrisis,
+  onInitiateRoll,
   onDismiss,
 }: {
   notification: PartyNotificationPayload | null;
@@ -28,6 +31,7 @@ export default function PartyNotificationPopup({
     accepted: boolean,
     targetCharacterId?: string
   ) => Promise<void> | void;
+  onInitiateRoll?: (skillName: string, challengeLevel: number) => void;
   onDismiss: (id: string) => void;
 }) {
   const [rendered, setRendered] = useState<PartyNotificationPayload | null>(notification);
@@ -36,6 +40,8 @@ export default function PartyNotificationPopup({
   const [selectedTargetId, setSelectedTargetId] = useState<string>('');
   const [responding, setResponding] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useBodyScrollLock(Boolean(rendered));
 
   useEffect(() => {
     if (notification) {
@@ -112,18 +118,10 @@ export default function PartyNotificationPopup({
     }
   };
 
-  useEffect(() => {
-    if (!rendered) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isActionable) handleClose();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [rendered, closing, isActionable, responding]);
+  useEscapeKey(Boolean(rendered) && !isActionable, handleClose);
 
   if (!rendered) return null;
 
-  const hasTargetPicker = Boolean(giveTargets && giveTargets.length > 0);
   const canAcceptAction = !responding && (!giveTargets || giveTargets.length > 0);
   const resourceLabel =
     rendered.grantResource === 'dp'
@@ -174,7 +172,7 @@ export default function PartyNotificationPopup({
         <div className="p-5 sm:p-6 flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col gap-4">
           <h3
             id="party-notif-title"
-            className="font-cinzel font-bold text-xl leading-snug"
+            className="font-spectral font-bold text-xl leading-snug"
             style={{ color: 'var(--rev-text-bright)' }}
           >
             {rendered.title}
@@ -187,7 +185,7 @@ export default function PartyNotificationPopup({
                   Gift Offered
                 </span>
                 <span
-                  className="font-cinzel font-bold text-lg tabular-nums"
+                  className="font-bold text-lg tabular-nums"
                   style={{ color: 'var(--rev-accent-text)' }}
                 >
                   +{rendered.grantAmount} {resourceLabel}
@@ -218,12 +216,6 @@ export default function PartyNotificationPopup({
                   <strong style={{ color: 'var(--rev-text-bright)' }}>{giveTargets[0].name}</strong>
                 </div>
               )}
-
-              {giveTargets && !hasTargetPicker && (
-                <p className="text-xs italic" style={{ color: 'var(--rev-badge-warn)' }}>
-                  Share or own a character to receive this reward, or reject to dismiss.
-                </p>
-              )}
             </div>
           )}
 
@@ -233,7 +225,7 @@ export default function PartyNotificationPopup({
                 <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--rev-text-muted)' }}>
                   Breaking Point
                 </span>
-                <span className="rev-keep-color font-cinzel font-bold text-sm uppercase tracking-wider text-red-400">
+                <span className="rev-keep-color font-bold text-sm uppercase tracking-wider text-red-400">
                   Resolve Crisis
                 </span>
               </div>
@@ -262,27 +254,35 @@ export default function PartyNotificationPopup({
                   <strong style={{ color: 'var(--rev-text-bright)' }}>{giveTargets[0].name}</strong>
                 </div>
               )}
-
-              {giveTargets && !hasTargetPicker && (
-                <p className="text-xs italic" style={{ color: 'var(--rev-badge-warn)' }}>
-                  Share or own a character to resolve a crisis, or reject to dismiss.
-                </p>
-              )}
             </div>
           )}
 
           {!isActionable && rendered.skill && (
-            <div className="rev-inset flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 text-sm">
-              <span className="font-bold" style={{ color: 'var(--rev-text)' }}>
-                {rendered.skill}
-              </span>
-              {typeof rendered.challengeLevel === 'number' && (
-                <span
-                  className="text-xs font-bold uppercase tracking-wider tabular-nums"
-                  style={{ color: 'var(--rev-badge-warn)' }}
-                >
-                  Challenge Level {rendered.challengeLevel}
+            <div className="rev-inset flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-bold" style={{ color: 'var(--rev-text-bright)' }}>
+                  {rendered.skill}
                 </span>
+                {typeof rendered.challengeLevel === 'number' && (
+                  <span
+                    className="text-xs font-bold uppercase tracking-wider tabular-nums px-2 py-0.5 rounded border"
+                    style={{ color: 'var(--rev-badge-warn)', borderColor: 'rgba(245,158,11,0.4)', backgroundColor: 'rgba(245,158,11,0.1)' }}
+                  >
+                    CL {rendered.challengeLevel}
+                  </span>
+                )}
+              </div>
+              {onInitiateRoll && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onInitiateRoll(rendered.skill!, rendered.challengeLevel ?? 12);
+                    handleClose();
+                  }}
+                  className="px-3.5 py-1.5 rounded text-xs font-bold rev-btn-primary shadow-sm"
+                >
+                  Roll {rendered.skill} (CL {rendered.challengeLevel ?? 12})
+                </button>
               )}
             </div>
           )}

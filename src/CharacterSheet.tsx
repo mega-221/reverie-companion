@@ -6,16 +6,19 @@ import type {
   Character,
   CharacterData,
   CompendiumEntry,
+  PartyMessage,
   PartyNotificationPayload,
   PartyVitalsSyncPayload,
 } from './types';
 import { useCompendium } from './CompendiumContext';
 import { 
   ORIGIN_EFFECTS, ORIGIN_CHOICES, CORE_SKILLS, SPECIAL_SKILL_ATTRIBUTES, 
-  getMinSkillRank, SKILL_XP_COSTS, getMaxAttribute, SKILL_GROUPS, 
+  getMinSkillRank, SKILL_XP_COSTS, getMaxAttribute, 
   getMaxAttributePoints, getSpentAttributePoints,
   type Tab, type LevelUpTarget 
 } from './components/sheet/utils';
+import { getCoreSkillAttribute } from './constants/reverie';
+import { saveAndMirrorCharacter } from './utils/characterSync';
 import { vigorMax, strainMax, dpMax, apMax } from './calc';
 import {
   calculateTierFromLevel,
@@ -26,10 +29,12 @@ import {
   type AbilityPickTask,
 } from './components/sheet/progression/progressionData';
 import { sendEphemeralBroadcast, useVisibilityRealtime } from './hooks/useVisibilityRealtime';
+import { useAutoSaveSetting, getAutoSaveDelayMs } from './hooks/useAutoSaveSetting';
+import { useBodyScrollLock } from './hooks/useBodyScrollLock';
 import { useTheme } from './theme/ThemeContext';
 import { resolveDynamicConvictionThemeId } from './theme/themes';
 
-import Header from './components/sheet/Header';
+import Header, { type DragSkillTarget } from './components/sheet/Header';
 import GameplaySection from './components/sheet/GameplaySection';
 import NarrativeSection from './components/sheet/NarrativeSection';
 import ProgressionSection from './components/sheet/ProgressionSection';
@@ -41,6 +46,20 @@ import PartyDateTransitionPopup, { type PartyDateTransition } from './components
 import { normalizeCalendarDate } from './reverieCalendar';
 import { LevelUpModal, OriginModal, ClassModal, SpecialSkillModal, AbilityModal, PathModal, DisciplineModal } from './components/sheet/modals/Modals';
 import { CrisisModal } from './components/sheet/narrative/ConvictionsCard';
+import DiceRollerModal from './components/sheet/dice/DiceRollerModal';
+import DiscoRollOverlay from './components/sheet/dice/DiscoRollOverlay';
+import StrainConvictionPromptModal from './components/sheet/dice/StrainConvictionPromptModal';
+import {
+  applyDestinyToSession,
+  buildConvictionCheckSession,
+  buildRollLogEntry,
+  buildSkillRollSession,
+  computeRollOutcome,
+  exertDieInSession,
+  getExertStrainCost,
+  serializeRollLog,
+  type ActiveRollSession,
+} from './utils/diceRoller';
 
 function normalizeCharacter(
   fetchedChar: Character,
@@ -207,6 +226,7 @@ function isTextInputPatch(p: Partial<CharacterData>, prevData: CharacterData): b
 export default function CharacterSheet({
   id,
   onBack,
+  onNavigateToRules,
   currentUserId,
   currentUserEmail = '',
   currentUsername = '',
@@ -217,6 +237,7 @@ export default function CharacterSheet({
 }: {
   id: string;
   onBack: () => void;
+  onNavigateToRules?: (chapterId: string, sectionId: string) => void;
   currentUserId?: string;
   currentUserEmail?: string;
   currentUsername?: string;
@@ -227,6 +248,10 @@ export default function CharacterSheet({
 }) {
   const { getAbilities, getEntryByName, loading: compendiumLoading } = useCompendium();
   const { setOverrideThemeId } = useTheme();
+  const [autoSaveMode] = useAutoSaveSetting();
+  const autoSaveModeRef = useRef(autoSaveMode);
+  autoSaveModeRef.current = autoSaveMode;
+
   const [char, setChar] = useState<Character | null>(null);
   const [isAuthoritativeDbChar, setIsAuthoritativeDbChar] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -234,11 +259,17 @@ export default function CharacterSheet({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<
+    | { type: 'back' }
+    | { type: 'rules'; chapterId: string; sectionId: string }
+    | null
+  >(null);
   const [activeTab, setActiveTab] = useState<Tab>('gameplay');
   const [isSheetSettingsOpen, setIsSheetSettingsOpen] = useState(false);
   const [notificationQueue, setNotificationQueue] = useState<PartyNotificationPayload[]>([]);
   const [dateTransition, setDateTransition] = useState<PartyDateTransition | null>(null);
+
+  useBodyScrollLock(Boolean(pendingNavigation));
 
   const [pulseState, setPulseState] = useState<'none' | 'active' | 'fading'>('none');
 
@@ -256,7 +287,12 @@ export default function CharacterSheet({
   const [abilityPickTotal, setAbilityPickTotal] = useState(0);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [isCrisisNotifOpen, setIsCrisisNotifOpen] = useState(false);
+  const [isDiceRollerOpen, setIsDiceRollerOpen] = useState(false);
+  const [activeRollSession, setActiveRollSession] = useState<ActiveRollSession | null>(null);
+  const [dragHoverSkill, setDragHoverSkill] = useState<DragSkillTarget | null>(null);
+  const [isStrainConvictionPromptOpen, setIsStrainConvictionPromptOpen] = useState(false);
 
+  const pendingStrainCrisisCheckRef = useRef(false);
   const clientSessionIdRef = useRef(crypto.randomUUID());
   const charRef = useRef<Character | null>(null);
   const dirtyRef = useRef(false);
@@ -453,26 +489,13 @@ export default function CharacterSheet({
   const persistCharacterToDb = useCallback(async (target: Character): Promise<boolean> => {
     if (!target || effectiveReadOnlyRef.current) return false;
     setSaving(true);
-    const updatedAt = new Date().toISOString();
-
-    const { error } = await supabase
-      .from('characters')
-      .update({
-        data: target.data,
-        name: target.name,
-        updated_at: updatedAt,
-      })
-      .eq('id', target.id);
+    const { error } = await saveAndMirrorCharacter({
+      characterId: target.id,
+      name: target.name,
+      data: target.data,
+    });
 
     if (!error) {
-      await supabase
-        .from('party_characters')
-        .update({
-          character_data: target.data,
-          character_name: target.name,
-        })
-        .eq('character_id', target.id);
-
       dirtyRef.current = false;
       setHasUnsavedChanges(false);
       setSaved(true);
@@ -564,7 +587,12 @@ export default function CharacterSheet({
         window.clearTimeout(debounceSaveTimerRef.current);
         debounceSaveTimerRef.current = null;
       }
-      if (dirtyRef.current && charRef.current && !effectiveReadOnlyRef.current) {
+      if (
+        autoSaveModeRef.current !== 'off' &&
+        dirtyRef.current &&
+        charRef.current &&
+        !effectiveReadOnlyRef.current
+      ) {
         persistCharacterToDb(charRef.current);
       }
     },
@@ -730,7 +758,10 @@ export default function CharacterSheet({
     (target: Character) => {
       if (debounceSaveTimerRef.current !== null) {
         window.clearTimeout(debounceSaveTimerRef.current);
+        debounceSaveTimerRef.current = null;
       }
+      const delayMs = getAutoSaveDelayMs(autoSaveModeRef.current);
+      if (delayMs === null) return;
       debounceSaveTimerRef.current = window.setTimeout(() => {
         debounceSaveTimerRef.current = null;
         if (dirtyRef.current && charRef.current && !effectiveReadOnlyRef.current) {
@@ -738,10 +769,23 @@ export default function CharacterSheet({
         } else if (dirtyRef.current && !effectiveReadOnlyRef.current) {
           persistCharacterToDb(target);
         }
-      }, 2500);
+      }, delayMs);
     },
     [persistCharacterToDb]
   );
+
+  useEffect(() => {
+    if (autoSaveMode === 'off') {
+      if (debounceSaveTimerRef.current !== null) {
+        window.clearTimeout(debounceSaveTimerRef.current);
+        debounceSaveTimerRef.current = null;
+      }
+      return;
+    }
+    if (dirtyRef.current && charRef.current && !effectiveReadOnlyRef.current) {
+      scheduleDebouncedSave(charRef.current);
+    }
+  }, [autoSaveMode, scheduleDebouncedSave]);
 
   useEffect(() => {
     if (!hasUnsavedChanges) return;
@@ -794,7 +838,7 @@ export default function CharacterSheet({
   if (loadError) {
     return (
       <div className="w-full min-h-screen rev-canvas flex flex-col items-center justify-center p-6 text-center gap-4">
-        <p className="text-red-400 font-cinzel text-lg">{loadError}</p>
+        <p className="text-red-400 text-lg">{loadError}</p>
         <button
           onClick={onBack}
           className="px-4 py-2 rev-btn-secondary font-bold text-sm"
@@ -807,7 +851,7 @@ export default function CharacterSheet({
 
   if (!char) {
     return (
-      <p className="text-gray-400 p-8 text-center font-cinzel text-xl h-screen flex items-center justify-center rev-canvas">
+      <p className="text-gray-400 p-8 text-center text-xl h-screen flex items-center justify-center rev-canvas">
         Loading character...
       </p>
     );
@@ -863,6 +907,8 @@ export default function CharacterSheet({
     if (key === 'dp') max = dpMax(currentChar.data);
 
     const nextVal = Math.max(min, Math.min(max, current + amount));
+    const sLimit = key === 'strain' ? strainMax(currentChar.data) : 0;
+    const crossedStrainLimit = key === 'strain' && current < sLimit && nextVal >= sLimit;
 
     if (key === 'strain' && nextVal >= max) {
       setPulseState('active');
@@ -882,6 +928,16 @@ export default function CharacterSheet({
 
       setTimeout(() => setPulseState('fading'), 2000);
       setTimeout(() => setPulseState('none'), 3000);
+
+      if (crossedStrainLimit && canEdit) {
+        if (activeRollSession) {
+          if (activeRollSession.category !== 'strain_crisis_check') {
+            pendingStrainCrisisCheckRef.current = true;
+          }
+        } else {
+          setIsStrainConvictionPromptOpen(true);
+        }
+      }
       return;
     }
 
@@ -892,6 +948,114 @@ export default function CharacterSheet({
         ...(key === 'ap' ? { apInitialized: true } : {}),
       },
     });
+
+    if (crossedStrainLimit && canEdit) {
+      if (activeRollSession) {
+        if (activeRollSession.category !== 'strain_crisis_check') {
+          pendingStrainCrisisCheckRef.current = true;
+        }
+      } else {
+        setIsStrainConvictionPromptOpen(true);
+      }
+    }
+  }
+
+  function handleDropSkillRoll(target: DragSkillTarget) {
+    if (!charRef.current) return;
+    const session = buildSkillRollSession({
+      char: charRef.current,
+      skillName: target.name,
+      kind: target.kind,
+      getEntryByName,
+      targetValue: undefined,
+    });
+    setActiveRollSession(session);
+  }
+
+  function handleExertDie(dieId: string) {
+    if (!activeRollSession || effectiveReadOnly || !charRef.current) return;
+    const currentChar = charRef.current;
+    const sLimit = strainMax(currentChar.data);
+    const currentStrain = currentChar.data.trackers.strain;
+    if (currentStrain > sLimit) return;
+
+    const cost = getExertStrainCost(currentChar.data);
+    updateTracker('strain', cost);
+    setActiveRollSession((prev) => (prev ? exertDieInSession(prev, dieId, cost) : null));
+  }
+
+  function handleSpendDestiny(conviction: { name: string; season: string; rank: number }) {
+    if (!activeRollSession || effectiveReadOnly || !charRef.current) return;
+    if (activeRollSession.destinyApplied) return;
+    const currentDp = charRef.current.data.trackers.dp ?? 0;
+    if (currentDp < 1) return;
+
+    updateTracker('dp', -1);
+    setActiveRollSession((prev) => (prev ? applyDestinyToSession(prev, conviction) : null));
+  }
+
+  function handleAcceptRoll(acceptedSession: ActiveRollSession, restoreVigor?: boolean, restoreStrain?: boolean) {
+    setActiveRollSession(null);
+
+    const currentChar = charRef.current || char;
+    if (!effectiveReadOnly && currentChar) {
+      if (restoreVigor) {
+        const curVig = currentChar.data.trackers.vigor || 0;
+        const maxVig = vigorMax(currentChar.data);
+        const nextVig = Math.min(maxVig, curVig + 3);
+        const diff = nextVig - curVig;
+        if (diff > 0) updateTracker('vigor', diff);
+      }
+      if (restoreStrain) {
+        updateTracker('strain', -3);
+      }
+
+      const entry = buildRollLogEntry(currentChar, acceptedSession);
+      const serialized = serializeRollLog(entry);
+      const logAuthorId = currentUserId || currentChar.user_id;
+      const logUsername = currentUsername || currentChar.name || 'Adventurer';
+
+      (async () => {
+        let targetPartyIds = [...sharedPartyIdsRef.current];
+        if (targetPartyIds.length === 0) {
+          const { data: rows } = await supabase
+            .from('party_characters')
+            .select('party_id')
+            .eq('character_id', currentChar.id);
+          if (rows) {
+            const ids = new Set<string>(partyId ? [partyId] : []);
+            for (const r of rows as any[]) {
+              if (r.party_id) ids.add(r.party_id);
+            }
+            sharedPartyIdsRef.current = Array.from(ids);
+            targetPartyIds = [...sharedPartyIdsRef.current];
+          }
+        }
+        for (const pid of targetPartyIds) {
+          const msg: PartyMessage = {
+            id: crypto.randomUUID(),
+            party_id: pid,
+            user_id: logAuthorId,
+            username: logUsername,
+            content: serialized,
+            created_at: new Date().toISOString(),
+          };
+          sendEphemeralBroadcast(`party-sync:${pid}`, 'party:chat', msg);
+          await supabase.from('party_messages').insert(msg);
+        }
+      })();
+    }
+
+    if (acceptedSession.category === 'strain_crisis_check') {
+      const outcome = computeRollOutcome(acceptedSession);
+      if (outcome.outcomeTone === 'failure' && canEdit) {
+        setIsCrisisNotifOpen(true);
+      }
+      pendingStrainCrisisCheckRef.current = false;
+    } else if (pendingStrainCrisisCheckRef.current && canEdit) {
+      pendingStrainCrisisCheckRef.current = false;
+      setIsStrainConvictionPromptOpen(true);
+    }
   }
 
   async function save(): Promise<boolean> {
@@ -907,7 +1071,15 @@ export default function CharacterSheet({
     if (effectiveReadOnly || !hasUnsavedChanges) {
       onBack();
     } else {
-      setIsExitConfirmOpen(true);
+      setPendingNavigation({ type: 'back' });
+    }
+  }
+
+  function handleRequestOpenRules(chapterId: string, sectionId: string) {
+    if (effectiveReadOnly || !hasUnsavedChanges) {
+      onNavigateToRules?.(chapterId, sectionId);
+    } else {
+      setPendingNavigation({ type: 'rules', chapterId, sectionId });
     }
   }
 
@@ -986,7 +1158,7 @@ export default function CharacterSheet({
       }
     } else if (levelUpTarget.type === 'skill') {
       const current = char.data.skills[levelUpTarget.key] ?? 0;
-      const attr = Object.keys(SKILL_GROUPS).find(a => (SKILL_GROUPS[a as keyof typeof SKILL_GROUPS].skills as readonly string[]).includes(levelUpTarget.key)) as keyof typeof char.data.attributes;
+      const attr = getCoreSkillAttribute(levelUpTarget.key);
       const originMin = getMinSkillRank(levelUpTarget.key, char);
       const max = getSkillMaxRank(levelUpTarget.key, char.data.attributes[attr], originMin, char.data);
       if (current < max) {
@@ -1087,6 +1259,18 @@ export default function CharacterSheet({
           if (!accepted || !canEdit) return;
           setIsCrisisNotifOpen(true);
         }}
+        onInitiateRoll={(skillName, cl) => {
+          if (!charRef.current) return;
+          const kind = CORE_SKILLS.includes(skillName) ? 'core' : 'special';
+          const session = buildSkillRollSession({
+            char: charRef.current,
+            skillName,
+            kind,
+            getEntryByName,
+            targetValue: cl,
+          });
+          setActiveRollSession(session);
+        }}
         onDismiss={(notifId) => {
           setNotificationQueue(prev => prev.filter(n => n.id !== notifId));
         }}
@@ -1112,6 +1296,10 @@ export default function CharacterSheet({
           showPulse={pulseState !== 'none'}
           readOnly={effectiveReadOnly}
           onOpenSettings={() => setIsSheetSettingsOpen(true)}
+          onOpenInRules={onNavigateToRules ? handleRequestOpenRules : undefined}
+          onOpenDiceRoller={() => setIsDiceRollerOpen(true)}
+          onDragHoverSkill={setDragHoverSkill}
+          onDropSkillRoll={handleDropSkillRoll}
         />
         <main className="w-full px-4 sm:px-6 pt-6 relative z-10">
           {activeTab === 'gameplay' && (
@@ -1129,6 +1317,7 @@ export default function CharacterSheet({
               setIsAbilityModalOpen={setIsAbilityModalOpen}
               setModalAbilityIndex={setModalAbilityIndex}
               onOpenInventory={() => setIsInventoryModalOpen(true)}
+              dragHoverSkill={dragHoverSkill}
             />
           )}
 
@@ -1184,6 +1373,44 @@ export default function CharacterSheet({
         }}
       />
       <InventoryModal char={char} isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} patch={patch} />
+      <DiceRollerModal
+        isOpen={isDiceRollerOpen}
+        onClose={() => setIsDiceRollerOpen(false)}
+        char={char}
+        onStartRoll={(session) => setActiveRollSession(session)}
+      />
+      {activeRollSession && (
+        <DiscoRollOverlay
+          session={activeRollSession}
+          charName={char.name || 'Unnamed Character'}
+          currentStrain={char.data.trackers.strain}
+          strainMaxVal={baseStrainMax}
+          exertStrainCost={getExertStrainCost(char.data)}
+          currentDp={char.data.trackers.dp}
+          namedConvictions={char.data.convictions.filter((c) => c.name?.trim())}
+          readOnly={effectiveReadOnly}
+          onExertDie={handleExertDie}
+          onSpendDestiny={handleSpendDestiny}
+          onAccept={(session, vigor, strain) => handleAcceptRoll(session, vigor, strain)}
+        />
+      )}
+      {isStrainConvictionPromptOpen && canEdit && (
+        <StrainConvictionPromptModal
+          currentStrain={char.data.trackers.strain}
+          strainMaxVal={baseStrainMax}
+          convictions={char.data.convictions.filter((c) => c.name?.trim())}
+          onSelectConviction={(conviction) => {
+            setIsStrainConvictionPromptOpen(false);
+            setActiveRollSession(
+              buildConvictionCheckSession({
+                conviction,
+                targetCl: 18,
+                isStrainCrisis: true,
+              })
+            );
+          }}
+        />
+      )}
       {isCrisisNotifOpen && canEdit && (
         <CrisisModal char={char} patch={patch} onClose={() => setIsCrisisNotifOpen(false)} />
       )}
@@ -1284,74 +1511,86 @@ export default function CharacterSheet({
 
       <Footer activeTab={activeTab} setActiveTab={setActiveTab} showFilter={showFilter} />
 
-      {isExitConfirmOpen && createPortal(
-        <div
-          className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setIsExitConfirmOpen(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="sheet-modal max-w-sm animate-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-              <h3 className="font-cinzel font-bold text-lg text-gray-200 truncate pr-2">Unsaved Changes</h3>
-              <button
-                type="button"
-                onClick={() => setIsExitConfirmOpen(false)}
-                className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2 shrink-0"
-                aria-label="Close"
+      {pendingNavigation && createPortal(
+        (() => {
+          const isRulesNav = pendingNavigation.type === 'rules';
+          const completePendingNavigation = () => {
+            const nav = pendingNavigation;
+            setPendingNavigation(null);
+            if (nav.type === 'rules') {
+              onNavigateToRules?.(nav.chapterId, nav.sectionId);
+            } else {
+              onBack();
+            }
+          };
+          return (
+            <div
+              className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => setPendingNavigation(null)}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="sheet-modal max-w-sm animate-in zoom-in-95 duration-150"
+                onClick={(e) => e.stopPropagation()}
               >
-                ×
-              </button>
-            </div>
-
-            <div className="p-5 flex flex-col gap-5">
-              <p className="text-sm text-gray-300 leading-relaxed">
-                You have unsaved changes on <strong className="text-gray-100">{char.name || 'this character'}</strong>. Would you like to save before exiting?
-              </p>
-
-              <div className="flex flex-col gap-2 w-full">
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={async () => {
-                    const ok = await save();
-                    if (ok) {
-                      setIsExitConfirmOpen(false);
-                      onBack();
-                    }
-                  }}
-                  className="w-full py-2.5 px-4 rounded-lg font-bold text-sm border bg-red-900 hover:bg-red-800 border-red-700 text-white shadow-sm transition-colors disabled:opacity-50"
-                >
-                  {saving ? 'Saving...' : 'Save & Exit'}
-                </button>
-                <div className="flex gap-2 w-full">
+                <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
+                  <h3 className="font-bold text-lg text-gray-200 truncate pr-2">Unsaved Changes</h3>
                   <button
                     type="button"
-                    onClick={() => setIsExitConfirmOpen(false)}
-                    className="flex-1 py-2 px-3 rounded-lg font-bold text-sm border border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors"
+                    onClick={() => setPendingNavigation(null)}
+                    className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors shrink-0"
+                    aria-label="Close"
                   >
-                    Cancel
+                    ×
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      dirtyRef.current = false;
-                      setHasUnsavedChanges(false);
-                      setIsExitConfirmOpen(false);
-                      onBack();
-                    }}
-                    className="flex-1 py-2 px-3 rounded-lg font-bold text-sm border border-red-900/80 text-red-300 bg-red-950/40 hover:bg-red-900/50 transition-colors"
-                  >
-                    Discard & Exit
-                  </button>
+                </div>
+
+                <div className="p-5 flex flex-col gap-5">
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    You have unsaved changes on <strong className="text-gray-100">{char.name || 'this character'}</strong>. Would you like to save before {isRulesNav ? 'opening the rules' : 'exiting'}?
+                  </p>
+
+                  <div className="flex flex-col gap-2 w-full">
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={async () => {
+                        const ok = await save();
+                        if (ok) {
+                          completePendingNavigation();
+                        }
+                      }}
+                      className="w-full py-2.5 px-4 rounded-lg font-bold text-sm border bg-red-900 hover:bg-red-800 border-red-700 text-white shadow-sm transition-colors disabled:opacity-50"
+                    >
+                      {saving ? 'Saving...' : isRulesNav ? 'Save & Open Rules' : 'Save & Exit'}
+                    </button>
+                    <div className="flex gap-2 w-full">
+                      <button
+                        type="button"
+                        onClick={() => setPendingNavigation(null)}
+                        className="flex-1 py-2 px-3 rounded-lg font-bold text-sm border border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          dirtyRef.current = false;
+                          setHasUnsavedChanges(false);
+                          completePendingNavigation();
+                        }}
+                        className="flex-1 py-2 px-3 rounded-lg font-bold text-sm border border-red-900/80 text-red-300 bg-red-950/40 hover:bg-red-900/50 transition-colors"
+                      >
+                        {isRulesNav ? 'Discard & Open Rules' : 'Discard & Exit'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>,
+          );
+        })(),
         document.body
       )}
     </>

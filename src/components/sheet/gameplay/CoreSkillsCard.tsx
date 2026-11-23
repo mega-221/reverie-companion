@@ -11,9 +11,11 @@ import {
   getEquippedArmourInfo,
 } from '../../../calc';
 import { useCompendium } from '../../../CompendiumContext';
+import { AutoAbbreviate } from '../../common/AutoAbbreviate';
 import { getSignatureSkills, isSkillInspired, getSkillMaxRank } from '../progression/progressionData';
+import type { DragSkillTarget } from '../Header';
 
-export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Character, setLevelUpTarget: (t: LevelUpTarget) => void }) {
+export default function CoreSkillsCard({ char, setLevelUpTarget, dragHoverSkill }: { char: Character, setLevelUpTarget: (t: LevelUpTarget) => void, dragHoverSkill?: DragSkillTarget | null }) {
   const { getEntryByName } = useCompendium();
   const hasOrigin = !!char.data.identity.origin;
   const globalBurdenPenalty = getBurdenPenalty(char.data, getEntryByName);
@@ -55,11 +57,14 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
           return (
             <div key={attr} className={`sheet-panel p-4 flex flex-col h-full min-w-0 transition-all duration-200 ${!hasOrigin ? 'opacity-50 grayscale' : ''}`}>
               
-              <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
-                <Tooltip text={ATTRIBUTE_DESCRIPTIONS[attr]} className="w-fit" noBorder disabled={!hasOrigin}>
-                  <span className={`text-3xl font-cinzel first-letter:font-cinzelDeco uppercase tracking-widest ${group.color}`}>
-                    {ATTRIBUTE_NAMES[attr]}
-                  </span>
+              <div className="flex justify-between items-center gap-2 border-b border-gray-700 pb-3 mb-3 shrink-0 min-w-0">
+                <Tooltip text={ATTRIBUTE_DESCRIPTIONS[attr]} className="min-w-0 flex-1" noBorder disabled={!hasOrigin}>
+                  <AutoAbbreviate
+                    full={ATTRIBUTE_NAMES[attr]}
+                    short={attr.toUpperCase()}
+                    group="sheet-attributes"
+                    className={`text-3xl font-spectral first-letter:font-cinzelDeco uppercase tracking-widest ${group.color}`}
+                  />
                 </Tooltip>
                 
                 <button 
@@ -84,8 +89,21 @@ export default function CoreSkillsCard({ char, setLevelUpTarget }: { char: Chara
                   const effectiveRank = baseRank - totalPenalty;
                   const isPenalizedOrNegative = totalPenalty > 0 || effectiveRank < 0;
                   
+                  const isDragHover =
+                    dragHoverSkill?.kind === 'core' && dragHoverSkill?.name === skill;
+
                   return (
-                    <div key={skill} className="flex justify-between items-center text-base w-full">
+                    <div
+                      key={skill}
+                      data-roll-skill="true"
+                      data-roll-skill-kind="core"
+                      data-roll-skill-name={skill}
+                      className={`flex justify-between items-center text-base w-full rounded px-1.5 -mx-1.5 py-0.5 transition-all ${
+                        isDragHover
+                          ? 'ring-2 ring-emerald-400 bg-emerald-500/20 shadow-[0_0_16px_rgba(16,185,129,0.35)]'
+                          : ''
+                      }`}
+                    >
                       <div className="flex items-center gap-2 min-w-0">
                         <Tooltip text={CORE_SKILL_DESCRIPTIONS[skill]} className="w-fit" noBorder disabled={!hasOrigin}>
                           <span className="font-medium text-gray-200 truncate">{skill}</span>

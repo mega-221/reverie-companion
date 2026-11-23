@@ -170,7 +170,7 @@ export type CompendiumEntry = {
   name: string;
   data: {
     description?: string;
-    type?: 'attack' | 'defensive' | 'utility';
+    type?: 'attack' | 'defensive' | 'utility' | 'passive';
     speed?: '>' | '>>' | '>>>' | '|' | '<';
     upkeep?: '>' | '>>' | '>>>' | '|' | '<';
     sn_cost?: number | string;

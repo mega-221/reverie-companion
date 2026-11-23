@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 
 export type ConfirmOptions = {
   title?: string;
@@ -27,14 +29,9 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onCancel]);
+  useBodyScrollLock(open);
+
+  useEscapeKey(open, onCancel);
 
   if (!open) return null;
 
@@ -50,13 +47,13 @@ export function ConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
-          <h3 className="font-cinzel font-bold text-lg truncate pr-2" style={{ color: 'var(--rev-text)' }}>
+          <h3 className="font-bold text-lg truncate pr-2" style={{ color: 'var(--rev-text)' }}>
             {title}
           </h3>
           <button
             type="button"
             onClick={onCancel}
-            className="font-bold text-2xl leading-none px-2 shrink-0"
+            className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 transition-colors shrink-0"
             style={{ color: 'var(--rev-text-muted)' }}
             aria-label="Close"
           >

@@ -102,7 +102,7 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
       
       {/* Header */}
       <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
-        <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Injuries</h2>
+        <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Injuries</h2>
         <div className="flex gap-2">
           <button 
             onClick={tickDownAll} 
@@ -205,7 +205,7 @@ export default function InjuriesCard({ char, patch }: { char: Character, patch: 
                  />
                  <button 
                    onClick={() => setExpandedInjury(null)} 
-                   className="text-gray-400 hover:text-white font-bold text-xl leading-none px-2 shrink-0 transition-colors"
+                   className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-xl leading-none px-2 py-0.5 shrink-0 transition-colors"
                    title="Close"
                    aria-label="Close injury editor"
                  >

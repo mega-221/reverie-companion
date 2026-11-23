@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import type { Party, PartyMember } from './types';
 import { DEFAULT_CALENDAR_DATE, formatReverieDate } from './reverieCalendar';
+import { useBodyScrollLock } from './hooks/useBodyScrollLock';
+import { useEscapeKey } from './hooks/useEscapeKey';
 
 export type { Party, PartyMember };
 
@@ -23,6 +25,8 @@ export default function PartyDashboard({
   const [newPartyName, setNewPartyName] = useState('');
   const [newPartyDescription, setNewPartyDescription] = useState('');
   const [creating, setCreating] = useState(false);
+
+  useBodyScrollLock(isCreateOpen);
 
   async function loadParties() {
     setLoading(true);
@@ -55,14 +59,7 @@ export default function PartyDashboard({
     loadParties();
   }, [userId, userEmail]);
 
-  useEffect(() => {
-    if (!isCreateOpen) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !creating) setIsCreateOpen(false);
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [isCreateOpen, creating]);
+  useEscapeKey(isCreateOpen && !creating, () => setIsCreateOpen(false));
 
   async function handleCreateParty(e: React.FormEvent) {
     e.preventDefault();
@@ -135,7 +132,7 @@ export default function PartyDashboard({
     <div className="w-full">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b rev-divider pb-4 gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-cinzel font-bold" style={{ color: 'var(--rev-text)' }}>
+          <h2 className="text-2xl sm:text-3xl font-spectral font-bold" style={{ color: 'var(--rev-text)' }}>
             Parties
           </h2>
           <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--rev-text-muted)' }}>
@@ -179,7 +176,7 @@ export default function PartyDashboard({
               return (
                 <div key={inv.id} className="sheet-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                   <div className="flex flex-col min-w-0">
-                    <span className="font-cinzel font-bold text-lg truncate" style={{ color: 'var(--rev-text)' }}>
+                    <span className="font-bold text-lg truncate" style={{ color: 'var(--rev-text)' }}>
                       {party?.name || 'Unknown Party'}
                     </span>
                     <span className="text-xs" style={{ color: 'var(--rev-text-muted)' }}>
@@ -209,7 +206,7 @@ export default function PartyDashboard({
 
       {/* Active Parties Wide Grid */}
       {loading ? (
-        <div className="sheet-panel p-12 text-center font-cinzel" style={{ color: 'var(--rev-text-muted)' }}>
+        <div className="sheet-panel p-12 text-center" style={{ color: 'var(--rev-text-muted)' }}>
           <p className="animate-pulse">Loading parties...</p>
         </div>
       ) : activeParties.length === 0 && !error ? (
@@ -241,7 +238,7 @@ export default function PartyDashboard({
                 <div className="flex flex-col gap-1.5 min-w-0 w-full">
                   <div className="flex items-start justify-between gap-3">
                     <span
-                      className="font-cinzel font-bold text-lg truncate transition-colors"
+                      className="font-bold text-lg truncate transition-colors"
                       style={{ color: 'var(--rev-text-bright)' }}
                     >
                       {p.name}
@@ -294,13 +291,13 @@ export default function PartyDashboard({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
-              <h2 className="font-cinzel font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
+              <h2 className="font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
                 Create Party
               </h2>
               {!creating && (
                 <button
                   onClick={() => setIsCreateOpen(false)}
-                  className="font-bold text-2xl leading-none px-2"
+                  className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
                   style={{ color: 'var(--rev-text-muted)' }}
                   aria-label="Close"
                 >

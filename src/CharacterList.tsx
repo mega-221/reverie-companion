@@ -4,6 +4,9 @@ import { defaultCharacterData } from './defaults';
 import type { Character } from './types';
 import { useConfirm } from './components/sheet/ConfirmDialog';
 import { calculateTierFromLevel } from './components/sheet/progression/progressionData';
+import { useBodyScrollLock } from './hooks/useBodyScrollLock';
+import { useEscapeKey } from './hooks/useEscapeKey';
+import { saveAndMirrorCharacter } from './utils/characterSync';
 
 export default function CharacterList({
   userId, onSelect,
@@ -23,6 +26,8 @@ export default function CharacterList({
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
+
+  useBodyScrollLock(isCreateModalOpen || Boolean(renamingChar));
 
   async function load() {
     setLoading(true);
@@ -44,27 +49,8 @@ export default function CharacterList({
 
   useEffect(() => { load(); }, []);
 
-  useEffect(() => {
-    if (!isCreateModalOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !creating) {
-        setIsCreateModalOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCreateModalOpen, creating]);
-
-  useEffect(() => {
-    if (!renamingChar) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !renaming) {
-        setRenamingChar(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [renamingChar, renaming]);
+  useEscapeKey(isCreateModalOpen && !creating, () => setIsCreateModalOpen(false));
+  useEscapeKey(Boolean(renamingChar) && !renaming, () => setRenamingChar(null));
 
   async function handleCreate(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -152,23 +138,16 @@ export default function CharacterList({
 
     setRenaming(true);
     setRenameError(null);
-    const updatedAt = new Date().toISOString();
-
-    const { error: updateErr } = await supabase
-      .from('characters')
-      .update({ name: trimmed, updated_at: updatedAt })
-      .eq('id', renamingChar.id);
+    const { error: updateErr, updatedAt } = await saveAndMirrorCharacter({
+      characterId: renamingChar.id,
+      name: trimmed,
+    });
 
     if (updateErr) {
       setRenameError(updateErr.message);
       setRenaming(false);
       return;
     }
-
-    await supabase
-      .from('party_characters')
-      .update({ character_name: trimmed })
-      .eq('character_id', renamingChar.id);
 
     setChars(prev =>
       prev.map(item =>
@@ -200,7 +179,7 @@ export default function CharacterList({
       {confirmDialog}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b rev-divider pb-4 gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-cinzel font-bold" style={{ color: 'var(--rev-text)' }}>
+          <h2 className="text-2xl sm:text-3xl font-spectral font-bold" style={{ color: 'var(--rev-text)' }}>
             Your Characters
           </h2>
           <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--rev-text-muted)' }}>
@@ -233,7 +212,7 @@ export default function CharacterList({
       )}
 
       {loading ? (
-        <div className="sheet-panel p-12 text-center font-cinzel" style={{ color: 'var(--rev-text-muted)' }}>
+        <div className="sheet-panel p-12 text-center" style={{ color: 'var(--rev-text-muted)' }}>
           <p className="animate-pulse">Loading characters...</p>
         </div>
       ) : chars.length === 0 && !error ? (
@@ -278,7 +257,7 @@ export default function CharacterList({
                   <div className="flex flex-col gap-1.5 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <span
-                        className="font-cinzel font-bold text-lg truncate transition-colors"
+                        className="font-bold text-lg truncate transition-colors"
                         style={{ color: 'var(--rev-text-bright)' }}
                       >
                         {c.name || 'Unnamed Character'}
@@ -306,12 +285,12 @@ export default function CharacterList({
                 </a>
 
                 <div className="flex items-center justify-between px-5 py-2.5 border-t rev-divider-subtle rev-inset-soft text-xs">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={(e) => openRenameModal(e, c)}
                       title="Rename character"
-                      className="font-bold uppercase tracking-wider transition-colors hover:opacity-80"
+                      className="font-bold uppercase tracking-wider px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors hover:opacity-80"
                       style={{ color: 'var(--rev-text-secondary)' }}
                     >
                       Rename
@@ -320,7 +299,7 @@ export default function CharacterList({
                       type="button"
                       onClick={(e) => remove(e, c.id)}
                       title="Delete character"
-                      className="font-bold text-red-400 hover:text-red-300 uppercase tracking-wider transition-colors"
+                      className="font-bold text-red-400 hover:text-red-300 hover:bg-red-500/15 px-1.5 py-0.5 rounded uppercase tracking-wider transition-colors"
                     >
                       Delete
                     </button>
@@ -357,13 +336,13 @@ export default function CharacterList({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
-              <h2 className="font-cinzel font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
+              <h2 className="font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
                 Create New Character
               </h2>
               {!creating && (
                 <button
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="font-bold text-2xl leading-none px-2"
+                  className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
                   style={{ color: 'var(--rev-text-muted)' }}
                   aria-label="Close"
                 >
@@ -449,14 +428,14 @@ export default function CharacterList({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
-              <h2 className="font-cinzel font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
+              <h2 className="font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
                 Rename Character
               </h2>
               {!renaming && (
                 <button
                   type="button"
                   onClick={() => setRenamingChar(null)}
-                  className="font-bold text-2xl leading-none px-2"
+                  className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
                   style={{ color: 'var(--rev-text-muted)' }}
                   aria-label="Close"
                 >

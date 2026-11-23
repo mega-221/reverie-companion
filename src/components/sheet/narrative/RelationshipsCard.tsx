@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Character } from '../../../types';
 import { useConfirm } from '../ConfirmDialog';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 
 const ITEMS_PER_PAGE = 5;
 type Relationship = Character['data']['relationships'][number];
@@ -19,6 +20,8 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
   const [searchQuery, setSearchQuery] = useState('');
   const [factionFilter, setFactionFilter] = useState('');
   const [page, setPage] = useState(0);
+
+  useBodyScrollLock(Boolean(inspectingRel));
 
   const relationships = char.data.relationships || [];
 
@@ -119,7 +122,7 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
     <section className="sheet-panel rev-nar-card p-3.5 sm:p-5 w-full min-h-[320px] lg:h-[420px] flex flex-col">
       {confirmDialog}
       <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-3 shrink-0 gap-2">
-        <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Relationships</h2>
+        <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Relationships</h2>
         <button onClick={isAddingRel ? handleCancel : () => setIsAddingRel(true)} className="text-xs font-bold text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-1.5 rounded transition-colors whitespace-nowrap shrink-0">
           {isAddingRel ? 'Cancel' : '+ Add Bond'}
         </button>
@@ -159,7 +162,7 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
                   <button
                     type="button"
                     onClick={() => { setSearchQuery(''); setPage(0); }}
-                    className="absolute right-2 text-gray-500 hover:text-gray-200 font-bold text-xs px-0.5"
+                    className="absolute right-1.5 text-gray-500 hover:text-gray-200 hover:bg-white/10 rounded font-bold text-xs p-0.5 leading-none transition-colors"
                     title="Clear search"
                     aria-label="Clear relationship search"
                   >
@@ -242,9 +245,9 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 sm:gap-1 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => handleEdit(rel)} className="text-gray-400 hover:text-white font-bold px-1.5 sm:px-1 opacity-80 sm:opacity-50 sm:group-hover:opacity-100 transition-opacity" title="Edit Entry">✎</button>
-                    <button onClick={() => handleDelete(rel)} className="text-red-500 hover:text-red-400 font-bold px-1.5 sm:px-1 opacity-80 sm:opacity-50 sm:group-hover:opacity-100 transition-opacity" title="Delete Entry">×</button>
+                  <div className="flex items-center gap-1 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => handleEdit(rel)} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold p-1 leading-none opacity-80 sm:opacity-50 sm:group-hover:opacity-100 transition-all" title="Edit Entry">✎</button>
+                    <button onClick={() => handleDelete(rel)} className="text-red-500 hover:text-red-400 hover:bg-red-500/15 rounded font-bold p-1 leading-none opacity-80 sm:opacity-50 sm:group-hover:opacity-100 transition-all" title="Delete Entry">×</button>
                   </div>
                 </div>
               ))
@@ -311,7 +314,7 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
           >
             <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0 gap-3">
               <div className="min-w-0">
-                <h3 className="font-cinzel font-bold text-xl text-gray-100 truncate">{inspectingRel.name}</h3>
+                <h3 className="font-bold text-xl text-gray-100 truncate">{inspectingRel.name}</h3>
                 {(inspectingRel.faction || inspectingRel.role) && (
                   <div className="flex flex-wrap items-center gap-2 mt-1">
                     {inspectingRel.faction && (
@@ -320,7 +323,7 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
                       </span>
                     )}
                     {inspectingRel.role && (
-                      <span className="text-xs text-red-400 font-cinzel">{inspectingRel.role}</span>
+                      <span className="text-xs text-red-400 font-medium">{inspectingRel.role}</span>
                     )}
                   </div>
                 )}
@@ -328,7 +331,7 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
               <button
                 type="button"
                 onClick={() => setInspectingRel(null)}
-                className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2 shrink-0"
+                className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 shrink-0 transition-colors"
                 aria-label="Close"
               >
                 ×

@@ -69,8 +69,8 @@ export default function AuthForm() {
         {/* Header */}
         <div className="text-center mb-10">
           <h1 
-            className="text-4xl sm:text-5xl uppercase mb-3"
-            style={{ fontFamily: "'Spectral SC', serif", letterSpacing: '0.35em', color: 'var(--rev-text-bright)' }}
+            className="text-4xl sm:text-5xl font-spectral uppercase mb-3 tracking-[0.35em]"
+            style={{ color: 'var(--rev-text-bright)' }}
           >
             Reverie
           </h1>
@@ -83,7 +83,7 @@ export default function AuthForm() {
         <div className="sheet-panel shadow-sm overflow-hidden">
           <div className="p-8 flex flex-col gap-5">
             
-            <h2 className="text-xl font-cinzel font-bold border-b rev-divider pb-3 mb-2" style={{ color: 'var(--rev-text)' }}>
+            <h2 className="text-xl font-bold border-b rev-divider pb-3 mb-2" style={{ color: 'var(--rev-text)' }}>
               {isSignUp ? 'Create an Account' : 'Sign In'}
             </h2>
 

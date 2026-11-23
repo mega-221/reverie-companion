@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Character } from '../../../types';
 import {
@@ -14,20 +14,18 @@ import {
 } from '../../../calc';
 import { useCompendium } from '../../../CompendiumContext';
 import { Tooltip } from '../utils';
+import { AutoAbbreviate } from '../../common/AutoAbbreviate';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../../../hooks/useEscapeKey';
+import { getSeasonTextClass } from '../../../constants/reverie';
 import { calculateTierFromLevel, getSpendableXp } from '../progression/progressionData';
 
 export default function StatsCard({ char, patch }: { char: Character, patch: any }) {
   const { getEntryByName } = useCompendium();
   const [isArmourModalOpen, setIsArmourModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (!isArmourModalOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsArmourModalOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isArmourModalOpen]);
+  useBodyScrollLock(isArmourModalOpen);
+  useEscapeKey(isArmourModalOpen, () => setIsArmourModalOpen(false));
 
   const maxBurdenVal = burdenMax(char.data);
   const currentBurdenVal = calculateBurden(char.data, getEntryByName);
@@ -118,22 +116,12 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
     });
   };
 
-  const getSeasonColor = (season?: string) => {
-    switch(season) {
-      case 'Vamor': return 'rev-keep-color text-red-500'; 
-      case 'Bruma': return 'rev-keep-color text-orange-400'; 
-      case 'Trumst': return 'rev-keep-color text-blue-400'; 
-      case 'Halice': return 'rev-keep-color text-green-500'; 
-      default: return 'text-gray-300';
-    }
-  };
-
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-sm p-5 flex flex-col h-full">
       
       {/* SECTION 1: Identity & Quote (Top Aligned) */}
       <div className="shrink-0 pb-4 pt-2">
-        <h2 className="text-3xl font-cinzel font-bold text-gray-100 
+        <h2 className="text-3xl font-spectral font-bold text-gray-100 
           first-letter:text-[3.5rem] first-letter:font-cinzelDeco first-letter:text-red-500 
           first-letter:float-left first-letter:mr-0.5 first-letter:-mt-1 first-letter:leading-[0.8] 
           leading-tight break-words text-left">
@@ -230,7 +218,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
                   <div className="flex justify-center w-full">
                     {hasConv ? (
                       <Tooltip text={convStatement} className="w-auto" noBorder>
-                        <span className={`${getSeasonColor(c.season)} font-bold uppercase tracking-[0.2em] text-sm leading-tight cursor-help`}>
+                        <span className={`${getSeasonTextClass(c.season)} font-bold uppercase tracking-[0.2em] text-sm leading-tight cursor-help`}>
                           {c.name}
                         </span>
                       </Tooltip>
@@ -269,10 +257,9 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
           noBorder
           noTruncate
         >
-          <div className="rev-stat-box w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
-            <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
-              <span className="hidden sm:inline">Accuracy</span>
-              <span className="sm:hidden">ACC</span>
+          <div className="rev-stat-box w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50 min-w-0">
+            <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5 block w-full min-w-0 px-1">
+              <AutoAbbreviate full="Accuracy" short="ACC" group="sheet-stats" />
             </span>
             <span className={`font-bold text-lg sm:text-xl leading-none ${effectiveAcc < 0 ? 'rev-keep-color text-red-500' : 'text-white'}`}>
               {effectiveAcc}
@@ -281,10 +268,9 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
         </Tooltip>
 
         {/* EVASION */}
-        <div className="rev-stat-box flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
-          <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
-            <span className="hidden sm:inline">Evasion</span>
-            <span className="sm:hidden">EVA</span>
+        <div className="rev-stat-box flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50 min-w-0">
+          <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5 block w-full min-w-0 px-1">
+            <AutoAbbreviate full="Evasion" short="EVA" group="sheet-stats" />
           </span>
           <span className={`font-bold text-lg sm:text-xl leading-none ${effectiveEva < 0 ? 'rev-keep-color text-red-500' : 'text-white'}`}>{effectiveEva}</span>
         </div>
@@ -299,15 +285,14 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
           <button
             type="button"
             onClick={() => setIsArmourModalOpen(true)}
-            className={`w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border transition-colors cursor-pointer hover:bg-white/5 ${
+            className={`w-full min-w-0 flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border transition-colors cursor-pointer hover:bg-white/5 ${
               maxAp > 0 && currentAp < maxAp
                 ? 'border-amber-700/70 hover:border-amber-500'
                 : 'rev-stat-box border-gray-700/50 hover:border-gray-500'
             }`}
           >
-            <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
-              <span className="hidden sm:inline">Armour</span>
-              <span className="sm:hidden">AP</span>
+            <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5 block w-full min-w-0 px-1">
+              <AutoAbbreviate full="Armour" short="AP" group="sheet-stats" />
             </span>
             <span
               className={`font-bold text-lg sm:text-xl leading-none tabular-nums ${
@@ -335,10 +320,9 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
           noBorder
           noTruncate
         >
-          <div className="rev-stat-box w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
-            <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
-              <span className="hidden sm:inline">Movement</span>
-              <span className="sm:hidden">MOV</span>
+          <div className="rev-stat-box w-full min-w-0 flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
+            <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5 block w-full min-w-0 px-1">
+              <AutoAbbreviate full="Movement" short="MOV" group="sheet-stats" />
             </span>
             <span className={`font-bold text-lg sm:text-xl leading-none ${effectiveMov < 0 ? 'rev-keep-color text-red-500' : 'text-white'}`}>
               {effectiveMov}
@@ -353,10 +337,9 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
           noBorder
           noTruncate
         >
-          <div className="rev-stat-box w-full flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
-            <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5">
-              <span className="hidden sm:inline">Burden</span>
-              <span className="sm:hidden">BRD</span>
+          <div className="rev-stat-box w-full min-w-0 flex flex-col items-center justify-center bg-black/20 rounded-lg py-2 sm:py-2.5 border border-gray-700/50">
+            <span className="text-gray-500 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider sm:tracking-widest mb-1 sm:mb-1.5 block w-full min-w-0 px-1">
+              <AutoAbbreviate full="Burden" short="BRD" group="sheet-stats" />
             </span>
             <span className={`font-bold text-lg sm:text-xl leading-none ${isOverburdened || currentBurdenVal < 0 ? 'rev-keep-color text-red-500' : 'text-white'}`}>
               {currentBurdenVal}<span className="text-[9px] sm:text-[10px] text-gray-500 font-normal">/{maxBurdenVal}</span>
@@ -378,11 +361,11 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-              <h3 className="font-cinzel font-bold text-xl text-gray-200">Armour &amp; Protection</h3>
+              <h3 className="font-bold text-xl text-gray-200">Armour &amp; Protection</h3>
               <button
                 type="button"
                 onClick={() => setIsArmourModalOpen(false)}
-                className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2"
+                className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors"
                 aria-label="Close"
               >
                 ×
@@ -484,7 +467,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
               {armourInfo ? (
                 <div className="bg-black/30 border border-gray-700 rounded-xl p-4 flex flex-col gap-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-cinzel font-bold text-base text-gray-100 truncate">
+                    <span className="font-bold text-base text-gray-100 truncate">
                       {armourInfo.name}
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-800 border border-gray-600 text-gray-200 shrink-0">

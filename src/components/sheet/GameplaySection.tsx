@@ -8,6 +8,7 @@ import InjuriesCard from './gameplay/InjuriesCard';
 import SpecialSkillsCard from './gameplay/SpecialSkillsCard';
 import ClassCard from './gameplay/ClassCard';
 import AbilitiesCard from './gameplay/AbilitiesCard';
+import type { DragSkillTarget } from './Header';
 
 export default function GameplaySection({
   char,
@@ -23,6 +24,7 @@ export default function GameplaySection({
   setIsAbilityModalOpen,
   setModalAbilityIndex,
   onOpenInventory,
+  dragHoverSkill,
 }: {
   char: Character;
   patch: (p: Partial<CharacterData>) => void;
@@ -37,6 +39,7 @@ export default function GameplaySection({
   setIsAbilityModalOpen: (open: boolean) => void;
   setModalAbilityIndex: (index: number) => void;
   onOpenInventory: () => void;
+  dragHoverSkill?: DragSkillTarget | null;
 }) {
   return (
     <div className="rev-gameplay-grid w-full grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200 items-start">
@@ -47,7 +50,7 @@ export default function GameplaySection({
         <VitalsCard char={char} updateTracker={updateTracker} />
       </div>
       <div className="rev-gp-core lg:col-span-4 h-full order-3 lg:order-none">
-        <CoreSkillsCard char={char} setLevelUpTarget={setLevelUpTarget} />
+        <CoreSkillsCard char={char} setLevelUpTarget={setLevelUpTarget} dragHoverSkill={dragHoverSkill} />
       </div>
 
       <div className="rev-gp-loadout lg:col-span-4 h-full order-6 lg:order-none">
@@ -63,6 +66,7 @@ export default function GameplaySection({
           setLevelUpTarget={setLevelUpTarget}
           setIsSpecialSkillModalOpen={setIsSpecialSkillModalOpen}
           setModalSpecialSkillIndex={setModalSpecialSkillIndex}
+          dragHoverSkill={dragHoverSkill}
         />
       </div>
 

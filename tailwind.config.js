@@ -8,6 +8,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Lora', 'serif'],
+        spectral: ['"Spectral SC"', 'serif'],
         cinzel: ['Cinzel', 'serif'],
         cinzelDeco: ['"Cinzel Decorative"', 'cursive'],
       },

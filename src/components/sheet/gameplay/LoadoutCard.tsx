@@ -4,6 +4,7 @@ import { useCompendium } from '../../../CompendiumContext';
 import { equipItem, unequipSlot, equipExtraItem, unequipExtraSlot } from '../../../inventory';
 import { getEquippedArmourInfo, getArmourRequiredCarry, getCharacterCarryRank, normalizeArmourCategory } from '../../../calc';
 import { ARMOUR_CATEGORY_RULES } from '../../../armourCatalog';
+import { KeywordText } from '../../common/KeywordText';
 
 export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Character, patch: any, onOpenInventory: () => void }) {
   const { getEntryByName } = useCompendium();
@@ -112,7 +113,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
         )}
         {data.effect && data.effect !== '-' && !data.effect.startsWith('Resists ') && (
           <div className="text-xs italic text-gray-200 border-l-2 border-gray-700 pl-3 mb-1">
-            {data.effect}
+            <KeywordText text={data.effect} mode="effect" />
           </div>
         )}
       </div>
@@ -222,7 +223,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-sm p-4 flex flex-col h-full overflow-hidden">
       <div className="border-b border-gray-700 pb-3 mb-3 shrink-0 flex justify-between items-center">
-        <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Loadout</h2>
+        <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Loadout</h2>
         <button onClick={onOpenInventory} className="text-xs font-bold text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-1.5 rounded transition-colors active:opacity-60">
           Open Inventory
         </button>

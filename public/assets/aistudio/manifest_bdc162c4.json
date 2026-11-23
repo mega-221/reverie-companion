@@ -1,0 +1,822 @@
+{
+  "meta": {
+    "source": "Reverie Core 0.11.0",
+    "scope": "Prelude through CH VI. Disciplines (pages 1-177). CH VII. Aspects onward excluded.",
+    "page_range": [
+      1,
+      177
+    ],
+    "generated_from": "3bfdb2bd-Reverie_Core_0.11.0.pdf",
+    "note": "Text extracted from the rulebook PDF; verbatim rules text preserved."
+  },
+  "files": {
+    "tooltips": "tooltips.json",
+    "data": {
+      "attributes": "data/attributes.json",
+      "skills": "data/skills.json",
+      "status_effects": "data/status-effects.json",
+      "base_actions": "data/base-actions.json",
+      "classes": "data/classes.json",
+      "disciplines": "data/disciplines.json"
+    },
+    "rules_root": "rules/"
+  },
+  "rules": [
+    {
+      "id": "00-front-matter",
+      "number": "0",
+      "title": "Front Matter",
+      "pages": [
+        1,
+        2
+      ],
+      "sections": [
+        {
+          "id": "front-matter",
+          "title": "Front Matter",
+          "pages": [
+            1,
+            2
+          ],
+          "file": "rules/00-front-matter.md"
+        }
+      ]
+    },
+    {
+      "id": "01-introduction",
+      "number": "I",
+      "title": "Introduction to Reverie",
+      "pages": [
+        3,
+        10
+      ],
+      "sections": [
+        {
+          "id": "intro-overview",
+          "title": "Introduction (Overview)",
+          "pages": [
+            3,
+            3
+          ],
+          "file": "rules/01-introduction/intro-overview.md"
+        },
+        {
+          "id": "the-system",
+          "title": "The System",
+          "pages": [
+            3,
+            5
+          ],
+          "file": "rules/01-introduction/the-system.md"
+        },
+        {
+          "id": "the-seasons",
+          "title": "The Seasons",
+          "pages": [
+            6,
+            6
+          ],
+          "file": "rules/01-introduction/the-seasons.md"
+        },
+        {
+          "id": "ambedo",
+          "title": "Ambedo",
+          "pages": [
+            7,
+            7
+          ],
+          "file": "rules/01-introduction/ambedo.md"
+        },
+        {
+          "id": "what-you-need",
+          "title": "What You Need",
+          "pages": [
+            8,
+            10
+          ],
+          "file": "rules/01-introduction/what-you-need.md"
+        }
+      ]
+    },
+    {
+      "id": "02-playing-the-game",
+      "number": "II",
+      "title": "Playing the Game",
+      "pages": [
+        11,
+        18
+      ],
+      "sections": [
+        {
+          "id": "playing-overview",
+          "title": "Playing the Game (Overview)",
+          "pages": [
+            11,
+            11
+          ],
+          "file": "rules/02-playing-the-game/playing-overview.md"
+        },
+        {
+          "id": "dice",
+          "title": "Dice",
+          "pages": [
+            11,
+            11
+          ],
+          "file": "rules/02-playing-the-game/dice.md"
+        },
+        {
+          "id": "flow-of-the-game",
+          "title": "Flow of The Game",
+          "pages": [
+            11,
+            11
+          ],
+          "file": "rules/02-playing-the-game/flow-of-the-game.md"
+        },
+        {
+          "id": "skill-checks",
+          "title": "Skill Checks",
+          "pages": [
+            12,
+            13
+          ],
+          "file": "rules/02-playing-the-game/skill-checks.md"
+        },
+        {
+          "id": "challenge-level",
+          "title": "Challenge Level",
+          "pages": [
+            13,
+            13
+          ],
+          "file": "rules/02-playing-the-game/challenge-level.md"
+        },
+        {
+          "id": "attributes",
+          "title": "Attributes",
+          "pages": [
+            14,
+            14
+          ],
+          "file": "rules/02-playing-the-game/attributes.md"
+        },
+        {
+          "id": "core-skills",
+          "title": "Core Skills",
+          "pages": [
+            15,
+            15
+          ],
+          "file": "rules/02-playing-the-game/core-skills.md"
+        },
+        {
+          "id": "special-skills",
+          "title": "Special Skills",
+          "pages": [
+            16,
+            16
+          ],
+          "file": "rules/02-playing-the-game/special-skills.md"
+        },
+        {
+          "id": "collaborations",
+          "title": "Collaborations",
+          "pages": [
+            17,
+            17
+          ],
+          "file": "rules/02-playing-the-game/collaborations.md"
+        },
+        {
+          "id": "contested-rolls",
+          "title": "Contested Rolls",
+          "pages": [
+            17,
+            18
+          ],
+          "file": "rules/02-playing-the-game/contested-rolls.md"
+        },
+        {
+          "id": "exert",
+          "title": "Exert",
+          "pages": [
+            18,
+            18
+          ],
+          "file": "rules/02-playing-the-game/exert.md"
+        },
+        {
+          "id": "advantage-disadvantage",
+          "title": "Advantage and Disadvantage",
+          "pages": [
+            18,
+            18
+          ],
+          "file": "rules/02-playing-the-game/advantage-disadvantage.md"
+        }
+      ]
+    },
+    {
+      "id": "03-survival-and-combat",
+      "number": "III",
+      "title": "Survival and Combat",
+      "pages": [
+        19,
+        33
+      ],
+      "sections": [
+        {
+          "id": "combat-overview",
+          "title": "Survival and Combat (Overview)",
+          "pages": [
+            19,
+            19
+          ],
+          "file": "rules/03-survival-and-combat/combat-overview.md"
+        },
+        {
+          "id": "vigor",
+          "title": "Vigor",
+          "pages": [
+            19,
+            20
+          ],
+          "file": "rules/03-survival-and-combat/vigor.md"
+        },
+        {
+          "id": "injuries",
+          "title": "Injuries",
+          "pages": [
+            20,
+            21
+          ],
+          "file": "rules/03-survival-and-combat/injuries.md"
+        },
+        {
+          "id": "strain",
+          "title": "Strain",
+          "pages": [
+            22,
+            22
+          ],
+          "file": "rules/03-survival-and-combat/strain.md"
+        },
+        {
+          "id": "combat-encounters",
+          "title": "Combat Encounters",
+          "pages": [
+            23,
+            23
+          ],
+          "file": "rules/03-survival-and-combat/combat-encounters.md"
+        },
+        {
+          "id": "movement",
+          "title": "Movement",
+          "pages": [
+            24,
+            24
+          ],
+          "file": "rules/03-survival-and-combat/movement.md"
+        },
+        {
+          "id": "base-abilities",
+          "title": "Abilities (Base Actions)",
+          "pages": [
+            24,
+            25
+          ],
+          "file": "rules/03-survival-and-combat/base-abilities.md"
+        },
+        {
+          "id": "the-combat-roll",
+          "title": "The Combat Roll",
+          "pages": [
+            26,
+            27
+          ],
+          "file": "rules/03-survival-and-combat/the-combat-roll.md"
+        },
+        {
+          "id": "abilities-in-detail",
+          "title": "Abilities In Detail",
+          "pages": [
+            28,
+            28
+          ],
+          "file": "rules/03-survival-and-combat/abilities-in-detail.md"
+        },
+        {
+          "id": "melee-combat",
+          "title": "Melee Combat",
+          "pages": [
+            29,
+            29
+          ],
+          "file": "rules/03-survival-and-combat/melee-combat.md"
+        },
+        {
+          "id": "ranged-combat",
+          "title": "Ranged Combat",
+          "pages": [
+            30,
+            30
+          ],
+          "file": "rules/03-survival-and-combat/ranged-combat.md"
+        },
+        {
+          "id": "burden",
+          "title": "Burden",
+          "pages": [
+            31,
+            31
+          ],
+          "file": "rules/03-survival-and-combat/burden.md"
+        },
+        {
+          "id": "status-effects",
+          "title": "Status Effects and Conditions",
+          "pages": [
+            32,
+            33
+          ],
+          "file": "rules/03-survival-and-combat/status-effects.md"
+        }
+      ]
+    },
+    {
+      "id": "04-characters-in-depth",
+      "number": "IV",
+      "title": "Characters in Depth",
+      "pages": [
+        34,
+        55
+      ],
+      "sections": [
+        {
+          "id": "characters-overview",
+          "title": "Characters in Depth (Overview)",
+          "pages": [
+            34,
+            34
+          ],
+          "file": "rules/04-characters-in-depth/characters-overview.md"
+        },
+        {
+          "id": "what-is-a-character",
+          "title": "What Constitutes a Character",
+          "pages": [
+            34,
+            34
+          ],
+          "file": "rules/04-characters-in-depth/what-is-a-character.md"
+        },
+        {
+          "id": "destiny-points",
+          "title": "Destiny Points",
+          "pages": [
+            34,
+            34
+          ],
+          "file": "rules/04-characters-in-depth/destiny-points.md"
+        },
+        {
+          "id": "convictions",
+          "title": "Convictions",
+          "pages": [
+            35,
+            36
+          ],
+          "file": "rules/04-characters-in-depth/convictions.md"
+        },
+        {
+          "id": "crisis",
+          "title": "Crisis",
+          "pages": [
+            36,
+            36
+          ],
+          "file": "rules/04-characters-in-depth/crisis.md"
+        },
+        {
+          "id": "failings",
+          "title": "Failings",
+          "pages": [
+            36,
+            37
+          ],
+          "file": "rules/04-characters-in-depth/failings.md"
+        },
+        {
+          "id": "origins",
+          "title": "Origins",
+          "pages": [
+            38,
+            50
+          ],
+          "file": "rules/04-characters-in-depth/origins.md"
+        },
+        {
+          "id": "levels-and-tiers",
+          "title": "Levels and Tiers",
+          "pages": [
+            51,
+            52
+          ],
+          "file": "rules/04-characters-in-depth/levels-and-tiers.md"
+        },
+        {
+          "id": "progression",
+          "title": "Progression and Advancements",
+          "pages": [
+            53,
+            53
+          ],
+          "file": "rules/04-characters-in-depth/progression.md"
+        },
+        {
+          "id": "build-overviews",
+          "title": "Classes, Disciplines & Aspects Overview",
+          "pages": [
+            54,
+            55
+          ],
+          "file": "rules/04-characters-in-depth/build-overviews.md"
+        },
+        {
+          "id": "character-creation",
+          "title": "Character Creation",
+          "pages": [
+            55,
+            55
+          ],
+          "file": "rules/04-characters-in-depth/character-creation.md"
+        }
+      ]
+    },
+    {
+      "id": "05-classes",
+      "number": "V",
+      "title": "Classes",
+      "pages": [
+        56,
+        137
+      ],
+      "sections": [
+        {
+          "id": "class-archetypes",
+          "title": "Class Archetypes",
+          "pages": [
+            56,
+            57
+          ],
+          "file": "rules/05-classes/class-archetypes.md"
+        },
+        {
+          "id": "berserker",
+          "title": "Berserker",
+          "pages": [
+            58,
+            61
+          ],
+          "file": "rules/05-classes/berserker.md"
+        },
+        {
+          "id": "legionary",
+          "title": "Legionary",
+          "pages": [
+            62,
+            65
+          ],
+          "file": "rules/05-classes/legionary.md"
+        },
+        {
+          "id": "marksman",
+          "title": "Marksman",
+          "pages": [
+            66,
+            69
+          ],
+          "file": "rules/05-classes/marksman.md"
+        },
+        {
+          "id": "warden",
+          "title": "Warden",
+          "pages": [
+            70,
+            73
+          ],
+          "file": "rules/05-classes/warden.md"
+        },
+        {
+          "id": "duelist",
+          "title": "Duelist",
+          "pages": [
+            74,
+            77
+          ],
+          "file": "rules/05-classes/duelist.md"
+        },
+        {
+          "id": "gunslinger",
+          "title": "Gunslinger",
+          "pages": [
+            78,
+            81
+          ],
+          "file": "rules/05-classes/gunslinger.md"
+        },
+        {
+          "id": "rogue",
+          "title": "Rogue",
+          "pages": [
+            82,
+            85
+          ],
+          "file": "rules/05-classes/rogue.md"
+        },
+        {
+          "id": "stalker",
+          "title": "Stalker",
+          "pages": [
+            86,
+            89
+          ],
+          "file": "rules/05-classes/stalker.md"
+        },
+        {
+          "id": "bard",
+          "title": "Bard",
+          "pages": [
+            90,
+            93
+          ],
+          "file": "rules/05-classes/bard.md"
+        },
+        {
+          "id": "envoy",
+          "title": "Envoy",
+          "pages": [
+            94,
+            97
+          ],
+          "file": "rules/05-classes/envoy.md"
+        },
+        {
+          "id": "wayfarer",
+          "title": "Wayfarer",
+          "pages": [
+            98,
+            101
+          ],
+          "file": "rules/05-classes/wayfarer.md"
+        },
+        {
+          "id": "apothecary",
+          "title": "Apothecary",
+          "pages": [
+            102,
+            105
+          ],
+          "file": "rules/05-classes/apothecary.md"
+        },
+        {
+          "id": "clairvoyant",
+          "title": "Clairvoyant",
+          "pages": [
+            106,
+            109
+          ],
+          "file": "rules/05-classes/clairvoyant.md"
+        },
+        {
+          "id": "mechanist",
+          "title": "Mechanist",
+          "pages": [
+            110,
+            113
+          ],
+          "file": "rules/05-classes/mechanist.md"
+        },
+        {
+          "id": "arbiter",
+          "title": "Arbiter",
+          "pages": [
+            114,
+            117
+          ],
+          "file": "rules/05-classes/arbiter.md"
+        },
+        {
+          "id": "empath",
+          "title": "Empath",
+          "pages": [
+            118,
+            121
+          ],
+          "file": "rules/05-classes/empath.md"
+        },
+        {
+          "id": "sorcerer",
+          "title": "Sorcerer",
+          "pages": [
+            122,
+            125
+          ],
+          "file": "rules/05-classes/sorcerer.md"
+        },
+        {
+          "id": "witch",
+          "title": "Witch",
+          "pages": [
+            126,
+            129
+          ],
+          "file": "rules/05-classes/witch.md"
+        },
+        {
+          "id": "protean",
+          "title": "Protean",
+          "pages": [
+            130,
+            133
+          ],
+          "file": "rules/05-classes/protean.md"
+        },
+        {
+          "id": "vessel",
+          "title": "Vessel",
+          "pages": [
+            134,
+            137
+          ],
+          "file": "rules/05-classes/vessel.md"
+        }
+      ]
+    },
+    {
+      "id": "06-disciplines",
+      "number": "VI",
+      "title": "Disciplines",
+      "pages": [
+        138,
+        177
+      ],
+      "sections": [
+        {
+          "id": "available-disciplines",
+          "title": "Available Disciplines (Overview)",
+          "pages": [
+            138,
+            138
+          ],
+          "file": "rules/06-disciplines/available-disciplines.md"
+        },
+        {
+          "id": "warfare",
+          "title": "Warfare",
+          "pages": [
+            139,
+            141
+          ],
+          "file": "rules/06-disciplines/warfare.md"
+        },
+        {
+          "id": "duel",
+          "title": "Duel",
+          "pages": [
+            142,
+            144
+          ],
+          "file": "rules/06-disciplines/duel.md"
+        },
+        {
+          "id": "protection",
+          "title": "Protection",
+          "pages": [
+            145,
+            148
+          ],
+          "file": "rules/06-disciplines/protection.md"
+        },
+        {
+          "id": "leadership",
+          "title": "Leadership",
+          "pages": [
+            149,
+            152
+          ],
+          "file": "rules/06-disciplines/leadership.md"
+        },
+        {
+          "id": "shadow",
+          "title": "Shadow",
+          "pages": [
+            153,
+            156
+          ],
+          "file": "rules/06-disciplines/shadow.md"
+        },
+        {
+          "id": "precision",
+          "title": "Precision",
+          "pages": [
+            157,
+            159
+          ],
+          "file": "rules/06-disciplines/precision.md"
+        },
+        {
+          "id": "echo",
+          "title": "Echo",
+          "pages": [
+            160,
+            163
+          ],
+          "file": "rules/06-disciplines/echo.md"
+        },
+        {
+          "id": "zeal",
+          "title": "Zeal",
+          "pages": [
+            164,
+            168
+          ],
+          "file": "rules/06-disciplines/zeal.md"
+        },
+        {
+          "id": "mysticism",
+          "title": "Mysticism",
+          "pages": [
+            169,
+            173
+          ],
+          "file": "rules/06-disciplines/mysticism.md"
+        },
+        {
+          "id": "beast",
+          "title": "Beast",
+          "pages": [
+            174,
+            177
+          ],
+          "file": "rules/06-disciplines/beast.md"
+        }
+      ]
+    }
+  ],
+  "tooltip_categories": [
+    {
+      "category": "attribute",
+      "count": 4,
+      "id_prefix": "attr-"
+    },
+    {
+      "category": "core-skill",
+      "count": 12,
+      "id_prefix": "skill-"
+    },
+    {
+      "category": "special-skill",
+      "count": 12,
+      "id_prefix": "skill-"
+    },
+    {
+      "category": "status-effect",
+      "count": 17,
+      "id_prefix": "status-"
+    },
+    {
+      "category": "base-action",
+      "count": 7,
+      "id_prefix": "action-"
+    },
+    {
+      "category": "class",
+      "count": 20,
+      "id_prefix": "class-"
+    },
+    {
+      "category": "class-ability",
+      "count": 180,
+      "id_prefix": "class-<class>-"
+    },
+    {
+      "category": "discipline",
+      "count": 10,
+      "id_prefix": "discipline-"
+    },
+    {
+      "category": "discipline-ability",
+      "count": 200,
+      "id_prefix": "discipline-<disc>-"
+    }
+  ],
+  "counts": {
+    "tooltip_entries": 462,
+    "rules_sections": 74,
+    "classes": 20,
+    "disciplines": 10
+  }
+}

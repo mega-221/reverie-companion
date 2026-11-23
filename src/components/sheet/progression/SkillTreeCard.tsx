@@ -416,7 +416,7 @@ function TierChurchCard({
         </div>
 
         <div className="w-full h-11 flex items-center justify-center px-1">
-          <div className={`font-cinzel font-bold text-base uppercase tracking-[0.08em] leading-tight line-clamp-2 text-center ${isTierUnlocked ? 'text-white drop-shadow-md' : 'text-cyan-700/80'}`}>
+          <div className={`font-spectral font-bold text-base uppercase tracking-[0.08em] leading-tight line-clamp-2 text-center ${isTierUnlocked ? 'text-white drop-shadow-md' : 'text-cyan-700/80'}`}>
             {tierDef.title}
           </div>
         </div>
@@ -565,7 +565,7 @@ export default function SkillTreeCard({
   return (
     <section className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-6 shadow-sm w-full overflow-hidden">
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-gray-700 pb-3 mb-4 sm:mb-5">
-        <h3 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 text-gray-200">
+        <h3 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 text-gray-200">
           Advancement Constellation
         </h3>
         <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
@@ -624,7 +624,7 @@ export default function SkillTreeCard({
                     : {}),
                 }}
               >
-                <span className="font-cinzel font-bold text-xs leading-none">
+                <span className="font-bold text-xs leading-none">
                   T{tierDef.tier}
                 </span>
                 <span className="text-[9px] font-bold leading-none opacity-80 tabular-nums">
@@ -670,7 +670,7 @@ export default function SkillTreeCard({
       {beyondTiers.length > 0 && (
         <div className="relative z-10 hidden sm:block mt-6 pt-6 border-t border-gray-700/80">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-base font-cinzel text-purple-300 tracking-wide">
+            <h4 className="text-base font-spectral text-purple-300 tracking-wide">
               Endgame & Beyond
             </h4>
             <span className="text-xs text-gray-400">Tiers 6+</span>

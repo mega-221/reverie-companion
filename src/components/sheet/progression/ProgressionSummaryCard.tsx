@@ -128,7 +128,7 @@ export default function ProgressionSummaryCard({
     <section className="bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-6 shadow-sm w-full flex flex-col gap-4 sm:gap-5">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-gray-700 pb-3">
         <div>
-          <h2 className="text-xl font-cinzel first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 text-gray-200">
+          <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 text-gray-200">
             Progression & Advancements
           </h2>
           <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
@@ -230,7 +230,7 @@ export default function ProgressionSummaryCard({
                 <button
                   type="button"
                   onClick={handleLevelDownFromXp}
-                  className="h-8 px-1.5 sm:px-3 rounded-lg bg-gray-900/90 hover:bg-red-950/50 border border-gray-700 hover:border-red-800 text-gray-300 hover:text-red-200 font-cinzel font-bold text-[10px] sm:text-[11px] uppercase tracking-wider transition-colors whitespace-nowrap"
+                  className="h-8 px-1.5 sm:px-3 rounded-lg bg-gray-900/90 hover:bg-red-950/50 border border-gray-700 hover:border-red-800 text-gray-300 hover:text-red-200 font-bold text-[10px] sm:text-[11px] uppercase tracking-wider transition-colors whitespace-nowrap"
                   title="Level down (disables higher tiers if leaving a tier)"
                 >
                   <span className="sm:hidden">← Lvl-</span>
@@ -270,7 +270,7 @@ export default function ProgressionSummaryCard({
                 <button
                   type="button"
                   onClick={handleLevelUpFromXp}
-                  className="h-8 px-1.5 sm:px-3 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400 text-cyan-200 font-cinzel font-bold text-[10px] sm:text-[11px] uppercase tracking-wider shadow-[0_0_12px_rgba(34,211,238,0.35)] transition-colors animate-pulse whitespace-nowrap"
+                  className="h-8 px-1.5 sm:px-3 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400 text-cyan-200 font-bold text-[10px] sm:text-[11px] uppercase tracking-wider shadow-[0_0_12px_rgba(34,211,238,0.35)] transition-colors animate-pulse whitespace-nowrap"
                 >
                   <span className="sm:hidden">Lvl+ →</span>
                   <span className="hidden sm:inline">Level Up →</span>

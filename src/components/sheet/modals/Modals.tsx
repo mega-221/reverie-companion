@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { CompendiumEntry } from '../../../types';
 import { useCompendium } from '../../../CompendiumContext';
+import { KeywordText } from '../../common/KeywordText';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
+import { getCoreSkillAttribute, splitLines } from '../../../constants/reverie';
 import { 
   ATTRIBUTE_NAMES, ATTRIBUTE_DESCRIPTIONS, CORE_SKILL_DESCRIPTIONS, 
   SPECIAL_SKILL_DESCRIPTIONS, SKILL_GROUPS, SKILL_XP_COSTS, ORIGIN_CHOICES, 
@@ -24,6 +27,7 @@ const MODAL_BG = "sheet-modal animate-in zoom-in-95 duration-200";
 
 export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdvance, handleRegress }: any) {
   const { getEntryByName } = useCompendium();
+  useBodyScrollLock(Boolean(levelUpTarget));
   
   if (!levelUpTarget) return null;
 
@@ -57,7 +61,7 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
     title = levelUpTarget.key;
     description = CORE_SKILL_DESCRIPTIONS[levelUpTarget.key];
     currentRank = char.data.skills[levelUpTarget.key] ?? 0;
-    const attr = Object.keys(SKILL_GROUPS).find(a => (SKILL_GROUPS[a as keyof typeof SKILL_GROUPS].skills as readonly string[]).includes(levelUpTarget.key)) as keyof typeof char.data.attributes;
+    const attr = getCoreSkillAttribute(levelUpTarget.key);
     minRank = getMinSkillRank(levelUpTarget.key, char);
     maxRank = getSkillMaxRank(levelUpTarget.key, char.data.attributes[attr], minRank, char.data);
     baseCost = currentRank < 8 ? SKILL_XP_COSTS[currentRank] : 0;
@@ -104,13 +108,13 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
     <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-sm`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-          <h2 className="font-cinzel font-bold text-xl text-gray-200">Advance {title}</h2>
-          <button onClick={() => setLevelUpTarget(null)} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+          <h2 className="font-bold text-xl text-gray-200">Advance {title}</h2>
+          <button onClick={() => setLevelUpTarget(null)} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
         </div>
         <div className="p-5 flex flex-col gap-4">
           {description && (
             <div className="text-sm italic text-gray-200 border-l-2 border-gray-600 pl-3">
-              {description.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+              {splitLines(description).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
             </div>
           )}
           
@@ -194,6 +198,7 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
   const [expandedOrigin, setExpandedOrigin] = useState<string | null>(null);
   const [tempChoices, setTempChoices] = useState<Record<string, string>>({});
   const [choiceError, setChoiceError] = useState<string | null>(null);
+  useBodyScrollLock(Boolean(isOpen));
   
   if (!isOpen) return null;
   const allOrigins = entries.filter(e => e.type === 'origin');
@@ -209,8 +214,8 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
     <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-          <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Origin</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+          <h2 className="font-bold text-xl text-gray-200">Select Origin</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
         </div>
         <div className="p-4 border-b border-gray-700 bg-black/10 shrink-0">
           <div className="flex flex-wrap gap-2">
@@ -233,7 +238,7 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
                   <div className="p-4 border-t border-gray-700 bg-black/20 text-sm">
                     {origin.data.lore && (
                       <div className="mb-4 text-sm italic text-gray-200 border-l-2 border-gray-600 pl-3">
-                        {origin.data.lore.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">"{line}"</span>)}
+                        {splitLines(origin.data.lore).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">"{line}"</span>)}
                       </div>
                     )}
                     <div className="grid grid-cols-[100px_1fr] gap-2 mb-4 text-gray-300">
@@ -281,6 +286,7 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
 
 export function ClassModal({ char, isOpen, onClose, patch }: any) {
   const { getClasses } = useCompendium();
+  useBodyScrollLock(Boolean(isOpen));
   if (!isOpen) return null;
 
   const archetypes = ['Champion', 'Scoundrel', 'Guide', 'Scholar', 'Mystic', 'Aberration'];
@@ -289,8 +295,8 @@ export function ClassModal({ char, isOpen, onClose, patch }: any) {
     <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-          <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Class</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+          <h2 className="font-bold text-xl text-gray-200">Select Class</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {archetypes.map(archetype => {
@@ -321,13 +327,14 @@ export function ClassModal({ char, isOpen, onClose, patch }: any) {
 export function SpecialSkillModal({ char, isOpen, onClose, patch, modalIndex }: any) {
   const { getSpecialSkills } = useCompendium();
   const [expandedSpecialSkill, setExpandedSpecialSkill] = useState<string | null>(null);
+  useBodyScrollLock(Boolean(isOpen));
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-          <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Special Skill</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+          <h2 className="font-bold text-xl text-gray-200">Select Special Skill</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {(Object.keys(ATTRIBUTE_NAMES) as Array<keyof typeof ATTRIBUTE_NAMES>).map(attr => {
@@ -348,7 +355,7 @@ export function SpecialSkillModal({ char, isOpen, onClose, patch, modalIndex }: 
                         {isExpanded && (
                           <div className="p-4 border-t border-gray-700 bg-black/40">
                             <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">
-                              {s.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                              {splitLines(s.data.description).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
                             </div>
                             <button onClick={() => { 
                               if (modalIndex !== null) { 
@@ -418,6 +425,7 @@ export function AbilityModal({
   const isGuided = guidedQueue.length > 0;
   const activeTask = isGuided ? guidedQueue[0] : null;
   const effectiveOpen = isOpen || isGuided;
+  useBodyScrollLock(effectiveOpen);
 
   if (!effectiveOpen) return null;
 
@@ -430,7 +438,7 @@ export function AbilityModal({
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <h2 className="font-cinzel font-bold text-xl text-gray-200 truncate">
+            <h2 className="font-bold text-xl text-gray-200 truncate">
               {isGuided ? 'Select Discipline Abilities' : 'Select Ability'}
             </h2>
             {isGuided && guidedTotal > 1 && (
@@ -445,7 +453,7 @@ export function AbilityModal({
               if (isGuided && onGuidedSkipAll) onGuidedSkipAll();
               else onClose();
             }}
-            className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2 shrink-0"
+            className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors shrink-0"
           >
             ×
           </button>
@@ -554,7 +562,11 @@ export function AbilityModal({
                               {statsToShow.map((stat, idx) => <div key={idx} className={`flex-1 flex flex-col items-center justify-center min-w-[80px] ${idx !== statsToShow.length - 1 ? 'border-r border-gray-700' : ''}`}><span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">{stat.label}</span><span className={`text-sm font-bold ${stat.color}`}>{stat.value}</span></div>)}
                             </div>
                             <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">
-                              {ab.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                              {splitLines(ab.data.description).map((line: string, idx: number) => (
+                                <span key={idx} className="block mb-1 last:mb-0">
+                                  <KeywordText text={line} mode="effect" />
+                                </span>
+                              ))}
                             </div>
                             {isAlreadyLearned ? (
                               <button disabled className="w-full py-2 bg-gray-700 text-gray-400 font-bold text-sm rounded cursor-not-allowed">Already Learned</button>
@@ -596,6 +608,7 @@ export function AbilityModal({
 }
 
 export function PathModal({ char, isOpen, onClose, patch, classData }: any) {
+  useBodyScrollLock(Boolean(isOpen && classData));
   if (!isOpen || !classData) return null;
 
   const currentTier = calculateTierFromLevel(Math.max(0, char.data.progression?.level ?? 0));
@@ -606,8 +619,8 @@ export function PathModal({ char, isOpen, onClose, patch, classData }: any) {
     <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-3xl`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-          <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Path</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+          <h2 className="font-bold text-xl text-gray-200">Select Path</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
         </div>
         {!isPathUnlocked ? (
           <div className="p-8 text-center text-sm text-gray-400 italic">
@@ -619,7 +632,7 @@ export function PathModal({ char, isOpen, onClose, patch, classData }: any) {
               return (
                 <div key={path} className="bg-gray-900 border border-gray-700 rounded-lg p-5 flex flex-col justify-between shadow-sm">
                   <div>
-                    <h3 className="text-xl font-cinzel text-red-400 font-bold mb-3">{path}</h3>
+                    <h3 className="text-xl text-red-400 font-bold mb-3">{path}</h3>
                   </div>
                   <button 
                     onClick={() => { patch({ identity: { ...char.data.identity, path } }); onClose(); }} 
@@ -640,14 +653,15 @@ export function PathModal({ char, isOpen, onClose, patch, classData }: any) {
 export function DisciplineModal({ char, isOpen, onClose, patch, modalIndex, onDisciplineSelected }: any) {
   const { getDisciplines } = useCompendium();
   const [expanded, setExpanded] = useState<string | null>(null);
+  useBodyScrollLock(Boolean(isOpen));
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
-          <h2 className="font-cinzel font-bold text-xl text-gray-200">Select Discipline</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2">×</button>
+          <h2 className="font-bold text-xl text-gray-200">Select Discipline</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {getDisciplines().map((d: any) => {
@@ -661,7 +675,7 @@ export function DisciplineModal({ char, isOpen, onClose, patch, modalIndex, onDi
                 {isExpanded && (
                   <div className="p-4 border-t border-gray-700 bg-black/40">
                     <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">
-                      {d.data.description?.split(/\r?\n|\\n/).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                      {splitLines(d.data.description).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
                     </div>
                     <button onClick={() => {
                       if (modalIndex !== null) {

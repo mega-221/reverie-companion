@@ -13,6 +13,9 @@ import {
   getMinSkillRank,
 } from '../utils';
 import { getSignatureSkills, isSkillInspired, type AdvancementNodeDef } from './progressionData';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../../../hooks/useEscapeKey';
+import { splitLines } from '../../../constants/reverie';
 
 export default function AdvancementTargetModal({
   char,
@@ -29,19 +32,14 @@ export default function AdvancementTargetModal({
   const [selected, setSelected] = useState('');
   const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
 
+  useBodyScrollLock(Boolean(pending));
+
   useEffect(() => {
     setSelected('');
     setExpandedSkill(null);
   }, [pending]);
 
-  useEffect(() => {
-    if (!pending) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [pending, onClose]);
+  useEscapeKey(Boolean(pending), onClose);
 
   if (!pending || typeof document === 'undefined') return null;
 
@@ -66,14 +64,14 @@ export default function AdvancementTargetModal({
               <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400 block">
                 Tier {tier} Advancement
               </span>
-              <h2 className="font-cinzel font-bold text-xl text-gray-200">
+              <h2 className="font-bold text-xl text-gray-200">
                 Select Signature Skill
               </h2>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-2"
+              className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors"
               aria-label="Close"
             >
               ×
@@ -180,9 +178,7 @@ export default function AdvancementTargetModal({
                       <div className="p-4 border-t border-gray-700 bg-black/40">
                         {desc && (
                           <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">
-                            {desc
-                              .split(/\r?\n|\\n/)
-                              .map((line: string, idx: number) => (
+                            {splitLines(desc).map((line: string, idx: number) => (
                                 <span key={idx} className="block mb-1 last:mb-0">
                                   {line}
                                 </span>
@@ -278,7 +274,7 @@ export default function AdvancementTargetModal({
           <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">
             Tier {tier} Advancement
           </span>
-          <h3 className="text-lg font-cinzel text-gray-100">{node.label}</h3>
+          <h3 className="text-lg font-bold text-gray-100">{node.label}</h3>
           <p className="text-xs text-gray-400 mt-1">{node.description}</p>
         </div>
 

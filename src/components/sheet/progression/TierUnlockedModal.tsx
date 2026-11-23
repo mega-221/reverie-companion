@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ADVANCEMENT_NODES,
@@ -7,6 +6,8 @@ import {
   getTierGains,
   isNodeAvailableInTier,
 } from './progressionData';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../../../hooks/useEscapeKey';
 
 export default function TierUnlockedModal({
   tier,
@@ -15,14 +16,9 @@ export default function TierUnlockedModal({
   tier: number | null;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    if (!tier || tier <= 0) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [tier, onClose]);
+  useBodyScrollLock(Boolean(tier && tier > 0));
+
+  useEscapeKey(Boolean(tier && tier > 0), onClose);
 
   if (!tier || tier <= 0 || typeof document === 'undefined') return null;
 
@@ -47,7 +43,7 @@ export default function TierUnlockedModal({
               <span className="text-gray-600">•</span>
               <span className="text-gray-400">{tierDef.levelRange}</span>
             </div>
-            <h2 className="font-cinzel font-bold text-2xl text-gray-100 truncate">
+            <h2 className="font-spectral font-bold text-2xl text-gray-100 truncate">
               {tierDef.title}
             </h2>
           </div>
@@ -55,7 +51,7 @@ export default function TierUnlockedModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-white font-bold text-2xl leading-none px-1.5 shrink-0"
+            className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors shrink-0"
             aria-label="Close"
           >
             ×
