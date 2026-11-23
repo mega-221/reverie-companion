@@ -14,10 +14,15 @@ const CATEGORY_STYLES: Record<AdvancementNodeDef['category'], { ring: string; gl
     glow: 'shadow-[0_0_15px_rgba(245,158,11,0.25)] border-amber-400 bg-amber-900/40',
     badge: 'text-amber-400',
   },
-  vitals: {
+  vigor: {
     ring: 'border-red-500/80 bg-red-950/30 text-red-200',
     glow: 'shadow-[0_0_15px_rgba(239,68,68,0.25)] border-red-400 bg-red-900/40',
     badge: 'text-red-400',
+  },
+  strain: {
+    ring: 'border-blue-500/80 bg-blue-950/30 text-blue-200',
+    glow: 'shadow-[0_0_15px_rgba(59,130,246,0.25)] border-blue-400 bg-blue-900/40',
+    badge: 'text-blue-400',
   },
   mastery: {
     ring: 'border-cyan-500/80 bg-cyan-950/30 text-cyan-200',
