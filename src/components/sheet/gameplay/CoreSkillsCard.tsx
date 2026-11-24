@@ -38,10 +38,11 @@ export default function CoreSkillsCard({ char, setLevelUpTarget, dragHoverSkill 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
         {(Object.keys(SKILL_GROUPS) as Array<keyof typeof SKILL_GROUPS>).map(attr => {
           const group = SKILL_GROUPS[attr];
-          const attrVal = char.data.attributes[attr];
+          const baseAttrVal = char.data.attributes[attr];
           const injuryPenalty = getAttributeInjuryPenalty(char.data.trackers.injuries, attr.toUpperCase());
           const burdenPenalty = isAttributeAffectedByBurden(attr) ? globalBurdenPenalty : 0;
           const totalPenalty = injuryPenalty + burdenPenalty;
+          const attrVal = baseAttrVal;
 
           const affectingInjuries = char.data.trackers.injuries.filter(inj => 
             inj.affectedAttributes.includes(attr.toUpperCase())
@@ -55,22 +56,22 @@ export default function CoreSkillsCard({ char, setLevelUpTarget, dragHoverSkill 
           }
 
           return (
-            <div key={attr} className={`sheet-panel p-4 flex flex-col h-full min-w-0 transition-all duration-200 ${!hasOrigin ? 'opacity-50 grayscale' : ''}`}>
+            <div key={attr} className={`sheet-panel p-3 sm:p-3.5 flex flex-col h-full min-w-0 transition-all duration-200 ${!hasOrigin ? 'opacity-50 grayscale' : ''}`}>
               
-              <div className="flex justify-between items-center gap-2 border-b border-gray-700 pb-3 mb-3 shrink-0 min-w-0">
-                <Tooltip text={ATTRIBUTE_DESCRIPTIONS[attr]} className="min-w-0 flex-1" noBorder disabled={!hasOrigin}>
+              <div className="flex justify-between items-center gap-1 border-b border-gray-700 pb-2.5 mb-3 shrink-0 min-w-0">
+                <Tooltip text={ATTRIBUTE_DESCRIPTIONS[attr]} className="min-w-0 flex-1" noBorder noTruncate disabled={!hasOrigin}>
                   <AutoAbbreviate
                     full={ATTRIBUTE_NAMES[attr]}
                     short={attr.toUpperCase()}
                     group="sheet-attributes"
-                    className={`text-3xl font-spectral first-letter:font-cinzelDeco uppercase tracking-widest ${group.color}`}
+                    className={`text-lg sm:text-2xl lg:text-2xl xl:text-[26px] 2xl:text-[30px] font-cinzel uppercase tracking-normal leading-tight ${group.color}`}
                   />
                 </Tooltip>
                 
                 <button 
                   onClick={() => setLevelUpTarget({ type: 'attribute', key: attr })} 
                   disabled={!hasOrigin}
-                  className={`border-b-2 ${group.color} border-gray-600 p-1 w-12 text-center font-bold text-3xl focus:outline-none bg-transparent text-white rounded transition-colors ${hasOrigin ? 'hover:bg-gray-700' : 'cursor-not-allowed'}`}
+                  className={`border-b-2 ${group.color} border-gray-600 p-0.5 w-8 sm:w-9 text-center font-bold text-lg sm:text-xl 2xl:text-[22px] shrink-0 focus:outline-none bg-transparent text-white rounded transition-colors ${hasOrigin ? 'hover:bg-gray-700' : 'cursor-not-allowed'}`}
                 >
                   {attrVal}
                 </button>
@@ -79,15 +80,14 @@ export default function CoreSkillsCard({ char, setLevelUpTarget, dragHoverSkill 
               <div className="flex-1 flex flex-col justify-between py-1 gap-2 sm:gap-0">
                 {group.skills.map(skill => {
                   const originMin = getMinSkillRank(skill, char);
-                  const maxSkill = getSkillMaxRank(skill, attrVal, originMin, char.data);
+                  const maxSkill = getSkillMaxRank(skill, baseAttrVal, originMin, char.data);
                   const currentSkill = char.data.skills[skill] ?? 0;
                   const isSignature = getSignatureSkills(char.data).has(skill);
                   const isFromOrigin = char.data.identity.inspirations?.includes(skill);
                   const isInspired = isSkillInspired(skill, char.data);
                   
                   const baseRank = Math.max(originMin, currentSkill);
-                  const effectiveRank = baseRank - totalPenalty;
-                  const isPenalizedOrNegative = totalPenalty > 0 || effectiveRank < 0;
+                  const isPenalizedOrNegative = totalPenalty > 0 || baseRank < 0;
                   
                   const isDragHover =
                     dragHoverSkill?.kind === 'core' && dragHoverSkill?.name === skill;
@@ -145,7 +145,7 @@ export default function CoreSkillsCard({ char, setLevelUpTarget, dragHoverSkill 
                         
                         {totalPenalty > 0 ? (
                           <Tooltip 
-                            text={`Base: ${baseRank} • Penalty: -${totalPenalty}\n${penaltySources.join('\n')}`} 
+                            text={`Rank: ${baseRank} • Roll penalty: -${totalPenalty}\n${penaltySources.join('\n')}`} 
                             noBorder 
                             className="w-fit"
                             disabled={!hasOrigin}
@@ -155,7 +155,7 @@ export default function CoreSkillsCard({ char, setLevelUpTarget, dragHoverSkill 
                               disabled={!hasOrigin}
                               className={`rev-keep-color border bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base text-red-500 border-red-900 transition-colors ${hasOrigin ? 'hover:border-red-500' : 'cursor-not-allowed'}`}
                             >
-                              {effectiveRank}
+                              {baseRank}
                             </button>
                           </Tooltip>
                         ) : (
@@ -168,7 +168,7 @@ export default function CoreSkillsCard({ char, setLevelUpTarget, dragHoverSkill 
                                 : 'text-white border-gray-700'
                             } ${hasOrigin ? 'hover:border-red-500' : 'cursor-not-allowed'}`}
                           >
-                            {effectiveRank}
+                            {baseRank}
                           </button>
                         )}
                         

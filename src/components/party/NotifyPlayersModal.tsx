@@ -15,22 +15,22 @@ const QUICK_PRESETS = [
     label: 'Search the Area',
     title: 'Perception Check',
     skill: 'Perception',
-    challengeLevel: 2,
-    message: 'Roll Perception for Challenge Level 2 to inspect your surroundings.',
+    challengeLevel: 12,
+    message: 'Roll Perception for Challenge Level 12 to inspect your surroundings.',
   },
   {
     label: 'Stealth Check',
     title: 'Stealth Check',
     skill: 'Stealth',
-    challengeLevel: 2,
-    message: 'Roll Stealth for Challenge Level 2 to remain undetected.',
+    challengeLevel: 12,
+    message: 'Roll Stealth for Challenge Level 12 to remain undetected.',
   },
   {
     label: 'Resist Effect',
     title: 'Willpower Check',
     skill: 'Willpower',
-    challengeLevel: 3,
-    message: 'Roll Willpower for Challenge Level 3 to resist the effect.',
+    challengeLevel: 14,
+    message: 'Roll Willpower for Challenge Level 14 to resist the effect.',
   },
   {
     label: 'Take a Rest',
@@ -74,7 +74,7 @@ export default function NotifyPlayersModal({
   const [challengeLevel, setChallengeLevel] = useState<number>(12);
   const [grantResource, setGrantResource] = useState<'xp' | 'dp'>('xp');
   const [grantAmount, setGrantAmount] = useState<number>(5);
-  const [title, setTitle] = useState('Skill Check');
+  const [title, setTitle] = useState('Perception Check');
   const [message, setMessage] = useState('Roll Perception for Challenge Level 12.');
   const [activeSkillMeta, setActiveSkillMeta] = useState<{ skill?: string; challengeLevel?: number }>({
     skill: 'Perception',
@@ -136,7 +136,7 @@ export default function NotifyPlayersModal({
     setMessage(preset.message);
     if (preset.skill) {
       setSelectedSkill(preset.skill);
-      setChallengeLevel(preset.challengeLevel ?? 2);
+      setChallengeLevel(preset.challengeLevel ?? 12);
       setActiveSkillMeta({ skill: preset.skill, challengeLevel: preset.challengeLevel });
     } else {
       setActiveSkillMeta({});
@@ -204,25 +204,30 @@ export default function NotifyPlayersModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[220] rev-modal-backdrop backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+      className="fixed inset-0 z-[220] rev-backdrop flex items-center justify-center p-3 sm:p-4"
       onClick={() => !sending && onClose()}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className="sheet-modal shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] max-h-[90dvh]"
+        className="sheet-modal shadow-2xl w-full max-w-xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
-          <h2 className="font-spectral font-bold text-xl" style={{ color: 'var(--rev-text)' }}>
-            Notify Players
-          </h2>
+        {/* Header */}
+        <div className="flex justify-between items-center px-5 py-4 border-b rev-divider rev-inset-soft shrink-0">
+          <div className="min-w-0">
+            <h2 className="font-spectral font-bold text-xl leading-tight" style={{ color: 'var(--rev-text-bright)' }}>
+              Narrator Dispatch
+            </h2>
+            <p className="text-[11px] truncate mt-0.5" style={{ color: 'var(--rev-text-muted)' }}>
+              {partyName} · Push rolls, rewards, or crisis prompts to live sheets
+            </p>
+          </div>
           {!sending && (
             <button
               type="button"
               onClick={onClose}
-              className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-              style={{ color: 'var(--rev-text-muted)' }}
+              className="rev-icon-btn rev-icon-btn-edit text-xl"
               aria-label="Close"
             >
               ×
@@ -230,62 +235,50 @@ export default function NotifyPlayersModal({
           )}
         </div>
 
-        {/* Notification Type Tabs */}
-        <div className="flex border-b rev-divider rev-inset-soft px-3 sm:px-4 gap-1 sm:gap-2 pt-2 shrink-0 overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => switchMode('prompt')}
-            className="px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap"
-            style={{
-              borderColor: mode === 'prompt' ? 'var(--rev-accent)' : 'transparent',
-              color: mode === 'prompt' ? 'var(--rev-text-bright)' : 'var(--rev-text-muted)',
-            }}
-          >
-            Prompt / Roll
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode('give')}
-            className="px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap"
-            style={{
-              borderColor: mode === 'give' ? 'var(--rev-accent)' : 'transparent',
-              color: mode === 'give' ? 'var(--rev-text-bright)' : 'var(--rev-text-muted)',
-            }}
-          >
-            Give Reward
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode('crisis')}
-            className="px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap"
-            style={{
-              borderColor: mode === 'crisis' ? 'var(--rev-accent)' : 'transparent',
-              color: mode === 'crisis' ? 'var(--rev-text-bright)' : 'var(--rev-text-muted)',
-            }}
-          >
-            Resolve Crisis
-          </button>
+        {/* Mode Segmented Bar */}
+        <div className="px-5 pt-3.5 pb-2 shrink-0">
+          <div className="grid grid-cols-3 gap-1.5 p-1 rev-inset">
+            {(
+              [
+                { id: 'prompt', label: 'Prompt / Roll' },
+                { id: 'give', label: 'Give Reward' },
+                { id: 'crisis', label: 'Resolve Crisis' },
+              ] as const
+            ).map(t => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => switchMode(t.id)}
+                className={`py-2 px-2 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                  mode === t.id ? 'rev-btn-primary shadow-sm' : 'opacity-70 hover:opacity-100'
+                }`}
+                style={mode === t.id ? undefined : { color: 'var(--rev-text-secondary)' }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 sm:p-5 flex flex-col gap-4 sm:gap-5 flex-1 min-h-0 overflow-y-auto no-scrollbar">
+        <form onSubmit={handleSubmit} className="px-5 pb-5 pt-2 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto no-scrollbar">
           {error && (
-            <div className="sheet-panel-red text-sm p-3" style={{ color: 'var(--rev-accent-text)' }}>
+            <div className="sheet-panel-red text-xs sm:text-sm p-3 font-medium" style={{ color: 'var(--rev-accent-text)' }}>
               {error}
             </div>
           )}
 
-          {/* Target Players */}
+          {/* Recipients */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider tabular-nums" style={{ color: 'var(--rev-text-muted)' }}>
+              <span className="text-[11px] font-bold uppercase tracking-widest tabular-nums" style={{ color: 'var(--rev-text-muted)' }}>
                 Recipients ({selectedIds.size}/{acceptedMembers.length})
               </span>
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 text-[11px]">
                 <button
                   type="button"
                   onClick={() => setSelectedIds(new Set(acceptedMembers.map(m => m.user_id)))}
-                  className="font-bold"
-                  style={{ color: 'var(--rev-text-secondary)' }}
+                  className="font-bold hover:underline"
+                  style={{ color: 'var(--rev-accent-text)' }}
                 >
                   Select All
                 </button>
@@ -293,7 +286,7 @@ export default function NotifyPlayersModal({
                 <button
                   type="button"
                   onClick={() => setSelectedIds(new Set())}
-                  className="font-bold"
+                  className="font-bold hover:underline"
                   style={{ color: 'var(--rev-text-muted)' }}
                 >
                   Clear
@@ -302,18 +295,21 @@ export default function NotifyPlayersModal({
             </div>
 
             {acceptedMembers.length === 0 ? (
-              <p className="text-xs italic" style={{ color: 'var(--rev-text-faint)' }}>
+              <p className="text-xs italic rev-inset p-3 text-center" style={{ color: 'var(--rev-text-faint)' }}>
                 No accepted members in this party yet.
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto no-scrollbar">
+              <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto no-scrollbar">
                 {acceptedMembers.map(m => {
                   const name = memberUsernames.get(m.user_id) || m.email.split('@')[0];
                   const isChecked = selectedIds.has(m.user_id);
                   return (
-                    <label
+                    <button
                       key={m.id}
-                      className="flex items-center gap-2 px-3 py-1.5 border text-xs font-bold cursor-pointer transition-colors"
+                      type="button"
+                      onClick={() => toggleMember(m.user_id)}
+                      aria-pressed={isChecked}
+                      className="flex items-center gap-2 px-3 py-1.5 border text-xs font-bold cursor-pointer transition-all"
                       style={{
                         borderRadius: 'var(--rev-radius-control)',
                         backgroundColor: isChecked ? 'var(--rev-accent-soft)' : 'var(--rev-surface-inset)',
@@ -321,36 +317,38 @@ export default function NotifyPlayersModal({
                         color: isChecked ? 'var(--rev-text-bright)' : 'var(--rev-text-muted)',
                       }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleMember(m.user_id)}
-                        className="cursor-pointer"
-                        style={{ accentColor: 'var(--rev-accent)' }}
+                      <span
+                        className="w-2 h-2 rounded-full transition-colors"
+                        style={{
+                          backgroundColor: isChecked ? 'var(--rev-accent)' : 'var(--rev-border-strong)',
+                        }}
                       />
                       <span>{name}</span>
                       {m.user_id === leaderUserId && (
-                        <span className="text-[10px]" style={{ color: 'var(--rev-badge-warn)' }}>
-                          (You)
+                        <span className="text-[10px] opacity-80" style={{ color: 'var(--rev-badge-warn)' }}>
+                          You
                         </span>
                       )}
-                    </label>
+                    </button>
                   );
                 })}
               </div>
             )}
           </div>
 
+          {/* Mode Body */}
           {mode === 'prompt' ? (
-            <div className="rev-inset flex flex-col gap-2.5 p-3.5">
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--rev-text-muted)' }}>
-                Preset Actions
-              </span>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold" style={{ color: 'var(--rev-text-secondary)' }}>
-                  Roll
+            <div className="rev-inset flex flex-col gap-3 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--rev-text-muted)' }}>
+                  Skill Check Configuration
                 </span>
+                <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--rev-text-faint)' }}>
+                  Interactive Roll Prompt
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2.5 items-center">
                 <select
                   value={selectedSkill}
                   onChange={(e) => {
@@ -358,7 +356,7 @@ export default function NotifyPlayersModal({
                     setSelectedSkill(nextSkill);
                     applySkillRollPreset(nextSkill, challengeLevel);
                   }}
-                  className="flex-1 min-w-[140px] rev-input px-2.5 py-1.5 text-xs font-bold"
+                  className="rev-input px-3 py-2 text-xs sm:text-sm font-bold"
                   aria-label="Skill"
                 >
                   <optgroup label="Core Skills">
@@ -377,28 +375,31 @@ export default function NotifyPlayersModal({
                   </optgroup>
                 </select>
 
-                <span className="text-xs" style={{ color: 'var(--rev-text-muted)' }}>
-                  CL
-                </span>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={challengeLevel}
-                  onChange={(e) => {
-                    const parsed = Number.parseInt(e.target.value, 10);
-                    const nextLvl = Number.isFinite(parsed) ? Math.max(1, Math.min(20, parsed)) : 12;
-                    setChallengeLevel(nextLvl);
-                    applySkillRollPreset(selectedSkill, nextLvl);
-                  }}
-                  className="w-14 rev-input px-2 py-1.5 text-xs font-bold text-center tabular-nums"
-                  aria-label="Challenge Level"
-                />
+                <div className="flex items-center gap-2 justify-end">
+                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--rev-text-muted)' }}>
+                    Target CL
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={25}
+                    value={challengeLevel}
+                    onChange={(e) => {
+                      const parsed = Number.parseInt(e.target.value, 10);
+                      const nextLvl = Number.isFinite(parsed) ? Math.max(1, Math.min(25, parsed)) : 12;
+                      setChallengeLevel(nextLvl);
+                      applySkillRollPreset(selectedSkill, nextLvl);
+                    }}
+                    className="w-16 rev-input px-2 py-2 text-xs sm:text-sm font-bold text-center tabular-nums"
+                    aria-label="Challenge Level"
+                  />
+                </div>
               </div>
 
-              {/* CL Increment Pills (10, 12, 14, 16, 18, 20) */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--rev-text-muted)' }}>Suggested CL:</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-widest font-bold mr-1" style={{ color: 'var(--rev-text-faint)' }}>
+                  Suggested CL
+                </span>
                 {[10, 12, 14, 16, 18, 20].map((clVal) => (
                   <button
                     key={clVal}
@@ -407,7 +408,7 @@ export default function NotifyPlayersModal({
                       setChallengeLevel(clVal);
                       applySkillRollPreset(selectedSkill, clVal);
                     }}
-                    className={`px-2 py-0.5 rounded text-xs font-bold tabular-nums transition-colors ${
+                    className={`px-2.5 py-1 rounded text-xs font-bold tabular-nums transition-colors ${
                       challengeLevel === clVal ? 'rev-btn-primary' : 'rev-btn-secondary'
                     }`}
                   >
@@ -416,13 +417,13 @@ export default function NotifyPlayersModal({
                 ))}
               </div>
 
-              <div className="flex flex-wrap gap-1.5 pt-1">
+              <div className="pt-2 border-t rev-divider-subtle flex flex-wrap gap-1.5">
                 {QUICK_PRESETS.map(preset => (
                   <button
                     key={preset.label}
                     type="button"
                     onClick={() => applyQuickPreset(preset)}
-                    className="px-2.5 py-1 text-xs font-medium rev-btn-secondary"
+                    className="px-2.5 py-1 text-[11px] font-semibold rev-btn-secondary hover:opacity-100"
                   >
                     {preset.label}
                   </button>
@@ -430,12 +431,12 @@ export default function NotifyPlayersModal({
               </div>
             </div>
           ) : mode === 'give' ? (
-            <div className="rev-inset flex flex-col gap-3 p-3.5">
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--rev-text-muted)' }}>
-                Reward Resource & Amount
+            <div className="rev-inset flex flex-col gap-3 p-4">
+              <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--rev-text-muted)' }}>
+                Reward Grant
               </span>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -444,11 +445,11 @@ export default function NotifyPlayersModal({
                     setGrantAmount(nextAmt);
                     applyGiveDefaults('xp', nextAmt);
                   }}
-                  className={`flex-1 py-2 px-3 text-xs font-bold uppercase tracking-wider transition-colors ${
-                    grantResource === 'xp' ? 'rev-btn-primary' : 'rev-btn-secondary opacity-80'
+                  className={`py-2.5 px-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+                    grantResource === 'xp' ? 'rev-btn-primary shadow-sm' : 'rev-btn-secondary opacity-75'
                   }`}
                 >
-                  XP (Experience)
+                  Experience (XP)
                 </button>
                 <button
                   type="button"
@@ -458,18 +459,23 @@ export default function NotifyPlayersModal({
                     setGrantAmount(nextAmt);
                     applyGiveDefaults('dp', nextAmt);
                   }}
-                  className={`flex-1 py-2 px-3 text-xs font-bold uppercase tracking-wider transition-colors ${
-                    grantResource === 'dp' ? 'rev-btn-primary' : 'rev-btn-secondary opacity-80'
+                  className={`py-2.5 px-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+                    grantResource === 'dp' ? 'rev-btn-primary shadow-sm' : 'rev-btn-secondary opacity-75'
                   }`}
                 >
                   Destiny Points (DP)
                 </button>
               </div>
 
-              <div className="flex items-center gap-3">
-                <label className="text-xs font-bold" style={{ color: 'var(--rev-text-secondary)' }}>
-                  Amount to Give
-                </label>
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <div>
+                  <div className="text-xs font-bold" style={{ color: 'var(--rev-text-secondary)' }}>
+                    Grant Amount
+                  </div>
+                  <div className="text-[11px]" style={{ color: 'var(--rev-text-faint)' }}>
+                    Recipients can choose which character claims it
+                  </div>
+                </div>
                 <input
                   type="number"
                   min={1}
@@ -481,29 +487,26 @@ export default function NotifyPlayersModal({
                     setGrantAmount(nextAmt);
                     applyGiveDefaults(grantResource, nextAmt);
                   }}
-                  className="w-24 rev-input px-3 py-1.5 text-sm font-bold text-center tabular-nums"
+                  className="w-24 rev-input px-3 py-2 text-sm font-bold text-center tabular-nums"
                   aria-label="Grant Amount"
                 />
-                <span className="text-xs" style={{ color: 'var(--rev-text-muted)' }}>
-                  Players can Accept or Reject
-                </span>
               </div>
             </div>
           ) : (
-            <div className="rev-inset flex flex-col gap-2 p-3.5">
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--rev-text-muted)' }}>
+            <div className="rev-inset flex flex-col gap-1.5 p-4 border-l-2" style={{ borderLeftColor: 'var(--rev-accent)' }}>
+              <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--rev-accent-text)' }}>
                 Crisis Resolution Prompt
               </span>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--rev-text-secondary)' }}>
-                Sends a Resolve Crisis prompt to the selected players. Recipients can click Accept to open the Resolve Crisis dialogue for their character, or Reject to dismiss.
+                Dispatches an interactive Crisis prompt to selected players. Accepting opens the character&apos;s Resolve Crisis window immediately.
               </p>
             </div>
           )}
 
-          {/* Custom / Editable Title & Task */}
+          {/* Title & Message */}
           <div className="flex flex-col gap-3">
-            <label className="flex flex-col text-xs font-bold uppercase tracking-wider gap-1" style={{ color: 'var(--rev-text-muted)' }}>
-              Title
+            <label className="flex flex-col text-[11px] font-bold uppercase tracking-widest gap-1.5" style={{ color: 'var(--rev-text-muted)' }}>
+              Notification Title
               <input
                 type="text"
                 value={title}
@@ -519,7 +522,7 @@ export default function NotifyPlayersModal({
               />
             </label>
 
-            <label className="flex flex-col text-xs font-bold uppercase tracking-wider gap-1" style={{ color: 'var(--rev-text-muted)' }}>
+            <label className="flex flex-col text-[11px] font-bold uppercase tracking-widest gap-1.5" style={{ color: 'var(--rev-text-muted)' }}>
               Message
               <textarea
                 rows={3}
@@ -541,7 +544,7 @@ export default function NotifyPlayersModal({
             </label>
           </div>
 
-          <div className="flex gap-3 pt-2 border-t rev-divider">
+          <div className="flex gap-3 pt-3 border-t rev-divider">
             <button
               type="button"
               onClick={onClose}
@@ -553,7 +556,7 @@ export default function NotifyPlayersModal({
             <button
               type="submit"
               disabled={sending || selectedIds.size === 0 || !message.trim()}
-              className="flex-1 py-2.5 font-bold text-sm rev-btn-primary disabled:opacity-40"
+              className="flex-1 py-2.5 font-bold text-sm rev-btn-primary disabled:opacity-40 shadow-sm"
             >
               {sending
                 ? 'Sending...'
@@ -561,7 +564,7 @@ export default function NotifyPlayersModal({
                 ? 'Send Reward'
                 : mode === 'crisis'
                 ? 'Send Crisis'
-                : 'Send Notification'}
+                : 'Send Dispatch'}
             </button>
           </div>
         </form>

@@ -78,25 +78,14 @@ function formatCompendiumRequirements(
   entry: CompendiumEntry,
   sourceKind: 'basic' | 'class' | 'discipline',
   convictionReq: string | null,
-  fallbackRequires?: string
+  _fallbackRequires?: string
 ): string {
   const d = entry.data || {};
   const rank = Number(d.class_rank ?? 0);
   const rawReq = String(d.requirement || '').trim();
   const parts: string[] = [];
 
-  if (sourceKind === 'class') {
-    const classSource = String(d.source || '').trim();
-    // Preserve static "Requires: Berserker Rank 2" label style if present, otherwise use source + rank
-    const staticRankMatch = fallbackRequires?.match(/([A-Za-z]+\s+Rank\s+\d+)/i);
-    if (staticRankMatch) {
-      parts.push(staticRankMatch[1]);
-    } else if (classSource) {
-      parts.push(`${classSource} Rank ${rank}`);
-    } else {
-      parts.push(`Class Rank ${rank}`);
-    }
-  } else if (sourceKind === 'discipline') {
+  if (sourceKind === 'class' || sourceKind === 'discipline') {
     parts.push(`Class Rank ${rank}`);
   }
 

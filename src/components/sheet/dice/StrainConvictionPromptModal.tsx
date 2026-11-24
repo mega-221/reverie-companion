@@ -6,6 +6,7 @@ interface ConvictionChoice {
   name: string;
   season: string;
   rank: number;
+  slotIndex?: number;
 }
 
 interface StrainConvictionPromptModalProps {
@@ -25,7 +26,7 @@ export default function StrainConvictionPromptModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[410] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[410] rev-backdrop flex items-center justify-center p-4 animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-label="Strain Limit Conviction Check"
@@ -53,7 +54,7 @@ export default function StrainConvictionPromptModal({
                 const sColor = getSeasonHex(c.season);
                 return (
                   <button
-                    key={c.name}
+                    key={`${c.slotIndex ?? ''}-${c.name}`}
                     type="button"
                     onClick={() => onSelectConviction(c)}
                     className="w-full min-h-[48px] px-4 py-2.5 rounded-lg border border-white/15 bg-black/40 hover:bg-white/10 hover:border-red-500/60 flex items-center justify-between gap-3 transition-all text-left"

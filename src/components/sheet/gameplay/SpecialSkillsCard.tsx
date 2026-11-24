@@ -59,7 +59,7 @@ export default function SpecialSkillsCard({
       <div className={`sheet-panel p-4 h-full flex flex-col transition-all duration-200 ${!hasOrigin ? 'opacity-50 grayscale' : ''}`}>
         
         <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
-          <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Special Skills</h2>
+          <h2 className="text-xl font-spectral first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Special Skills</h2>
         </div>
 
         <div className="flex flex-col gap-2 flex-1">
@@ -96,8 +96,7 @@ export default function SpecialSkillsCard({
             const burdenPenalty = isAttributeAffectedByBurden(attr) ? globalBurdenPenalty : 0;
             const totalPenalty = injuryPenalty + burdenPenalty;
             const baseRank = Math.max(originMin, currentRank);
-            const effectiveRank = baseRank - totalPenalty;
-            const isPenalizedOrNegative = totalPenalty > 0 || effectiveRank < 0;
+            const isPenalizedOrNegative = totalPenalty > 0 || baseRank < 0;
             const affectingInjuries = char.data.trackers.injuries.filter(inj => inj.affectedAttributes.includes(attr.toUpperCase()));
             const penaltySources: string[] = [];
             if (injuryPenalty > 0) {
@@ -156,13 +155,13 @@ export default function SpecialSkillsCard({
                   <div className="flex items-center gap-2">
                     <span className="text-gray-500 font-bold text-sm">+</span>
                     {totalPenalty > 0 ? (
-                      <Tooltip text={`Base: ${baseRank} • Penalty: -${totalPenalty}\n${penaltySources.join('\n')}`} noBorder className="w-fit" disabled={!hasOrigin}>
+                      <Tooltip text={`Rank: ${baseRank} • Roll penalty: -${totalPenalty}\n${penaltySources.join('\n')}`} noBorder className="w-fit" disabled={!hasOrigin}>
                         <button 
                           onClick={() => setLevelUpTarget({ type: 'specialSkill', index: i })} 
                           disabled={!hasOrigin}
                           className={`rev-keep-color border bg-black/40 p-1 w-10 h-8 flex items-center justify-center rounded shadow-inner focus:outline-none font-bold text-base text-red-500 border-red-900 transition-colors ${hasOrigin ? 'hover:border-red-500' : 'cursor-not-allowed'}`}
                         >
-                          {effectiveRank}
+                          {baseRank}
                         </button>
                       </Tooltip>
                     ) : (
@@ -173,13 +172,13 @@ export default function SpecialSkillsCard({
                           isPenalizedOrNegative ? 'rev-keep-color text-red-500 border-red-900' : 'text-white border-gray-700'
                         } ${hasOrigin ? 'hover:border-red-500' : 'cursor-not-allowed'}`}
                       >
-                        {effectiveRank}
+                        {baseRank}
                       </button>
                     )}
                     <span className="text-gray-500 text-xs font-bold w-5 text-right">/ {maxSkill}</span>
                   </div>
 
-                  <div className="flex items-center gap-1 border-l border-gray-700 pl-2 ml-1">
+                  <div className="flex items-center gap-0.5 border-l border-gray-700 pl-2 ml-1">
                     <button
                       onClick={() => {
                         if (originMin > 0 || !hasOrigin) return;
@@ -187,13 +186,13 @@ export default function SpecialSkillsCard({
                         setIsSpecialSkillModalOpen(true);
                       }}
                       disabled={originMin > 0 || !hasOrigin}
-                      className={`text-gray-400 text-xs p-1 rounded transition-colors ${originMin === 0 && hasOrigin ? 'hover:text-white hover:bg-white/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`rev-icon-btn rev-icon-btn-edit text-sm ${originMin === 0 && hasOrigin ? '' : 'cursor-not-allowed opacity-50'}`}
                       title="Replace Skill"
                     >
                       ✎
                     </button>
                     <button
-                      className={`text-red-500 font-bold p-1 rounded text-sm shrink-0 transition-colors ${originMin === 0 && hasOrigin ? 'hover:text-red-400 hover:bg-red-500/15' : 'cursor-not-allowed opacity-50'}`}
+                      className={`rev-icon-btn rev-icon-btn-danger text-lg ${originMin === 0 && hasOrigin ? '' : 'cursor-not-allowed opacity-50'}`}
                       disabled={originMin > 0 || !hasOrigin}
                       onClick={() => handleDelete(i, s.name)}
                       title="Remove Skill"

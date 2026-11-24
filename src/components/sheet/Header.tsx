@@ -56,6 +56,9 @@ export default function Header({
     query?: string;
   } | null>(null);
 
+  const [headerHeight, setHeaderHeight] = useState(58);
+
+  const fixedHeaderRef = useRef<HTMLElement | null>(null);
   const headerBarRef = useRef<HTMLDivElement | null>(null);
   const leftMeasureRef = useRef<HTMLDivElement | null>(null);
   const rightControlsRef = useRef<HTMLDivElement | null>(null);
@@ -176,12 +179,24 @@ export default function Header({
 
   useLayoutEffect(() => {
     measureHeaderFit();
+    const headerEl = fixedHeaderRef.current;
     const bar = headerBarRef.current;
     const leftEl = leftMeasureRef.current;
     const rightEl = rightControlsRef.current;
     if (!bar) return;
 
-    const observer = new ResizeObserver(() => measureHeaderFit());
+    const updateHeight = () => {
+      if (fixedHeaderRef.current) {
+        setHeaderHeight(Math.ceil(fixedHeaderRef.current.getBoundingClientRect().height));
+      }
+    };
+    updateHeight();
+
+    const observer = new ResizeObserver(() => {
+      measureHeaderFit();
+      updateHeight();
+    });
+    if (headerEl) observer.observe(headerEl);
     observer.observe(bar);
     if (leftEl) observer.observe(leftEl);
     if (rightEl) observer.observe(rightEl);
@@ -296,7 +311,8 @@ export default function Header({
 
   return (
     <>
-      <header className="sticky top-0 z-40 rev-header-bar shadow-md w-full transition-colors duration-300">
+      <div className="w-full shrink-0" style={{ height: headerHeight > 0 ? headerHeight : 58 }} aria-hidden="true" />
+      <header ref={fixedHeaderRef} className="fixed top-0 left-0 right-0 z-40 rev-header-bar shadow-md w-full transition-colors duration-300">
         <div
           ref={headerBarRef}
           className="relative w-full px-2.5 sm:px-4 py-2.5 flex justify-between items-center gap-1.5 sm:gap-3"
@@ -313,7 +329,7 @@ export default function Header({
               </button>
               <div className="w-px h-5 shrink-0" style={{ backgroundColor: 'var(--rev-header-border)' }}></div>
               
-              <h1 className="text-base sm:text-xl font-spectral first-letter:font-cinzelDeco font-bold truncate min-w-0">
+              <h1 className="text-base sm:text-xl font-spectral font-bold truncate min-w-0">
                 {char.name || 'Unnamed Character'}
               </h1>
 
@@ -672,7 +688,7 @@ export default function Header({
 
       {vitalsOpen && createPortal(
         <div
-          className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4"
           onClick={() => setVitalsOpen(false)}
         >
           <div
@@ -681,7 +697,7 @@ export default function Header({
           >
             <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
               <h2 className="font-bold text-xl text-gray-200">Vitals</h2>
-              <button onClick={() => setVitalsOpen(false)} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
+              <button onClick={() => setVitalsOpen(false)} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
             </div>
             <div className="p-4 overflow-y-auto flex flex-col gap-3">
               <VitalsCard char={char} updateTracker={updateTracker} />

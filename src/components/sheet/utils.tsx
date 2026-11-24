@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import {
   ATTRIBUTE_NAMES,
   ATTRIBUTE_DESCRIPTIONS,
@@ -9,6 +7,8 @@ import {
   CORE_SKILLS,
   SPECIAL_SKILLS,
 } from '../../constants/reverie';
+import { Tooltip } from '../common/Tooltip';
+import type { Character } from '../../types';
 
 export {
   ATTRIBUTE_NAMES,
@@ -18,6 +18,7 @@ export {
   SEASONS,
   CORE_SKILLS,
   SPECIAL_SKILLS,
+  Tooltip,
 };
 
 export const CORE_SKILL_DESCRIPTIONS: Record<string, string> = {
@@ -79,7 +80,7 @@ export const getMaxAttribute = (tier: number) => tier >= 5 ? 4 : tier >= 3 ? 3 :
 export const getMaxAttributePoints = (tier: number) => Math.min(5, Math.max(0, tier));
 export const getSpentAttributePoints = (attributes: { grt: number, ref: number, int: number, psy: number }) => (attributes.grt - 1) + (attributes.ref - 1) + (attributes.int - 1) + (attributes.psy - 1);
 
-export const getMinSkillRank = (skillName: string, char: any) => {
+export const getMinSkillRank = (skillName: string, char: Pick<Character, 'data'>) => {
   const origin = char?.data.identity.origin;
   if (!origin) return 0;
   let minRank = 0;
@@ -132,45 +133,10 @@ export const getTypeStyle = (type?: string) => {
 };
 
 export const SectionHeader = ({ title }: { title: string }) => (
-  <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">
+  <h2 className="text-xl mb-4 border-b border-gray-700 pb-2 font-spectral first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200 shrink-0">
     {title}
   </h2>
 );
-
-export const Tooltip = ({ 
-  text, children, className = "w-full", noBorder = false, disabled = false, noTruncate = false 
-}: { 
-  text: string, children: React.ReactNode, className?: string, noBorder?: boolean, disabled?: boolean, noTruncate?: boolean 
-}) => {
-  const [coords, setCoords] = useState({ x: 0, y: 0 });
-  const [show, setShow] = useState(false);
-  
-  if (disabled) {
-    return (
-      <div className={`inline-flex items-center ${className}`}>
-        <div className={`${noTruncate ? 'w-full' : 'truncate w-full'} ${!noBorder ? 'border-b border-dotted border-gray-500' : ''}`}>{children}</div>
-      </div>
-    );
-  }
-
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = Math.max(140, Math.min(window.innerWidth - 140, rect.left + rect.width / 2));
-    setCoords({ x, y: rect.top }); setShow(true);
-  };
-  return (
-    <div className={`relative inline-flex items-center cursor-help ${className}`} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShow(false)}>
-      <div className={`${noTruncate ? 'w-full' : 'truncate w-full'} ${!noBorder ? 'border-b border-dotted border-gray-500' : ''}`}>{children}</div>
-      {show && typeof document !== 'undefined' && createPortal(
-        <div className="rev-dark-card fixed z-[9999] w-64 -translate-x-1/2 -translate-y-full mb-2 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl pointer-events-none text-center leading-tight normal-case font-normal italic whitespace-pre-line" style={{ left: coords.x, top: coords.y - 6 }}>
-          {text || 'No description available.'}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
-        </div>,
-        document.body
-      )}
-    </div>
-  );
-};
 
 export const ResourceBar = ({ current, max, color, overLimitColor }: { current: number, max: number, color: string, overLimitColor?: string }) => {
   const overLimit = Math.max(0, current - max);

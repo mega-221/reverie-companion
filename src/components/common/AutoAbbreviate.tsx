@@ -84,11 +84,11 @@ export function AutoAbbreviate({ full, short, group, className = '', title }: Au
     const measure = measureRef.current;
     if (!container || !measure) return;
 
-    const availableWidth = container.clientWidth;
+    const availableWidth = container.getBoundingClientRect().width;
     if (availableWidth <= 0) return;
 
-    const fullWidth = Math.ceil(measure.getBoundingClientRect().width);
-    const overflows = fullWidth > availableWidth;
+    const fullWidth = measure.getBoundingClientRect().width;
+    const overflows = fullWidth > availableWidth + 0.5;
     setSelfUseShort(overflows);
     if (group) {
       setGroupMemberOverflow(group, memberId, overflows);

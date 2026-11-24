@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { PartyNotificationPayload } from '../../types';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { getItemDisplayLabel } from '../../utils/itemTransfer';
 
 export type GiveTargetCharacter = {
   id: string;
@@ -15,6 +16,7 @@ export default function PartyNotificationPopup({
   giveTargets,
   onRespondGive,
   onRespondCrisis,
+  onRespondItemTransfer,
   onInitiateRoll,
   onDismiss,
 }: {
@@ -30,6 +32,10 @@ export default function PartyNotificationPopup({
     notification: PartyNotificationPayload,
     accepted: boolean,
     targetCharacterId?: string
+  ) => Promise<void> | void;
+  onRespondItemTransfer?: (
+    notification: PartyNotificationPayload,
+    accepted: boolean
   ) => Promise<void> | void;
   onInitiateRoll?: (skillName: string, challengeLevel: number) => void;
   onDismiss: (id: string) => void;
@@ -83,7 +89,8 @@ export default function PartyNotificationPopup({
     typeof rendered.grantAmount === 'number' &&
     rendered.grantAmount > 0;
   const isCrisis = rendered?.type === 'crisis';
-  const isActionable = isGive || isCrisis;
+  const isItemTransfer = rendered?.type === 'item_transfer' && Boolean(rendered.itemTransfer);
+  const isActionable = isGive || isCrisis || isItemTransfer;
 
   const handleClose = () => {
     if (!rendered || closing || responding) return;
@@ -101,7 +108,9 @@ export default function PartyNotificationPopup({
     setResponding(true);
     const targetId = accepted ? selectedTargetId || giveTargets?.[0]?.id : undefined;
     try {
-      if (isCrisis) {
+      if (isItemTransfer) {
+        await onRespondItemTransfer?.(rendered, accepted);
+      } else if (isCrisis) {
         await onRespondCrisis?.(rendered, accepted, targetId);
       } else {
         await onRespondGive?.(rendered, accepted, targetId);
@@ -113,7 +122,14 @@ export default function PartyNotificationPopup({
         onDismiss(idToDismiss);
       }, 300);
     } catch (err: any) {
-      setActionError(err?.message || (isCrisis ? 'Could not open Resolve Crisis.' : 'Could not apply reward.'));
+      setActionError(
+        err?.message ||
+          (isItemTransfer
+            ? 'Could not process item transfer.'
+            : isCrisis
+            ? 'Could not open Resolve Crisis.'
+            : 'Could not apply reward.')
+      );
       setResponding(false);
     }
   };
@@ -122,7 +138,8 @@ export default function PartyNotificationPopup({
 
   if (!rendered) return null;
 
-  const canAcceptAction = !responding && (!giveTargets || giveTargets.length > 0);
+  const canAcceptAction =
+    !responding && (isItemTransfer || !giveTargets || giveTargets.length > 0);
   const resourceLabel =
     rendered.grantResource === 'dp'
       ? rendered.grantAmount === 1
@@ -138,10 +155,9 @@ export default function PartyNotificationPopup({
       onClick={() => {
         if (!isActionable) handleClose();
       }}
-      className={`fixed inset-0 z-[290] flex items-center justify-center p-3 sm:p-4 backdrop-blur-md overflow-y-auto no-scrollbar transition-opacity duration-300 ease-out ${
+      className={`fixed inset-0 z-[290] flex items-center justify-center p-3 sm:p-4 rev-backdrop overflow-y-auto no-scrollbar transition-opacity duration-300 ease-out ${
         visible ? 'opacity-100' : 'opacity-0'
       } ${closing ? 'pointer-events-none' : ''}`}
-      style={{ backgroundColor: 'var(--rev-modal-backdrop)' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -216,6 +232,23 @@ export default function PartyNotificationPopup({
                   <strong style={{ color: 'var(--rev-text-bright)' }}>{giveTargets[0].name}</strong>
                 </div>
               )}
+            </div>
+          )}
+
+          {isItemTransfer && rendered.itemTransfer && (
+            <div className="rev-inset flex flex-col gap-2 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--rev-text-muted)' }}>
+                  Item Offered
+                </span>
+                <span className="font-bold text-sm" style={{ color: 'var(--rev-accent-text)' }}>
+                  {rendered.itemTransfer.item.qty}× {getItemDisplayLabel(rendered.itemTransfer.item)}
+                </span>
+              </div>
+              <div className="text-xs flex items-center justify-between gap-2" style={{ color: 'var(--rev-text-muted)' }}>
+                <span>Recipient Character:</span>
+                <strong style={{ color: 'var(--rev-text-bright)' }}>{rendered.itemTransfer.toCharName}</strong>
+              </div>
             </div>
           )}
 
@@ -307,7 +340,7 @@ export default function PartyNotificationPopup({
                 onClick={() => handleActionDecision(false)}
                 className="flex-1 sm:flex-initial px-4 py-2 text-sm font-bold rev-btn-secondary disabled:opacity-40"
               >
-                Reject
+                {isItemTransfer ? 'Return' : 'Reject'}
               </button>
               <button
                 type="button"
@@ -315,7 +348,13 @@ export default function PartyNotificationPopup({
                 onClick={() => handleActionDecision(true)}
                 className="flex-1 sm:flex-initial px-5 py-2 text-sm font-bold rev-btn-primary disabled:opacity-40"
               >
-                {responding ? (isCrisis ? 'Opening...' : 'Applying...') : 'Accept'}
+                {responding
+                  ? isCrisis
+                    ? 'Opening...'
+                    : isItemTransfer
+                    ? 'Claiming...'
+                    : 'Applying...'
+                  : 'Accept'}
               </button>
             </div>
           ) : (

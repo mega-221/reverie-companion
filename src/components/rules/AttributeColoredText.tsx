@@ -1,9 +1,10 @@
 import React from 'react';
+import { KEYWORD_CSS_VAR, type KeywordMatchMode } from '../../data/keywords';
 import {
-  KEYWORD_CSS_VAR,
-  splitTextByKeywords,
-  type KeywordMatchMode,
-} from '../../data/keywords';
+  ABBREV_GLOSSARY,
+  resolveAbbreviationGlossary,
+  splitTextWithGlossary,
+} from '../../data/glossary';
 import {
   ATTRIBUTE_CSS_VAR,
   CONVICTION_TERM_MAP,
@@ -13,6 +14,7 @@ import {
   getAttributeForTerm,
 } from './attributeColors';
 import { HighlightedText } from './HighlightedText';
+import { Tooltip } from '../common/Tooltip';
 
 interface AttributeColoredTextProps {
   text: string;
@@ -22,6 +24,49 @@ interface AttributeColoredTextProps {
   enableConvictionColors?: boolean;
   keywordMode?: KeywordMatchMode;
   allowStealthStatusInProse?: boolean;
+  enableGlossaryTooltips?: boolean;
+}
+
+function renderPlainWithAbbreviations(
+  plainText: string,
+  keyPrefix: string,
+  query?: string,
+  enableGlossaryTooltips = true
+): React.ReactNode {
+  if (!enableGlossaryTooltips || !plainText) {
+    return <HighlightedText key={keyPrefix} text={plainText} query={query} />;
+  }
+
+  const abbrSegments = splitTextWithGlossary(plainText, {
+    keywordMode: 'off',
+    includeAbbreviations: true,
+  });
+
+  if (abbrSegments.length === 1 && !abbrSegments[0].glossary) {
+    return <HighlightedText key={keyPrefix} text={plainText} query={query} />;
+  }
+
+  return (
+    <React.Fragment key={keyPrefix}>
+      {abbrSegments.map((seg, idx) =>
+        seg.glossary ? (
+          <Tooltip
+            key={`${keyPrefix}-ab-${idx}`}
+            inline
+            noTruncate
+            title={seg.glossary.title}
+            text={seg.glossary.description}
+          >
+            <span className="font-semibold">
+              <HighlightedText text={seg.text} query={query} />
+            </span>
+          </Tooltip>
+        ) : (
+          <HighlightedText key={`${keyPrefix}-pl-${idx}`} text={seg.text} query={query} />
+        )
+      )}
+    </React.Fragment>
+  );
 }
 
 function renderNonKeywordSegment(
@@ -32,12 +77,19 @@ function renderNonKeywordSegment(
     enableAttributeColors: boolean;
     enableSeasonColors: boolean;
     enableConvictionColors: boolean;
+    enableGlossaryTooltips: boolean;
   }
 ): React.ReactNode[] {
-  const { query, enableAttributeColors, enableSeasonColors, enableConvictionColors } = options;
+  const {
+    query,
+    enableAttributeColors,
+    enableSeasonColors,
+    enableConvictionColors,
+    enableGlossaryTooltips,
+  } = options;
 
   if (!enableAttributeColors && !enableSeasonColors && !enableConvictionColors) {
-    return [<HighlightedText key={`${keyPrefix}-plain`} text={segmentText} query={query} />];
+    return [renderPlainWithAbbreviations(segmentText, `${keyPrefix}-plain`, query, enableGlossaryTooltips)];
   }
 
   const nodes: React.ReactNode[] = [];
@@ -51,16 +103,11 @@ function renderNonKeywordSegment(
 
     let colorVar: string | null = null;
 
-    // 1. Convictions take priority when inside The Seasons / Convictions (e.g. "Survival" -> Halice green)
     if (enableConvictionColors && CONVICTION_TERM_MAP[matchedWord]) {
       colorVar = SEASON_CSS_VAR[CONVICTION_TERM_MAP[matchedWord]];
-    }
-    // 2. Proper noun Seasons (Vamor, Bruma, Trumst, Halice)
-    else if (enableSeasonColors && SEASON_TERM_MAP[matchedWord]) {
+    } else if (enableSeasonColors && SEASON_TERM_MAP[matchedWord]) {
       colorVar = SEASON_CSS_VAR[SEASON_TERM_MAP[matchedWord]];
-    }
-    // 3. Core/Special Skills & Attributes
-    else if (enableAttributeColors) {
+    } else if (enableAttributeColors) {
       const attrKey = getAttributeForTerm(matchedWord);
       if (attrKey) {
         colorVar = ATTRIBUTE_CSS_VAR[attrKey];
@@ -71,17 +118,27 @@ function renderNonKeywordSegment(
 
     if (match.index > lastIndex) {
       nodes.push(
-        <HighlightedText
-          key={`${keyPrefix}-t-${keyCounter++}`}
-          text={segmentText.slice(lastIndex, match.index)}
-          query={query}
-        />
+        renderPlainWithAbbreviations(
+          segmentText.slice(lastIndex, match.index),
+          `${keyPrefix}-t-${keyCounter++}`,
+          query,
+          enableGlossaryTooltips
+        )
       );
     }
 
-    nodes.push(
+    const abbrGlossary =
+      enableGlossaryTooltips
+        ? resolveAbbreviationGlossary(
+            matchedWord,
+            segmentText,
+            match.index,
+            UNIFIED_TERM_MATCH_REGEX.lastIndex
+          ) || ABBREV_GLOSSARY[matchedWord]
+        : null;
+
+    const coloredSpan = (
       <span
-        key={`${keyPrefix}-c-${keyCounter++}`}
         className="rev-keep-color font-semibold"
         style={{ color: colorVar }}
       >
@@ -89,16 +146,38 @@ function renderNonKeywordSegment(
       </span>
     );
 
+    if (abbrGlossary) {
+      nodes.push(
+        <Tooltip
+          key={`${keyPrefix}-c-${keyCounter++}`}
+          inline
+          noTruncate
+          title={abbrGlossary.title}
+          text={abbrGlossary.description}
+          underlineColor={colorVar}
+        >
+          {coloredSpan}
+        </Tooltip>
+      );
+    } else {
+      nodes.push(
+        <React.Fragment key={`${keyPrefix}-c-${keyCounter++}`}>
+          {coloredSpan}
+        </React.Fragment>
+      );
+    }
+
     lastIndex = UNIFIED_TERM_MATCH_REGEX.lastIndex;
   }
 
   if (lastIndex < segmentText.length) {
     nodes.push(
-      <HighlightedText
-        key={`${keyPrefix}-t-${keyCounter++}`}
-        text={segmentText.slice(lastIndex)}
-        query={query}
-      />
+      renderPlainWithAbbreviations(
+        segmentText.slice(lastIndex),
+        `${keyPrefix}-t-${keyCounter++}`,
+        query,
+        enableGlossaryTooltips
+      )
     );
   }
 
@@ -111,25 +190,46 @@ export const AttributeColoredText: React.FC<AttributeColoredTextProps> = ({
   enableAttributeColors = true,
   enableSeasonColors = true,
   enableConvictionColors = false,
-  keywordMode = 'prose',
+  keywordMode = 'off',
   allowStealthStatusInProse = false,
+  enableGlossaryTooltips = true,
 }) => {
   if (!text) return null;
 
-  const segments = splitTextByKeywords(text, keywordMode, allowStealthStatusInProse);
+  const segments = splitTextWithGlossary(text, {
+    keywordMode,
+    allowStealthStatusInProse,
+    includeAbbreviations: false,
+  });
 
   return (
     <>
       {segments.map((seg, idx) => {
-        if (seg.keyword) {
-          return (
+        if (seg.keyword && seg.glossary) {
+          const kwNode = (
             <strong
-              key={`kw-${idx}`}
               className="rev-keep-color font-bold"
               style={{ color: KEYWORD_CSS_VAR[seg.keyword] }}
             >
               <HighlightedText text={seg.text} query={query} />
             </strong>
+          );
+
+          if (!enableGlossaryTooltips) {
+            return <React.Fragment key={`kw-${idx}`}>{kwNode}</React.Fragment>;
+          }
+
+          return (
+            <Tooltip
+              key={`kw-${idx}`}
+              inline
+              noTruncate
+              title={seg.glossary.title}
+              text={seg.glossary.description}
+              underlineColor={KEYWORD_CSS_VAR[seg.keyword]}
+            >
+              {kwNode}
+            </Tooltip>
           );
         }
 
@@ -140,6 +240,7 @@ export const AttributeColoredText: React.FC<AttributeColoredTextProps> = ({
               enableAttributeColors,
               enableSeasonColors,
               enableConvictionColors,
+              enableGlossaryTooltips,
             })}
           </React.Fragment>
         );

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { Character, CharacterData, InventoryItem } from '../../../types';
 import { useCompendium } from '../../../CompendiumContext';
 import {
   burdenMax,
@@ -13,6 +14,18 @@ import { ARMOUR_SUBTYPES, ARMOUR_CATEGORY_RULES, type ArmourCategory } from '../
 import { KeywordText } from '../../common/KeywordText';
 import { equipItem as sharedEquipItem, unequipSlot as sharedUnequipSlot, equipExtraItem, unequipExtraSlot } from '../../../inventory';
 import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
+import {
+  addTransferredItemToData,
+  deductTransferredItemFromData,
+  deliverTransferredItemToEditableCharacter,
+  dispatchPartyItemTransferOffer,
+  getItemDisplayLabel,
+  loadPartyTransferTargets,
+  postPartyDirectTransferNotice,
+  type PartyTransferTarget,
+} from '../../../utils/itemTransfer';
+import { sendEphemeralBroadcast } from '../../../hooks/useVisibilityRealtime';
+import { vigorMax, strainMax, dpMax, apMax } from '../../../calc';
 
 const WEAPON_SUBTYPES = ['Sword', 'Axe', 'Blunt', 'Polearm', 'Bow', 'Stealth', 'Pistol', 'Rifle', 'Eidoloscope', 'Leech', 'Instrument', 'Focus', 'Unconventional'] as const;
 
@@ -37,7 +50,30 @@ const WEAPON_FIELD_MAP: Record<string, WeaponFieldFlags> = {
   Unconventional: { req: true, dmg: true, range: true, effect: true, value: true, burden: true },
 };
 
-export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
+type TransferSource =
+  | 'items'
+  | 'possessions'
+  | { slot: 'mainHand' | 'offHand' | 'armour' | 'extra'; extraIndex?: number };
+
+export default function InventoryModal({
+  char,
+  patch,
+  isOpen,
+  onClose,
+  currentUserId,
+  currentUsername = '',
+  readOnly = false,
+  onTransferPersist,
+}: {
+  char: Character;
+  patch: (p: Partial<CharacterData>) => void;
+  isOpen: boolean;
+  onClose: () => void;
+  currentUserId?: string;
+  currentUsername?: string;
+  readOnly?: boolean;
+  onTransferPersist?: (p: Partial<CharacterData>) => Promise<boolean>;
+}) {
   const { entries, getEntryByName } = useCompendium();
   
   const [mainTab, setMainTab] = useState<'backpack' | 'possessions' | 'database' | 'custom'>('backpack');
@@ -60,9 +96,277 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
   const [customSubtype, setCustomSubtype] = useState('');
   const [customExtra, setCustomExtra] = useState<Record<string, any>>({});
 
+  const [transferTargets, setTransferTargets] = useState<PartyTransferTarget[]>([]);
+  const [loadingTargets, setLoadingTargets] = useState(false);
+  const [transferPanelKey, setTransferPanelKey] = useState<string | null>(null);
+  const [selectedTargetKey, setSelectedTargetKey] = useState<string>('');
+  const [transferQty, setTransferQty] = useState<number>(1);
+  const [transferring, setTransferring] = useState(false);
+  const [transferFeedback, setTransferFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+
   useBodyScrollLock(Boolean(isOpen));
 
+  useEffect(() => {
+    if (!isOpen || !char?.id) {
+      setTransferPanelKey(null);
+      setTransferFeedback(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingTargets(true);
+    loadPartyTransferTargets(char.id, currentUserId)
+      .then((list) => {
+        if (cancelled) return;
+        setTransferTargets(list);
+        if (list.length > 0) {
+          setSelectedTargetKey((prev) =>
+            prev && list.some((t) => `${t.partyId}:${t.characterId}` === prev)
+              ? prev
+              : `${list[0].partyId}:${list[0].characterId}`
+          );
+        } else {
+          setSelectedTargetKey('');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTargets(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, char?.id, currentUserId]);
+
   if (!isOpen) return null;
+
+  const persistTransferPatch = async (p: Partial<CharacterData>): Promise<boolean> => {
+    if (onTransferPersist) {
+      return onTransferPersist(p);
+    }
+    patch(p);
+    return true;
+  };
+
+  const openTransferPanel = (panelKey: string, maxQty: number) => {
+    setTransferFeedback(null);
+    if (transferPanelKey === panelKey) {
+      setTransferPanelKey(null);
+      return;
+    }
+    setTransferQty(Math.min(1, Math.max(1, maxQty)));
+    setTransferPanelKey(panelKey);
+  };
+
+  const handleConfirmTransfer = async (
+    source: TransferSource,
+    itemId: string,
+    requestedQty: number
+  ) => {
+    if (readOnly || transferring) return;
+    const target = transferTargets.find((t) => `${t.partyId}:${t.characterId}` === selectedTargetKey);
+    if (!target) {
+      setTransferFeedback({ kind: 'error', message: 'Select a party character first.' });
+      return;
+    }
+    const senderUserId = currentUserId || char.user_id;
+    if (!senderUserId) {
+      setTransferFeedback({ kind: 'error', message: 'Sign in to transfer items between party characters.' });
+      return;
+    }
+
+    const deducted = deductTransferredItemFromData(char.data, source, itemId, requestedQty);
+    if (!deducted) {
+      setTransferFeedback({ kind: 'error', message: 'Item could not be prepared for transfer.' });
+      return;
+    }
+
+    setTransferring(true);
+    setTransferFeedback(null);
+    const label = getItemDisplayLabel(deducted.transferredItem);
+
+    try {
+      if (target.canDirectEdit) {
+        const delivery = await deliverTransferredItemToEditableCharacter({
+          targetCharacterId: target.characterId,
+          transferredItem: deducted.transferredItem,
+          actorUserId: senderUserId,
+        });
+        if (!delivery.ok) {
+          setTransferFeedback({ kind: 'error', message: delivery.error || 'Could not deliver item.' });
+          return;
+        }
+
+        const saved = await persistTransferPatch(deducted.patch);
+        if (!saved) {
+          setTransferFeedback({ kind: 'error', message: 'Delivered to recipient, but failed to save sender update. Click Save!' });
+          return;
+        }
+
+        if (delivery.targetChar) {
+          const td = delivery.targetChar.data;
+          sendEphemeralBroadcast(`party-sync:${target.partyId}`, 'party:vitals', {
+            character_id: delivery.targetChar.id,
+            name: delivery.targetChar.name,
+            vigor: td.trackers.vigor,
+            vigorMax: vigorMax(td),
+            strain: td.trackers.strain,
+            strainMax: strainMax(td),
+            dp: td.trackers.dp,
+            dpMax: dpMax(td),
+            ap: td.trackers.ap ?? 0,
+            apMax: apMax(td, getEntryByName),
+            updated_at: delivery.targetChar.updated_at,
+          });
+        }
+
+        await postPartyDirectTransferNotice({
+          partyId: target.partyId,
+          senderUserId,
+          senderUsername: currentUsername || char.name || 'Player',
+          fromCharName: char.name || 'Unnamed Character',
+          toCharName: target.characterName,
+          item: deducted.transferredItem,
+        });
+
+        setTransferPanelKey(null);
+        setTransferFeedback({
+          kind: 'success',
+          message: `Transferred ${deducted.transferredItem.qty}× ${label} to ${target.characterName}.`,
+        });
+      } else {
+        const saved = await persistTransferPatch(deducted.patch);
+        if (!saved) {
+          setTransferFeedback({ kind: 'error', message: 'Could not save character before sending transfer.' });
+          return;
+        }
+
+        const offerRes = await dispatchPartyItemTransferOffer({
+          target,
+          senderChar: char,
+          senderUserId,
+          senderUsername: currentUsername || char.name || 'Player',
+          transferredItem: deducted.transferredItem,
+        });
+
+        if (!offerRes.ok) {
+          const rollback = addTransferredItemToData(deducted.nextData, deducted.transferredItem);
+          await persistTransferPatch(rollback.patch);
+          setTransferFeedback({ kind: 'error', message: offerRes.error || 'Failed to send transfer offer.' });
+          return;
+        }
+
+        setTransferPanelKey(null);
+        setTransferFeedback({
+          kind: 'success',
+          message: `Sent ${deducted.transferredItem.qty}× ${label} to ${target.characterName} (${target.ownerUsername} must accept).`,
+        });
+      }
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  const renderTransferSection = (
+    panelKey: string,
+    source: TransferSource,
+    item: InventoryItem,
+    maxQty: number,
+    isEquippedWarning = false
+  ) => {
+    if (readOnly || transferPanelKey !== panelKey) return null;
+    return (
+      <div className="mt-3 p-3 rounded-lg bg-black/50 border border-gray-700 flex flex-col gap-2.5 animate-in fade-in duration-150">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-300">
+            Transfer to Party Member
+          </span>
+          <button
+            type="button"
+            onClick={() => setTransferPanelKey(null)}
+            className="text-xs text-gray-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10"
+          >
+            Cancel
+          </button>
+        </div>
+
+        {loadingTargets ? (
+          <p className="text-xs text-gray-400 italic">Loading party characters...</p>
+        ) : transferTargets.length === 0 ? (
+          <p className="text-xs text-gray-400 italic">
+            No other party characters found. Share this character and teammates&apos; characters into a Party first.
+          </p>
+        ) : (
+          <>
+            {isEquippedWarning && (
+              <p className="text-[11px] text-amber-300 bg-amber-950/40 border border-amber-800/60 rounded px-2.5 py-1.5">
+                Transferring this equipped item will unequip it first.
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={selectedTargetKey}
+                onChange={(e) => setSelectedTargetKey(e.target.value)}
+                disabled={transferring}
+                className="flex-1 min-w-0 bg-black/60 border border-gray-600 rounded px-2.5 py-2 text-xs font-bold text-gray-200 focus:outline-none focus:border-red-500"
+              >
+                {transferTargets.map((t) => {
+                  const key = `${t.partyId}:${t.characterId}`;
+                  return (
+                    <option key={key} value={key}>
+                      {t.characterName} ({t.canDirectEdit ? 'Your / Editable' : t.ownerUsername} · {t.partyName})
+                    </option>
+                  );
+                })}
+              </select>
+
+              {maxQty > 1 && (
+                <div className="flex items-center bg-black/60 border border-gray-600 rounded shrink-0 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    disabled={transferring || transferQty <= 1}
+                    onClick={() => setTransferQty((q) => Math.max(1, q - 1))}
+                    className="px-2.5 py-1.5 text-gray-300 hover:text-white disabled:opacity-40"
+                  >
+                    −
+                  </button>
+                  <span className="px-2.5 text-xs font-bold tabular-nums text-gray-100">
+                    {transferQty} / {maxQty}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={transferring || transferQty >= maxQty}
+                    onClick={() => setTransferQty((q) => Math.min(maxQty, q + 1))}
+                    className="px-2.5 py-1.5 text-gray-300 hover:text-white disabled:opacity-40"
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                disabled={transferring || !selectedTargetKey}
+                onClick={() => handleConfirmTransfer(source, item.id, maxQty > 1 ? transferQty : 1)}
+                className="px-4 py-2 rounded bg-red-900 hover:bg-red-800 disabled:opacity-40 text-white text-xs font-bold transition-colors shrink-0"
+              >
+                {transferring ? 'Sending...' : 'Send Item'}
+              </button>
+            </div>
+            {(() => {
+              const target = transferTargets.find((t) => `${t.partyId}:${t.characterId}` === selectedTargetKey);
+              if (!target) return null;
+              return (
+                <p className="text-[11px] text-gray-400">
+                  {target.canDirectEdit
+                    ? `Delivers directly to ${target.characterName}'s Backpack.`
+                    : `Sends a transfer offer to ${target.ownerUsername} (also claimable in ${target.partyName} chat).`}
+                </p>
+              );
+            })()}
+          </>
+        )}
+      </div>
+    );
+  };
 
   const currentBurden = calculateBurden(char.data, getEntryByName);
   const maxBurden = burdenMax(char.data);
@@ -343,10 +647,10 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
     const reqDisplay = data.req && data.req !== '-' ? data.req : isArmour && reqCarry > 0 ? `Carry ${reqCarry}` : '';
     const resistsVal = data.resists && data.resists !== '-' ? data.resists : null;
     
-    const stats = [];
+    const stats: { label: string; value: React.ReactNode; color: string }[] = [];
     if (isArmour && (armourCat || data.subtype)) stats.push({ label: 'Category', value: armourCat || data.subtype, color: 'text-gray-200' });
     if (data.ap !== undefined) stats.push({ label: 'AP', value: data.ap, color: 'text-cyan-400' });
-    if (resistsVal) stats.push({ label: 'Resists', value: resistsVal, color: 'text-amber-300' });
+    if (resistsVal) stats.push({ label: 'Resists', value: <KeywordText text={String(resistsVal)} mode="effect" />, color: 'text-amber-300' });
     if (reqDisplay) stats.push({ label: 'Requires', value: reqDisplay, color: isArmour && !meetsCarry ? 'rev-keep-color text-red-400' : 'text-gray-300' });
     if (data.dmg) stats.push({ label: 'Damage', value: data.dmg, color: 'text-red-400' });
     if (data.range) stats.push({ label: 'Range', value: data.range, color: 'text-green-400' });
@@ -376,7 +680,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
               ? 'rev-keep-color bg-red-950/40 border-red-800/80 text-red-300'
               : 'bg-black/30 border-gray-700 text-gray-300'
           }`}>
-            <div>{ARMOUR_CATEGORY_RULES[armourCat].summary}</div>
+            <div><KeywordText text={ARMOUR_CATEGORY_RULES[armourCat].summary} mode="effect" /></div>
             {!meetsCarry && (
               <div className="font-bold text-red-400 mt-1">
                 Carry {reqCarry} unmet ({carryRank}/{reqCarry}): -{combatPenalty} combat rolls, -1 tile movement.
@@ -485,7 +789,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
   );
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4">
       <div className="sheet-modal max-w-4xl max-h-[85vh] h-full animate-in zoom-in-95 duration-200">
         
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
@@ -502,7 +806,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                 </span>
               )}
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-all duration-75 active:opacity-60">×</button>
+            <button onClick={onClose} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
           </div>
         </div>
 
@@ -569,6 +873,24 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+          {transferFeedback && (
+            <div
+              className={`px-3.5 py-2.5 rounded-lg border text-xs font-semibold flex items-center justify-between gap-3 ${
+                transferFeedback.kind === 'error'
+                  ? 'rev-keep-color bg-red-950/50 border-red-800 text-red-300'
+                  : 'rev-keep-color bg-emerald-950/40 border-emerald-700/70 text-emerald-300'
+              }`}
+            >
+              <span>{transferFeedback.message}</span>
+              <button
+                type="button"
+                onClick={() => setTransferFeedback(null)}
+                className="font-bold text-base leading-none opacity-75 hover:opacity-100 px-1"
+              >
+                ×
+              </button>
+            </div>
+          )}
           
           {mainTab === 'backpack' && (
             <>
@@ -631,14 +953,39 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                           </div>
                         </div>
                         
-                        {isExpanded && equippedId && !isBlocked && (
-                          <div className="p-3 border-t border-gray-700 bg-black/40 text-sm">
-                            {renderItemStats(rawEquippedName, char.data.items.find((i:any) => i.id === equippedId))}
-                            <button onClick={() => { unequipSlot(key as any); setExpandedEquippedSlot(null); }} className="w-full mt-3 bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-xs font-bold py-2 rounded transition-all duration-75 active:opacity-60 text-red-300">
-                              Unequip to Backpack
-                            </button>
-                          </div>
-                        )}
+                        {isExpanded && equippedId && !isBlocked && (() => {
+                          const equippedItemObj = char.data.items.find((i: any) => i.id === equippedId);
+                          const eqPanelKey = `eq-${key}`;
+                          return (
+                            <div className="p-3 border-t border-gray-700 bg-black/40 text-sm">
+                              {renderItemStats(rawEquippedName, equippedItemObj)}
+                              <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                                <button onClick={() => { unequipSlot(key as any); setExpandedEquippedSlot(null); }} className="flex-1 bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-xs font-bold py-2 rounded transition-all duration-75 active:opacity-60 text-red-300">
+                                  Unequip to Backpack
+                                </button>
+                                {!readOnly && equippedItemObj && (() => {
+                                  const noPartyTargets = !loadingTargets && transferTargets.length === 0;
+                                  return (
+                                    <button
+                                      type="button"
+                                      disabled={noPartyTargets}
+                                      title={noPartyTargets ? 'Join a party with another character to transfer items' : 'Transfer to party member'}
+                                      onClick={() => openTransferPanel(eqPanelKey, 1)}
+                                      className={`sm:w-36 border text-xs font-bold py-2 rounded transition-all duration-75 ${
+                                        noPartyTargets
+                                          ? 'bg-gray-900 border-gray-800 text-gray-500 opacity-60 cursor-not-allowed'
+                                          : 'bg-amber-950/40 hover:bg-amber-900/50 border-amber-800/70 text-amber-200'
+                                      }`}
+                                    >
+                                      Transfer
+                                    </button>
+                                  );
+                                })()}
+                              </div>
+                              {equippedItemObj && renderTransferSection(eqPanelKey, { slot: key as any }, equippedItemObj, 1, true)}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -673,24 +1020,49 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                               {extraId ? equippedName : '— Empty —'}
                             </span>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-1.5">
                             {extraId && <span className="text-gray-500 text-[10px]">{isExpanded ? '▲' : '▼'}</span>}
-                            <button onClick={(e) => { e.stopPropagation(); removeExtraSlot(idx); }} className="text-red-500 font-bold p-1 rounded hover:text-red-400 hover:bg-red-500/15 transition-colors">×</button>
+                            <button onClick={(e) => { e.stopPropagation(); removeExtraSlot(idx); }} className="rev-icon-btn rev-icon-btn-danger text-lg" title="Remove slot">×</button>
                           </div>
                         </div>
                         
-                        {isExpanded && extraId && (
-                          <div className="p-3 border-t border-gray-700 bg-black/40 text-sm">
-                            {renderItemStats(rawEquippedName, char.data.items.find((i:any) => i.id === extraId))}
-                            <button onClick={() => { 
-                                const result = unequipExtraSlot(char.data, idx); 
-                                if (result) patch(result); 
-                                setExpandedEquippedSlot(null); 
-                            }} className="w-full mt-3 bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-xs font-bold py-2 rounded transition-all duration-75 active:opacity-60 text-red-300">
-                              Unequip to Backpack
-                            </button>
-                          </div>
-                        )}
+                        {isExpanded && extraId && (() => {
+                          const equippedItemObj = char.data.items.find((i: any) => i.id === extraId);
+                          const eqPanelKey = `eq-extra-${idx}`;
+                          return (
+                            <div className="p-3 border-t border-gray-700 bg-black/40 text-sm">
+                              {renderItemStats(rawEquippedName, equippedItemObj)}
+                              <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                                <button onClick={() => { 
+                                    const result = unequipExtraSlot(char.data, idx); 
+                                    if (result) patch(result); 
+                                    setExpandedEquippedSlot(null); 
+                                }} className="flex-1 bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-xs font-bold py-2 rounded transition-all duration-75 active:opacity-60 text-red-300">
+                                  Unequip to Backpack
+                                </button>
+                                {!readOnly && equippedItemObj && (() => {
+                                  const noPartyTargets = !loadingTargets && transferTargets.length === 0;
+                                  return (
+                                    <button
+                                      type="button"
+                                      disabled={noPartyTargets}
+                                      title={noPartyTargets ? 'Join a party with another character to transfer items' : 'Transfer to party member'}
+                                      onClick={() => openTransferPanel(eqPanelKey, 1)}
+                                      className={`sm:w-36 border text-xs font-bold py-2 rounded transition-all duration-75 ${
+                                        noPartyTargets
+                                          ? 'bg-gray-900 border-gray-800 text-gray-500 opacity-60 cursor-not-allowed'
+                                          : 'bg-amber-950/40 hover:bg-amber-900/50 border-amber-800/70 text-amber-200'
+                                      }`}
+                                    >
+                                      Transfer
+                                    </button>
+                                  );
+                                })()}
+                              </div>
+                              {equippedItemObj && renderTransferSection(eqPanelKey, { slot: 'extra', extraIndex: idx }, equippedItemObj, 1, true)}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -761,7 +1133,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                               {item.customName && (
                                 <span className="text-[11px] text-gray-500 italic truncate shrink">({item.name})</span>
                               )}
-                              <button onClick={(e) => { e.stopPropagation(); setEditingItem(itemKey); setRenameValue(item.customName || ''); }} className="text-gray-500 hover:text-gray-200 p-1 rounded hover:bg-white/10 transition-colors shrink-0" title="Rename single item">
+                              <button onClick={(e) => { e.stopPropagation(); setEditingItem(itemKey); setRenameValue(item.customName || ''); }} className="rev-icon-btn rev-icon-btn-edit text-sm" title="Rename single item">
                                 ✎
                               </button>
                               {item.customName && (
@@ -827,8 +1199,29 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                               </>
                             )}
                             
-                            <button onClick={() => moveItem('items', 'possessions', item.id)} className="w-full bg-blue-950/40 hover:bg-blue-900/60 border border-blue-900 text-xs font-bold py-2 rounded transition-all duration-75 active:opacity-60 text-blue-300 mt-2">Move to Possessions</button>
+                            <div className="flex gap-2 w-full mt-2">
+                              <button onClick={() => moveItem('items', 'possessions', item.id)} className="flex-1 bg-blue-950/40 hover:bg-blue-900/60 border border-blue-900 text-xs font-bold py-2 rounded transition-all duration-75 active:opacity-60 text-blue-300">Move to Possessions</button>
+                              {!readOnly && (() => {
+                                const noPartyTargets = !loadingTargets && transferTargets.length === 0;
+                                return (
+                                  <button
+                                    type="button"
+                                    disabled={noPartyTargets}
+                                    title={noPartyTargets ? 'Join a party with another character to transfer items' : 'Transfer to party member'}
+                                    onClick={() => openTransferPanel(`bp-${itemKey}`, item.qty)}
+                                    className={`sm:w-36 px-3 border text-xs font-bold py-2 rounded transition-all duration-75 ${
+                                      noPartyTargets
+                                        ? 'bg-gray-900 border-gray-800 text-gray-500 opacity-60 cursor-not-allowed'
+                                        : 'bg-amber-950/40 hover:bg-amber-900/50 border-amber-800/70 text-amber-200'
+                                    }`}
+                                  >
+                                    Transfer
+                                  </button>
+                                );
+                              })()}
+                            </div>
                           </div>
+                          {renderTransferSection(`bp-${itemKey}`, 'items', item, item.qty)}
                         </div>
                       )}
                     </div>
@@ -888,7 +1281,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                               {item.customName && (
                                 <span className="text-[11px] text-gray-500 italic truncate shrink">({item.name})</span>
                               )}
-                              <button onClick={(e) => { e.stopPropagation(); setEditingItem(itemKey); setRenameValue(item.customName || ''); }} className="text-gray-500 hover:text-gray-200 p-1 rounded hover:bg-white/10 transition-colors shrink-0" title="Rename single item">
+                              <button onClick={(e) => { e.stopPropagation(); setEditingItem(itemKey); setRenameValue(item.customName || ''); }} className="rev-icon-btn rev-icon-btn-edit text-sm" title="Rename single item">
                                 ✎
                               </button>
                               {item.customName && (
@@ -918,7 +1311,28 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                         <div className="p-3 border-t border-gray-700 bg-black/40 text-sm">
                           {renderItemStats(item.name, item)}
                           
-                          <button onClick={() => moveItem('possessions', 'items', item.id)} className="w-full bg-green-950/40 hover:bg-green-900/60 border border-green-900 text-xs font-bold py-2 rounded transition-all duration-75 active:opacity-60 text-green-300 mt-4">Move to Backpack</button>
+                          <div className="flex gap-2 mt-4">
+                            <button onClick={() => moveItem('possessions', 'items', item.id)} className="flex-1 bg-green-950/40 hover:bg-green-900/60 border border-green-900 text-xs font-bold py-2 rounded transition-all duration-75 active:opacity-60 text-green-300">Move to Backpack</button>
+                            {!readOnly && (() => {
+                              const noPartyTargets = !loadingTargets && transferTargets.length === 0;
+                              return (
+                                <button
+                                  type="button"
+                                  disabled={noPartyTargets}
+                                  title={noPartyTargets ? 'Join a party with another character to transfer items' : 'Transfer to party member'}
+                                  onClick={() => openTransferPanel(`pos-${itemKey}`, item.qty)}
+                                  className={`sm:w-36 px-3 border text-xs font-bold py-2 rounded transition-all duration-75 ${
+                                    noPartyTargets
+                                      ? 'bg-gray-900 border-gray-800 text-gray-500 opacity-60 cursor-not-allowed'
+                                      : 'bg-amber-950/40 hover:bg-amber-900/50 border-amber-800/70 text-amber-200'
+                                  }`}
+                                >
+                                  Transfer
+                                </button>
+                              );
+                            })()}
+                          </div>
+                          {renderTransferSection(`pos-${itemKey}`, 'possessions', item, item.qty)}
                         </div>
                       )}
                     </div>
@@ -1026,7 +1440,7 @@ export default function InventoryModal({ char, patch, isOpen, onClose }: any) {
                       ))}
                     </div>
                     <p className="text-xs text-gray-400 italic">
-                      {ARMOUR_CATEGORY_RULES[(customSubtype as ArmourCategory) || 'Light'].summary}
+                      <KeywordText text={ARMOUR_CATEGORY_RULES[(customSubtype as ArmourCategory) || 'Light'].summary} mode="effect" />
                     </p>
                   </div>
                 ) : (

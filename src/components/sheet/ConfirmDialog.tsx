@@ -37,7 +37,7 @@ export function ConfirmDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[300] rev-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[300] rev-backdrop flex items-center justify-center p-4"
       onClick={onCancel}
     >
       <div
@@ -53,8 +53,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 transition-colors shrink-0"
-            style={{ color: 'var(--rev-text-muted)' }}
+            className="rev-icon-btn rev-icon-btn-edit text-xl"
             aria-label="Close"
           >
             ×

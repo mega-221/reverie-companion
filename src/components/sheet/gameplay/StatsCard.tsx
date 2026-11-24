@@ -121,7 +121,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
       
       {/* SECTION 1: Identity & Quote (Top Aligned) */}
       <div className="shrink-0 pb-4 pt-2">
-        <h2 className="text-3xl font-spectral font-bold text-gray-100 
+        <h2 className="text-3xl font-cinzel font-bold text-gray-100 
           first-letter:text-[3.5rem] first-letter:font-cinzelDeco first-letter:text-red-500 
           first-letter:float-left first-letter:mr-0.5 first-letter:-mt-1 first-letter:leading-[0.8] 
           leading-tight break-words text-left">
@@ -214,11 +214,11 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
               const failStatement = hasFail && f ? getEntryByName(f.name)?.data?.statement || '' : '';
 
               return (
-                <div key={i} className="grid grid-cols-2 gap-4 w-full items-center text-center">
-                  <div className="flex justify-center w-full">
+                <div key={i} className="grid grid-cols-2 gap-4 w-full items-stretch text-center">
+                  <div className="flex items-center justify-center w-full">
                     {hasConv ? (
                       <Tooltip text={convStatement} className="w-auto" noBorder>
-                        <span className={`${getSeasonTextClass(c.season)} font-bold uppercase tracking-[0.2em] text-sm leading-tight cursor-help`}>
+                        <span className={`${getSeasonTextClass(c.season)} h-8 flex items-center justify-center px-2 font-bold uppercase tracking-[0.2em] text-sm leading-tight cursor-help truncate`}>
                           {c.name}
                         </span>
                       </Tooltip>
@@ -226,10 +226,10 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
                       <span className="text-gray-600 italic text-sm">—</span>
                     )}
                   </div>
-                  <div className="flex justify-center w-full">
+                  <div className="flex items-center justify-center w-full">
                     {hasFail && f ? (
                       <Tooltip text={failStatement} className="w-auto" noBorder>
-                        <span className="rev-dark-card vital-keep-white bg-black text-white font-bold uppercase tracking-[0.2em] text-sm leading-tight px-3 py-1 select-none inline-block shadow-sm cursor-help">
+                        <span className="rev-dark-card vital-keep-white bg-black text-white h-8 flex items-center justify-center font-bold uppercase tracking-[0.2em] text-sm leading-tight px-3 select-none shadow-sm cursor-help truncate">
                           {f.name}
                         </span>
                       </Tooltip>
@@ -351,7 +351,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
 
       {isArmourModalOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4"
           onClick={() => setIsArmourModalOpen(false)}
         >
           <div
@@ -365,7 +365,7 @@ export default function StatsCard({ char, patch }: { char: Character, patch: any
               <button
                 type="button"
                 onClick={() => setIsArmourModalOpen(false)}
-                className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors"
+                className="rev-icon-btn rev-icon-btn-edit text-xl"
                 aria-label="Close"
               >
                 ×

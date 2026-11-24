@@ -133,7 +133,7 @@ function CalendarSelector({
       {open &&
         createPortal(
           <div
-            className="fixed inset-0 z-[260] bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[260] rev-backdrop flex items-center justify-center p-4"
             onClick={() => setOpen(false)}
           >
             <div
@@ -512,7 +512,7 @@ export default function JournalCard({ char, patch }: { char: Character, patch: a
     <section className="sheet-panel p-3.5 sm:p-5 w-full h-full flex flex-col">
       {confirmDialog}
       <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-4 shrink-0 gap-3">
-        <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Journal</h2>
+        <h2 className="text-xl font-spectral first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Journal</h2>
         <div className="flex items-center gap-2 shrink-0">
           {journal.length > 1 && (
             <button
@@ -656,7 +656,7 @@ export default function JournalCard({ char, patch }: { char: Character, patch: a
                       </div>
                       <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                         <button onClick={() => { setEditingId(entry.id); setIsAdding(false); }} className={`${iconBtn} text-gray-400 hover:text-gray-200 hover:bg-white/10 text-xs`}>Edit</button>
-                        <button onClick={() => removeEntry(entry.id)} className={`${iconBtn} text-red-500 hover:text-red-400 hover:bg-red-500/15`} title="Delete Entry">×</button>
+                        <button onClick={() => removeEntry(entry.id)} className="rev-icon-btn rev-icon-btn-danger text-lg opacity-80 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100" title="Delete Entry">×</button>
                         <button
                           type="button"
                           onClick={() => toggleExpand(entry.id)}

@@ -8,6 +8,7 @@ import { SKILL_GROUPS } from '../utils';
 import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 import { useEscapeKey } from '../../../hooks/useEscapeKey';
 import { splitLines } from '../../../constants/reverie';
+import { KeywordText } from '../../common/KeywordText';
 
 const ASPECT_CATEGORY_ORDER = [
   'Grit',
@@ -213,7 +214,7 @@ function AspectSelectorModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -365,7 +366,7 @@ function AspectSelectorModal({
                                       [+]
                                     </span>
                                     <span className="text-xs text-emerald-100/90 leading-relaxed pt-0.5">
-                                      {upside}
+                                      <KeywordText text={upside} mode="effect" />
                                     </span>
                                   </div>
                                 )}
@@ -376,7 +377,7 @@ function AspectSelectorModal({
                                       [-]
                                     </span>
                                     <span className="text-xs text-red-100/90 leading-relaxed pt-0.5">
-                                      {downside}
+                                      <KeywordText text={downside} mode="effect" />
                                     </span>
                                   </div>
                                 )}
@@ -563,7 +564,7 @@ export default function AspectsCard({
       {/* Header matching ConvictionsCard */}
       <div className="flex flex-wrap justify-between items-end mb-4 sm:mb-6 border-b border-gray-700 pb-2 gap-3 shrink-0">
         <div className="flex items-baseline gap-3 min-w-0">
-          <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">
+          <h2 className="text-xl font-spectral first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">
             Aspects
           </h2>
           <span
@@ -691,7 +692,7 @@ export default function AspectsCard({
                       setExpandedReqs((prev) => ({ ...prev, [slotKey]: false }));
                       setEditingIndex(i);
                     }}
-                    className="justify-self-start text-gray-200/90 hover:text-white hover:bg-white/10 rounded transition-colors text-xs p-1 leading-none"
+                    className="rev-icon-btn rev-icon-btn-edit text-sm justify-self-start"
                     title="Edit Aspect"
                   >
                     ✎
@@ -763,7 +764,7 @@ export default function AspectsCard({
                               [+]
                             </span>
                             <span className="text-xs text-emerald-100/90 leading-snug pt-0.5">
-                              {upside || '—'}
+                              {upside ? <KeywordText text={upside} mode="effect" /> : '—'}
                             </span>
                           </div>
 
@@ -777,7 +778,7 @@ export default function AspectsCard({
                                 [-]
                               </span>
                               <span className="text-xs text-red-100/90 leading-snug pt-0.5">
-                                {downside}
+                                <KeywordText text={downside} mode="effect" />
                               </span>
                             </div>
                           )}

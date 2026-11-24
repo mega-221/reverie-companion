@@ -23,7 +23,7 @@ const FlipIcon = () => (
 );
 
 const RankPips = ({ rank, type, color, maxRank = 4 }: { rank: number, type: 'conviction' | 'failing', color?: string, maxRank?: number }) => {
-  const activeColor = type === 'conviction' ? (color || '#9ca3af') : '#d93838';
+  const activeColor = type === 'conviction' ? (color || '#9ca3af') : '#ef4444';
   const connectorWidth = maxRank > 4 ? 'w-2.5 mx-1' : 'w-3 mx-1.5';
   return (
     <div className="flex items-center justify-center relative z-20">
@@ -102,7 +102,7 @@ function DedicateModal({ char, patch, index, onClose }: { char: Character, patch
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -111,7 +111,7 @@ function DedicateModal({ char, patch, index, onClose }: { char: Character, patch
       >
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <h2 className="font-bold text-xl text-gray-200 truncate pr-2">Dedicate to {conviction.name}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 shrink-0 transition-colors" aria-label="Close">×</button>
+          <button onClick={onClose} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
         </div>
         <div className="p-5 flex flex-col gap-4">
           <div className="bg-black/20 rounded-lg p-3 border border-gray-700 flex flex-col items-center justify-center shadow-inner">
@@ -197,7 +197,7 @@ function ReflectModal({ char, patch, index, onClose }: { char: Character, patch:
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -206,7 +206,7 @@ function ReflectModal({ char, patch, index, onClose }: { char: Character, patch:
       >
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <h2 className="font-bold text-xl text-gray-200 truncate pr-2">Reflect on {failing.name}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 shrink-0 transition-colors" aria-label="Close">×</button>
+          <button onClick={onClose} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
         </div>
         <div className="p-5 flex flex-col gap-4">
           <div className="bg-black/20 rounded-lg p-3 border border-gray-700 flex flex-col items-center justify-center shadow-inner">
@@ -263,12 +263,31 @@ function ReflectModal({ char, patch, index, onClose }: { char: Character, patch:
   );
 }
 
-export function CrisisModal({ char, patch, onClose }: { char: Character, patch: any, onClose: () => void }) {
+export function CrisisModal({
+  char,
+  patch,
+  onClose,
+  lockedSlotIndex,
+}: {
+  char: Character;
+  patch: any;
+  onClose: () => void;
+  lockedSlotIndex?: number | null;
+}) {
   useBodyScrollLock(true);
   const { getFailings, getEntryByName } = useCompendium();
   const compendiumFailings = getFailings();
 
-  const [selectedSlot, setSelectedSlot] = useState<number>(0);
+  const hasSlots = char.data.convictions.length > 0;
+  const isSlotLocked =
+    hasSlots &&
+    typeof lockedSlotIndex === 'number' &&
+    lockedSlotIndex >= 0 &&
+    lockedSlotIndex < char.data.convictions.length;
+
+  const [selectedSlot, setSelectedSlot] = useState<number>(() =>
+    isSlotLocked ? lockedSlotIndex! : 0
+  );
   const [selectedManifestName, setSelectedManifestName] = useState<string>(() => compendiumFailings[0]?.name ?? '');
   const charAspects = (char.data.aspects || []).filter(a => a.name && !a.abandoned);
   const [selectedAspectToAbandon, setSelectedAspectToAbandon] = useState<string>(() => charAspects[0]?.name ?? '');
@@ -280,8 +299,11 @@ export function CrisisModal({ char, patch, onClose }: { char: Character, patch: 
   const availableDp = char.data.trackers.dp;
   const canSpendMaxDp = availableDp >= maxDp;
 
-  const hasSlots = char.data.convictions.length > 0;
-  const safeSlot = hasSlots ? Math.min(selectedSlot, char.data.convictions.length - 1) : -1;
+  const safeSlot = hasSlots
+    ? isSlotLocked
+      ? lockedSlotIndex!
+      : Math.min(selectedSlot, char.data.convictions.length - 1)
+    : -1;
   const selectedConv = safeSlot >= 0 ? char.data.convictions[safeSlot] : undefined;
   const selectedSeasonColor = getSeasonHex(selectedConv?.season);
   const canLowerConviction = Boolean(selectedConv?.name) && (selectedConv?.rank ?? 0) > 0;
@@ -348,7 +370,7 @@ export function CrisisModal({ char, patch, onClose }: { char: Character, patch: 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -360,7 +382,7 @@ export function CrisisModal({ char, patch, onClose }: { char: Character, patch: 
             <span className="w-2.5 h-2.5 rotate-45 bg-red-500 shadow-[0_0_8px_#ef4444] shrink-0" />
             <h2 className="font-bold text-xl text-gray-100 truncate">Resolve Crisis</h2>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 shrink-0 transition-colors" aria-label="Close">×</button>
+          <button onClick={onClose} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
         </div>
 
         <div className="p-5 overflow-y-auto space-y-4">
@@ -371,24 +393,33 @@ export function CrisisModal({ char, patch, onClose }: { char: Character, patch: 
             </p>
           </div>
 
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-            Choose a way to cope with the crisis...
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <span>Choose a way to cope with the crisis...</span>
+            {isSlotLocked && (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-red-300 bg-red-950/50 border border-red-800/70 px-2 py-0.5 rounded">
+                Locked to tested conviction
+              </span>
+            )}
           </div>
 
           {!hasSlots && (
             <div className="bg-red-950/30 border border-red-900/60 rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-bold text-red-200">No conviction cards manifest on sheet</div>
-                <div className="text-xs text-red-300 mt-0.5">Manifest a new card and failing in one click to cope with this crisis.</div>
+                <div className="text-xs text-red-300 mt-0.5">Manifest a new blank card with a randomly chosen failing at Rank 1 to cope with this crisis.</div>
               </div>
               <button
                 type="button"
                 onClick={() => {
-                  const defaultFailingName = compendiumFailings[0]?.name || 'Doubt';
-                  const defaultStatement = compendiumFailings[0]?.data?.statement || '';
+                  const randomFailing =
+                    compendiumFailings.length > 0
+                      ? compendiumFailings[Math.floor(Math.random() * compendiumFailings.length)]
+                      : null;
+                  const failingName = randomFailing?.name || 'Doubt';
+                  const failingStatement = randomFailing?.data?.statement || '';
                   patch({
-                    convictions: [{ season: 'Vamor', name: 'Resilience', statement: 'To endure when all else crumbles.', rank: 1 }],
-                    failings: [{ name: defaultFailingName, rank: 1, convictionIndex: 0, statement: defaultStatement }]
+                    convictions: [{ season: 'Vamor', name: '', statement: '', rank: 1 }],
+                    failings: [{ name: failingName, rank: 1, convictionIndex: 0, statement: failingStatement }]
                   });
                   onClose();
                 }}
@@ -405,6 +436,7 @@ export function CrisisModal({ char, patch, onClose }: { char: Character, patch: 
               {char.data.convictions.map((conv, idx) => {
                 const fail = char.data.failings.find(f => f.convictionIndex === idx);
                 const isSelected = idx === safeSlot;
+                const isDisabledOther = isSlotLocked && !isSelected;
                 const sColor = getSeasonHex(conv?.season);
                 const convName = conv?.name || 'No Conviction';
                 const failName = fail?.name || 'No Failing';
@@ -413,10 +445,15 @@ export function CrisisModal({ char, patch, onClose }: { char: Character, patch: 
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setSelectedSlot(idx)}
+                    disabled={isDisabledOther}
+                    onClick={() => {
+                      if (!isSlotLocked) setSelectedSlot(idx);
+                    }}
                     className={`text-left rounded-lg p-3 border transition-all flex flex-col gap-2.5 ${
                       isSelected
                         ? 'bg-red-950/25 border-red-500/80 shadow-[0_0_15px_rgba(220,38,38,0.15)]'
+                        : isDisabledOther
+                        ? 'bg-black/15 border-gray-800 opacity-45 cursor-not-allowed'
                         : 'bg-black/25 border-gray-700 hover:border-gray-500 hover:bg-white/[0.02]'
                     }`}
                   >
@@ -426,7 +463,7 @@ export function CrisisModal({ char, patch, onClose }: { char: Character, patch: 
                       </span>
                       {isSelected && (
                         <span className="text-[9px] font-bold uppercase tracking-widest text-red-400">
-                          Selected
+                          {isSlotLocked ? 'Locked' : 'Selected'}
                         </span>
                       )}
                     </div>
@@ -641,7 +678,7 @@ function SeasonCompendiumPickerModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[220] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[220] rev-backdrop flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -650,7 +687,7 @@ function SeasonCompendiumPickerModal({
       >
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <h2 className="font-bold text-xl text-gray-200">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors" aria-label="Close">×</button>
+          <button onClick={onClose} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -852,7 +889,7 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
     <section className="sheet-panel p-3.5 sm:p-5 w-full">
       {confirmDialog}
       <div className="flex flex-wrap justify-between items-end mb-4 sm:mb-6 border-b border-gray-700 pb-2 gap-3">
-        <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Convictions & Failings</h2>
+        <h2 className="text-xl font-spectral first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Convictions & Failings</h2>
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
             type="button"
@@ -1011,9 +1048,9 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
 
                   <div className="w-full h-full p-5 flex flex-col relative z-20">
                     <div className="grid grid-cols-3 items-center mb-4 mt-2 px-2 z-20">
-                      <button onClick={(e) => { e.stopPropagation(); setEditingCard(i); }} className={`justify-self-start p-1 rounded ${hasConv ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-cyan-700 hover:text-cyan-300 hover:bg-cyan-500/15'} transition-colors`} title="Edit">✎</button>
+                      <button onClick={(e) => { e.stopPropagation(); setEditingCard(i); }} className={`justify-self-start rev-icon-btn text-sm ${hasConv ? 'rev-icon-btn-edit' : 'text-cyan-700 hover:text-cyan-300 hover:bg-cyan-500/15'}`} title="Edit">✎</button>
                       <span className={`justify-self-center text-[10px] font-bold uppercase tracking-widest ${hasConv ? 'text-gray-300 opacity-90' : 'text-cyan-600'}`}>Conviction</span>
-                      <button onClick={(e) => { e.stopPropagation(); toggleFlip(i); }} className={`justify-self-end p-1 rounded ${hasConv ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-cyan-700 hover:text-cyan-300 hover:bg-cyan-500/15'} transition-colors`} title="Flip to Failing"><FlipIcon /></button>
+                      <button onClick={(e) => { e.stopPropagation(); toggleFlip(i); }} className={`justify-self-end rev-icon-btn ${hasConv ? 'rev-icon-btn-edit' : 'text-cyan-700 hover:text-cyan-300 hover:bg-cyan-500/15'}`} title="Flip to Failing"><FlipIcon /></button>
                     </div>
 
                     <div className="flex-1 flex flex-col items-center relative px-4 sm:px-6 pb-6 w-full pt-4 z-20">
@@ -1125,9 +1162,9 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                     )}
 
                     <div className="grid grid-cols-3 items-center mb-4 mt-2 px-2 z-20">
-                      <button onClick={(e) => { e.stopPropagation(); setEditingCard(i); }} className={`justify-self-start p-1 rounded ${hasFail ? 'text-red-500 hover:text-red-400 hover:bg-red-500/15' : 'text-cyan-700 hover:text-cyan-300 hover:bg-cyan-500/15'} transition-colors`} title="Edit">✎</button>
+                      <button onClick={(e) => { e.stopPropagation(); setEditingCard(i); }} className={`justify-self-start rev-icon-btn text-sm ${hasFail ? 'rev-icon-btn-danger' : 'text-cyan-700 hover:text-cyan-300 hover:bg-cyan-500/15'}`} title="Edit">✎</button>
                       <span className={`justify-self-center text-[10px] font-bold uppercase tracking-widest ${hasFail ? 'text-red-500/70' : 'text-cyan-600'}`}>Failing</span>
-                      <button onClick={(e) => { e.stopPropagation(); toggleFlip(i); }} className={`justify-self-end p-1 rounded ${hasFail ? 'text-red-500 hover:text-red-400 hover:bg-red-500/15' : 'text-cyan-700 hover:text-cyan-300 hover:bg-cyan-500/15'} transition-colors`} title="Flip to Conviction"><FlipIcon /></button>
+                      <button onClick={(e) => { e.stopPropagation(); toggleFlip(i); }} className={`justify-self-end rev-icon-btn ${hasFail ? 'rev-icon-btn-danger' : 'text-cyan-700 hover:text-cyan-300 hover:bg-cyan-500/15'}`} title="Flip to Conviction"><FlipIcon /></button>
                     </div>
 
                     <div className="flex-1 flex flex-col items-center relative px-4 sm:px-6 pb-6 w-full pt-4 z-20">
@@ -1200,11 +1237,11 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                           />
                           <span className="text-sm font-bold text-gray-100 truncate">{conviction.name}</span>
                         </div>
-                        <div className="flex items-center gap-1 border-l border-gray-700 pl-2 shrink-0">
+                        <div className="flex items-center gap-0.5 border-l border-gray-700 pl-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setPickerTarget({ type: 'conviction', index: i })}
-                            className="text-gray-400 hover:text-white hover:bg-white/10 rounded text-xs p-1 leading-none transition-colors"
+                            className="rev-icon-btn rev-icon-btn-edit text-sm"
                             title="Change Conviction"
                           >
                             ✎
@@ -1216,7 +1253,7 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                               next[i] = { ...next[i], name: '', statement: '' };
                               patch({ convictions: next });
                             }}
-                            className="text-red-500 hover:text-red-400 hover:bg-red-500/15 rounded font-bold p-1 text-sm leading-none transition-colors"
+                            className="rev-icon-btn rev-icon-btn-danger text-lg"
                             title="Clear Conviction"
                           >
                             ×
@@ -1243,11 +1280,11 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                           <span className="w-2 h-2 rotate-45 bg-red-500 shadow-[0_0_6px_#d93838] shrink-0" />
                           <span className="text-sm font-bold text-red-200 truncate">{failing.name}</span>
                         </div>
-                        <div className="flex items-center gap-1 border-l border-gray-700 pl-2 shrink-0">
+                        <div className="flex items-center gap-0.5 border-l border-gray-700 pl-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setPickerTarget({ type: 'failing', index: i })}
-                            className="text-gray-400 hover:text-white hover:bg-white/10 rounded text-xs p-1 leading-none transition-colors"
+                            className="rev-icon-btn rev-icon-btn-edit text-sm"
                             title="Change Failing"
                           >
                             ✎
@@ -1255,7 +1292,7 @@ export default function ConvictionsCard({ char, patch }: { char: Character, patc
                           <button
                             type="button"
                             onClick={() => patch({ failings: char.data.failings.filter(f => f.convictionIndex !== i) })}
-                            className="text-red-500 hover:text-red-400 hover:bg-red-500/15 rounded font-bold p-1 text-sm leading-none transition-colors"
+                            className="rev-icon-btn rev-icon-btn-danger text-lg"
                             title="Remove Failing"
                           >
                             ×

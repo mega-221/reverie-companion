@@ -10,6 +10,7 @@ import { CompendiumProvider } from './CompendiumContext';
 
 const CharacterSheet = lazy(() => import('./CharacterSheet'));
 const PartyDetail = lazy(() => import('./PartyDetail'));
+const NpcCreator = lazy(() => import('./components/npcs/NpcCreator'));
 const RulesBrowser = lazy(() =>
   import('./components/rules/RulesBrowser').then((m) => ({ default: m.RulesBrowser }))
 );
@@ -42,12 +43,14 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const partyId = params.get('party');
     const rawTab = params.get('tab');
-    const tab: 'characters' | 'parties' | 'rules' =
+    const tab: 'characters' | 'parties' | 'npcs' | 'rules' =
       rawTab === 'rules'
         ? 'rules'
-        : rawTab === 'parties' || partyId
-          ? 'parties'
-          : 'characters';
+        : rawTab === 'npcs'
+          ? 'npcs'
+          : rawTab === 'parties' || partyId
+            ? 'parties'
+            : 'characters';
     return {
       characterId: params.get('character'),
       readOnly: params.get('readonly') === 'true',
@@ -61,7 +64,7 @@ export default function App() {
   const initialParams = getParamsFromUrl();
   const [selectedId, setSelectedId] = useState<string | null>(initialParams.characterId);
   const [readOnlySheet, setReadOnlySheet] = useState<boolean>(initialParams.readOnly);
-  const [activeTab, setActiveTab] = useState<'characters' | 'parties' | 'rules'>(initialParams.tab);
+  const [activeTab, setActiveTab] = useState<'characters' | 'parties' | 'npcs' | 'rules'>(initialParams.tab);
   const [selectedPartyId, setSelectedPartyId] = useState<string | null>(initialParams.partyId);
   const [rulesChapterId, setRulesChapterId] = useState<string | null>(initialParams.chapterId);
   const [rulesSectionId, setRulesSectionId] = useState<string | null>(initialParams.sectionId);
@@ -83,7 +86,7 @@ export default function App() {
   const updateUrlParams = (updates: {
     character?: string | null;
     readonly?: boolean;
-    tab?: 'characters' | 'parties' | 'rules';
+    tab?: 'characters' | 'parties' | 'npcs' | 'rules';
     party?: string | null;
     chapter?: string | null;
     section?: string | null;
@@ -98,7 +101,7 @@ export default function App() {
       else url.searchParams.delete('readonly');
     }
     if (updates.tab !== undefined) {
-      if (updates.tab === 'parties' || updates.tab === 'rules') {
+      if (updates.tab === 'parties' || updates.tab === 'npcs' || updates.tab === 'rules') {
         url.searchParams.set('tab', updates.tab);
       } else {
         url.searchParams.delete('tab');
@@ -125,7 +128,7 @@ export default function App() {
     updateUrlParams({ character: id, readonly: readOnly });
   };
 
-  const handleTabChange = (tab: 'characters' | 'parties' | 'rules') => {
+  const handleTabChange = (tab: 'characters' | 'parties' | 'npcs' | 'rules') => {
     setActiveTab(tab);
     setSelectedPartyId(null);
     setSelectedId(null);
@@ -263,100 +266,84 @@ export default function App() {
         </div>
       ) : (
         <div className="w-full min-h-screen rev-canvas font-sans flex flex-col">
-          {/* Dedicated Header for Character Select / Parties / Rules (not Character Sheet) */}
+          {/* Dedicated Full-Width Header for Character Select / Parties / NPCs / Rules */}
           <header className="sticky top-0 z-40 rev-header-bar shadow-md w-full transition-colors duration-300">
-            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-wrap md:flex-nowrap justify-between items-center gap-x-4 gap-y-2">
-              <div className="order-1 flex flex-col min-w-0">
+            <div className="w-full px-3 sm:px-6 lg:px-8 pt-2.5 sm:pt-3 pb-0 md:pb-2.5 flex flex-wrap md:flex-nowrap justify-between items-center gap-x-6 gap-y-1.5">
+              <div className="order-1 flex flex-col items-start min-w-0 shrink-0 pb-1.5 md:pb-0">
                 <h1
-                  className="text-xl sm:text-2xl font-spectral uppercase tracking-[0.25em] sm:tracking-[0.3em] leading-tight shrink-0"
+                  className="text-xl sm:text-2xl font-spectral uppercase tracking-[0.25em] sm:tracking-[0.35em] leading-tight shrink-0"
                   style={{ color: 'var(--rev-header-text)' }}
                 >
                   Reverie
                 </h1>
-                <p className="hidden sm:block text-[11px] truncate max-w-[220px] lg:max-w-[280px]" style={{ color: 'var(--rev-header-muted)' }}>
-                  Logged in as <strong style={{ color: 'var(--rev-header-text)' }}>{username || user.email}</strong>
-                </p>
+                <span className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--rev-header-muted)' }}>
+                  Logged in as <strong style={{ color: 'var(--rev-header-text)' }}>{username || user.email?.split('@')[0] || 'Adventurer'}</strong>
+                </span>
               </div>
 
               <nav
                 aria-label="Primary navigation"
-                className="order-3 md:order-2 w-full md:w-auto flex items-center gap-1.5 sm:gap-2"
+                className="order-3 md:order-2 w-full md:w-auto flex items-center justify-start md:justify-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar border-t md:border-t-0"
+                style={{ borderColor: 'var(--rev-header-border)' }}
               >
-                <button
-                  type="button"
-                  onClick={() => handleTabChange('characters')}
-                  aria-current={activeTab === 'characters' ? 'page' : undefined}
-                  className={`flex-auto md:flex-none justify-center px-2.5 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-bold transition-colors whitespace-nowrap border text-center ${
-                    activeTab === 'characters' ? 'rev-btn-primary shadow-sm' : 'hover:opacity-100 opacity-85'
-                  }`}
-                  style={
-                    activeTab === 'characters'
-                      ? undefined
-                      : {
-                          backgroundColor: 'var(--rev-header-btn)',
-                          borderColor: 'var(--rev-header-border)',
-                          color: 'var(--rev-header-text)',
-                        }
-                  }
-                >
-                  My Characters
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTabChange('parties')}
-                  aria-current={activeTab === 'parties' ? 'page' : undefined}
-                  className={`flex-auto md:flex-none justify-center px-2.5 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-bold transition-colors whitespace-nowrap border text-center ${
-                    activeTab === 'parties' ? 'rev-btn-primary shadow-sm' : 'hover:opacity-100 opacity-85'
-                  }`}
-                  style={
-                    activeTab === 'parties'
-                      ? undefined
-                      : {
-                          backgroundColor: 'var(--rev-header-btn)',
-                          borderColor: 'var(--rev-header-border)',
-                          color: 'var(--rev-header-text)',
-                        }
-                  }
-                >
-                  Parties
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTabChange('rules')}
-                  aria-current={activeTab === 'rules' ? 'page' : undefined}
-                  className={`flex-auto md:flex-none justify-center px-2.5 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-bold transition-colors whitespace-nowrap border text-center ${
-                    activeTab === 'rules' ? 'rev-btn-primary shadow-sm' : 'hover:opacity-100 opacity-85'
-                  }`}
-                  style={
-                    activeTab === 'rules'
-                      ? undefined
-                      : {
-                          backgroundColor: 'var(--rev-header-btn)',
-                          borderColor: 'var(--rev-header-border)',
-                          color: 'var(--rev-header-text)',
-                        }
-                  }
-                >
-                  Rules
-                </button>
+                {(
+                  [
+                    { id: 'characters', label: 'Characters' },
+                    { id: 'parties', label: 'Parties' },
+                    { id: 'npcs', label: 'NPC Creator' },
+                    { id: 'rules', label: 'Rules' },
+                  ] as const
+                ).map((item) => {
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleTabChange(item.id)}
+                      aria-current={isActive ? 'page' : undefined}
+                      data-active={isActive ? 'true' : 'false'}
+                      className="rev-home-tab relative px-3 sm:px-4 py-2 text-xs sm:text-sm font-spectral font-normal tracking-[0.12em] uppercase whitespace-nowrap"
+                      style={{
+                        color: 'var(--rev-header-text)',
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
               </nav>
 
-              <div className="order-2 md:order-3 flex items-center gap-1.5 sm:gap-2 shrink-0">
-                <button 
+              <div className="order-2 md:order-3 flex items-center gap-1.5 sm:gap-2 shrink-0 pb-1.5 md:pb-0">
+                <button
                   type="button"
-                  className="px-2.5 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 border transition-opacity hover:opacity-90"
+                  onClick={() => setIsSettingsOpen(true)}
+                  aria-label="Settings"
+                  title="Settings"
+                  className="p-1.5 rounded border text-white hover:opacity-90 transition-colors shrink-0"
                   style={{
                     backgroundColor: 'var(--rev-header-btn)',
                     borderColor: 'var(--rev-header-border)',
                     color: 'var(--rev-header-text)',
                   }}
-                  onClick={() => setIsSettingsOpen(true)}
                 >
-                  Settings
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
                 </button>
-                <button 
+                <button
                   type="button"
-                  className="px-2.5 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 border transition-opacity hover:opacity-90"
+                  className="px-2.5 sm:px-3.5 py-1.5 rounded text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 border transition-opacity hover:opacity-90"
                   style={{
                     backgroundColor: 'var(--rev-header-btn)',
                     borderColor: 'var(--rev-header-border)',
@@ -412,6 +399,18 @@ export default function App() {
                   onSelectParty={handleSelectParty}
                 />
               )
+            )}
+
+            {activeTab === 'npcs' && (
+              <Suspense
+                fallback={
+                  <div className="sheet-panel p-12 text-center" style={{ color: 'var(--rev-text-muted)' }}>
+                    Loading NPC Creator...
+                  </div>
+                }
+              >
+                <NpcCreator userId={user.id} />
+              </Suspense>
             )}
 
             {activeTab === 'rules' && (

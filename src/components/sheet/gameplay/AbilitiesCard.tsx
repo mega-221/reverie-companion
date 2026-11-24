@@ -84,8 +84,8 @@ export default function AbilitiesCard({
       {confirmDialog}
       <div className="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 shrink-0">
         <div className="flex gap-6 items-center">
-          <button onClick={() => setActiveAbilityTab('discipline')} className={`text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'discipline' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Learned Abilities</button>
-          <button onClick={() => setActiveAbilityTab('basic')} className={`text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'basic' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Basic Abilities</button>
+          <button onClick={() => setActiveAbilityTab('discipline')} className={`text-xl font-spectral first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'discipline' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Learned Abilities</button>
+          <button onClick={() => setActiveAbilityTab('basic')} className={`text-xl font-spectral first-letter:text-[1.2em] first-letter:text-red-500 transition-colors ${activeAbilityTab === 'basic' ? 'text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}>Basic Abilities</button>
         </div>
       </div>
       
@@ -108,11 +108,11 @@ export default function AbilitiesCard({
                         </div>
 
                         <div className="flex items-center justify-between w-full sm:flex-1 min-w-0 gap-2">
-                          <div className={`flex gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
-                            {ab.data.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
+                          <div className={`flex items-center gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
+                            {ab.data.type && <span className={`rev-ability-pill ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
                             <SpeedTagPills speedData={speedData} />
-                            {ab.data.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{ab.data.range}</span>}
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap ${isLocked ? 'bg-gray-800 text-gray-500 border-gray-600' : 'bg-gray-800 text-gray-300 border-gray-600'}`}>{isLocked ? `Rank ${ab.data.class_rank} Req` : 'Class'}</span>
+                            {ab.data.range && <span className="rev-ability-pill bg-gray-800 text-gray-300 border-gray-600">{ab.data.range}</span>}
+                            <span className={`rev-ability-pill tabular-nums ${isLocked ? 'bg-gray-800 text-gray-500 border-gray-600' : 'bg-gray-800 text-gray-300 border-gray-600'}`}>{`Rank ${ab.data.class_rank ?? 0} Req`}</span>
                           </div>
                           
                           <div className="flex items-center shrink-0 border-l border-gray-700 pl-2">
@@ -213,24 +213,24 @@ export default function AbilitiesCard({
                       </div>
 
                       <div className="flex items-center justify-between w-full sm:flex-1 min-w-0 gap-2">
-                        <div className={`flex gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
-                          {compendiumEntry?.data?.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${getTypeStyle(compendiumEntry.data.type)}`}>{compendiumEntry.data.type}</span>}
+                        <div className={`flex items-center gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
+                          {compendiumEntry?.data?.type && <span className={`rev-ability-pill ${getTypeStyle(compendiumEntry.data.type)}`}>{compendiumEntry.data.type}</span>}
                           <SpeedTagPills speedData={speedData} />
-                          {compendiumEntry?.data?.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{compendiumEntry.data.range}</span>}
+                          {compendiumEntry?.data?.range && <span className="rev-ability-pill bg-gray-800 text-gray-300 border-gray-600">{compendiumEntry.data.range}</span>}
                           
                           {compendiumEntry?.data?.class_rank !== undefined && (
-                            <span className={`bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap ${isLocked ? 'text-gray-500 border-gray-600' : 'text-gray-300 border-gray-600'}`}>
+                            <span className={`rev-ability-pill tabular-nums bg-gray-800 ${isLocked ? 'text-gray-500 border-gray-600' : 'text-gray-300 border-gray-600'}`}>
                               {isLocked ? `Rank ${compendiumEntry.data.class_rank} Req` : `Rank ${compendiumEntry.data.class_rank}`}
                             </span>
                           )}
                           
-                          {compendiumEntry?.data?.source && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{compendiumEntry.data.source}</span>}
+                          {compendiumEntry?.data?.source && <span className="rev-ability-pill bg-gray-800 text-gray-300 border-gray-600">{compendiumEntry.data.source}</span>}
                         </div>
 
-                        <div className="flex items-center shrink-0 border-l border-gray-700 pl-2">
+                        <div className="flex items-center gap-0.5 shrink-0 border-l border-gray-700 pl-2">
                           <span className="px-2 text-gray-500 hover:text-white font-bold">{isExpanded ? '▲' : '▼'}</span>
                           <button 
-                            className="p-1 rounded text-gray-400 hover:text-white hover:bg-white/10 font-bold text-sm transition-colors" 
+                            className="rev-icon-btn rev-icon-btn-edit text-sm" 
                             onClick={(e) => { 
                               e.stopPropagation(); 
                               setModalAbilityIndex(i); 
@@ -241,7 +241,7 @@ export default function AbilitiesCard({
                             ✎
                           </button>
                           <button 
-                            className="p-1 rounded text-red-500 font-bold text-lg hover:text-red-400 hover:bg-red-500/15 transition-colors" 
+                            className="rev-icon-btn rev-icon-btn-danger text-lg" 
                             onClick={async (e) => { 
                               e.stopPropagation(); 
                               const ok = await askConfirm({
@@ -324,11 +324,11 @@ export default function AbilitiesCard({
                   </div>
                   
                   <div className="flex items-center justify-between w-full sm:flex-1 min-w-0 gap-2">
-                    <div className={`flex gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
-                      {ab.data.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
+                    <div className={`flex items-center gap-1.5 flex-1 min-w-0 ${isExpanded ? 'flex-wrap' : 'flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:\'none\'] [scrollbar-width:\'none\'] sm:flex-wrap sm:overflow-visible'}`}>
+                      {ab.data.type && <span className={`rev-ability-pill ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
                       <SpeedTagPills speedData={speedData} />
-                      {ab.data.range && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">{ab.data.range}</span>}
-                      <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 shrink-0 whitespace-nowrap">Basic</span>
+                      {ab.data.range && <span className="rev-ability-pill bg-gray-800 text-gray-300 border-gray-600">{ab.data.range}</span>}
+                      <span className="rev-ability-pill bg-gray-800 text-gray-300 border-gray-600">Basic</span>
                     </div>
 
                     <div className="flex items-center shrink-0 border-l border-gray-700 pl-2">

@@ -565,7 +565,7 @@ export default function SkillTreeCard({
   return (
     <section className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-6 shadow-sm w-full overflow-hidden">
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-gray-700 pb-3 mb-4 sm:mb-5">
-        <h3 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 text-gray-200">
+        <h3 className="text-xl font-spectral first-letter:text-[1.2em] first-letter:text-red-500 text-gray-200">
           Advancement Constellation
         </h3>
         <div className="flex flex-wrap items-center gap-2 text-xs font-bold">

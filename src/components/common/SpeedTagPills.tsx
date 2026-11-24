@@ -1,4 +1,5 @@
 import React from 'react';
+import { Tooltip } from './Tooltip';
 
 export interface SpeedTagData {
   speedLabel: string;
@@ -14,31 +15,33 @@ interface SpeedTagPillsProps {
 
 export const SpeedTagPills: React.FC<SpeedTagPillsProps> = ({
   speedData,
-  speedBadgeClassName = 'bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600 cursor-help whitespace-nowrap',
+  speedBadgeClassName = 'rev-ability-pill bg-gray-800 text-gray-300 border-gray-600 cursor-help',
 }) => {
   if (!speedData) return null;
 
   return (
-    <>
-      <div className="relative group inline-flex items-center shrink-0">
+    <span className="rev-speed-tags inline-flex items-center gap-1.5 shrink-0 h-6">
+      <Tooltip
+        text={speedData.speedTooltip}
+        noBorder
+        noTruncate
+        className="w-fit h-6 shrink-0"
+      >
         <span className={speedBadgeClassName}>{speedData.speedLabel}</span>
-        <div className="rev-dark-card absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
-          {speedData.speedTooltip}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black" />
-        </div>
-      </div>
+      </Tooltip>
 
       {speedData.upkeepLabel && (
-        <div className="relative group inline-flex items-center shrink-0">
-          <span className="rev-keep-color rev-dark-card bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50 cursor-help whitespace-nowrap">
+        <Tooltip
+          text={speedData.upkeepTooltip}
+          noBorder
+          noTruncate
+          className="w-fit h-6 shrink-0"
+        >
+          <span className="rev-keep-color rev-dark-card rev-ability-pill bg-teal-900/40 text-teal-300 border-teal-700/50 cursor-help">
             {speedData.upkeepLabel}
           </span>
-          <div className="rev-dark-card absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-gray-200 border border-gray-700 text-xs rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none text-center leading-tight normal-case font-normal italic">
-            {speedData.upkeepTooltip}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black" />
-          </div>
-        </div>
+        </Tooltip>
       )}
-    </>
+    </span>
   );
 };

@@ -283,7 +283,7 @@ export default function PartyDashboard({
       {/* CREATE PARTY MODAL */}
       {isCreateOpen && (
         <div
-          className="fixed inset-0 z-[200] rev-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4"
           onClick={() => !creating && setIsCreateOpen(false)}
         >
           <div
@@ -297,8 +297,7 @@ export default function PartyDashboard({
               {!creating && (
                 <button
                   onClick={() => setIsCreateOpen(false)}
-                  className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-                  style={{ color: 'var(--rev-text-muted)' }}
+                  className="rev-icon-btn rev-icon-btn-edit text-xl"
                   aria-label="Close"
                 >
                   ×

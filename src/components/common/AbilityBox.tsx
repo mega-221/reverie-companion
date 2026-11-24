@@ -43,7 +43,7 @@ function extractRankAndWeapons(requires?: string): {
   }
   const stripped = requires.replace(/^Requires:\s*/i, '').replace(/^Requirements:\s*/i, '').trim();
   const rankMatch = stripped.match(/(?:Class|Berserker|[A-Za-z]+)\s+Rank\s+(\d+)/i);
-  const rankTag = rankMatch ? `Rank ${rankMatch[1]}` : null;
+  const rankTag = rankMatch ? `Rank ${rankMatch[1]} Req` : null;
   const weaponsMatch = stripped.match(/Weapons:\s*([^·]+)/i);
   const weaponsTag = weaponsMatch ? weaponsMatch[1].trim() : null;
 
@@ -147,7 +147,7 @@ export const AbilityBox: React.FC<AbilityBoxProps> = ({
         <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
           {subtype && (
             <span
-              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap ${getTypeStyle(
+              className={`rev-ability-pill ${getTypeStyle(
                 category
               )}`}
             >
@@ -157,12 +157,12 @@ export const AbilityBox: React.FC<AbilityBoxProps> = ({
 
           <SpeedTagPills
             speedData={speedData}
-            speedBadgeClassName="rev-dark-card bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-200 border border-gray-600 cursor-help whitespace-nowrap"
+            speedBadgeClassName="rev-dark-card rev-ability-pill bg-gray-800 text-gray-200 border-gray-600 cursor-help"
           />
 
           {weaponsTag && (
             <span
-              className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap"
+              className="rev-ability-pill"
               style={{
                 backgroundColor: 'var(--rev-surface)',
                 borderColor: 'var(--rev-border-strong)',
@@ -175,7 +175,7 @@ export const AbilityBox: React.FC<AbilityBoxProps> = ({
 
           {rankTag && (
             <span
-              className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap tabular-nums"
+              className="rev-ability-pill tabular-nums"
               style={{
                 backgroundColor: 'var(--rev-surface)',
                 borderColor: 'var(--rev-border-strong)',
@@ -188,7 +188,7 @@ export const AbilityBox: React.FC<AbilityBoxProps> = ({
 
           {isPassive && cleanRequires !== 'None' && (
             <span
-              className="px-2 py-0.5 rounded text-[10px] font-semibold border shrink-0 whitespace-nowrap"
+              className="rev-ability-pill font-semibold"
               style={{
                 backgroundColor: 'var(--rev-surface)',
                 borderColor: 'var(--rev-border)',

@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from './supabase';
 import type {
   AllowedEditor,
   Character,
   CharacterData,
-  CompendiumEntry,
   PartyMessage,
   PartyNotificationPayload,
   PartyVitalsSyncPayload,
@@ -18,10 +17,14 @@ import {
   type Tab, type LevelUpTarget 
 } from './components/sheet/utils';
 import { getCoreSkillAttribute } from './constants/reverie';
-import { saveAndMirrorCharacter } from './utils/characterSync';
+import {
+  isTextInputPatch,
+  normalizeCharacter,
+  saveAndMirrorCharacter,
+} from './utils/characterSync';
+import { executePartyTransferAction } from './utils/itemTransfer';
 import { vigorMax, strainMax, dpMax, apMax } from './calc';
 import {
-  calculateTierFromLevel,
   getMaxAccessibleAbilityRank,
   isSkillInspired,
   getSkillMaxRank,
@@ -39,16 +42,11 @@ import GameplaySection from './components/sheet/GameplaySection';
 import NarrativeSection from './components/sheet/NarrativeSection';
 import ProgressionSection from './components/sheet/ProgressionSection';
 import Footer from './components/sheet/Footer';
-import InventoryModal from './components/sheet/modals/InventoryModal';
 import SettingsModal from './components/SettingsModal';
 import PartyNotificationPopup from './components/party/PartyNotificationPopup';
 import PartyDateTransitionPopup, { type PartyDateTransition } from './components/party/PartyDateTransitionPopup';
 import { normalizeCalendarDate } from './reverieCalendar';
-import { LevelUpModal, OriginModal, ClassModal, SpecialSkillModal, AbilityModal, PathModal, DisciplineModal } from './components/sheet/modals/Modals';
 import { CrisisModal } from './components/sheet/narrative/ConvictionsCard';
-import DiceRollerModal from './components/sheet/dice/DiceRollerModal';
-import DiscoRollOverlay from './components/sheet/dice/DiscoRollOverlay';
-import StrainConvictionPromptModal from './components/sheet/dice/StrainConvictionPromptModal';
 import {
   applyDestinyToSession,
   buildConvictionCheckSession,
@@ -61,167 +59,17 @@ import {
   type ActiveRollSession,
 } from './utils/diceRoller';
 
-function normalizeCharacter(
-  fetchedChar: Character,
-  getEntryByName: (name: string) => CompendiumEntry | undefined
-): Character {
-  const rawItems: any[] = Array.isArray(fetchedChar.data?.items) ? fetchedChar.data.items : [];
-  const migratedItems = rawItems.map((i: any) =>
-    typeof i === 'string'
-      ? { id: crypto.randomUUID(), name: i, qty: 1 }
-      : { ...i, id: i.id || crypto.randomUUID() }
-  );
-
-  const resolveEq = (val: string): string => {
-    if (!val) return '';
-    if (val.length > 30) return val;
-    const existing = migratedItems.find((i: any) => i.name === val);
-    if (existing) return existing.id;
-    const newId = crypto.randomUUID();
-    migratedItems.push({ id: newId, name: val, qty: 0 });
-    return newId;
-  };
-
-  const rawEq = fetchedChar.data?.equipment || ({} as any);
-  const migratedEq = {
-    mainHand: resolveEq(rawEq.mainHand || ''),
-    mainHandMode: (rawEq.mainHandMode || (rawEq.mainHand ? '1H' : '')) as '1H' | '2H' | '',
-    offHand: resolveEq(rawEq.offHand || ''),
-    armour: resolveEq(rawEq.armour || ''),
-    extra: Array.isArray(rawEq.extra) ? rawEq.extra.map((id: string) => resolveEq(id)) : [],
-  };
-
-  const oldNotes = fetchedChar.data?.notes || '';
-  let migratedJournal = fetchedChar.data?.journal || [];
-  if (oldNotes && migratedJournal.length === 0) {
-    migratedJournal = [{
-      id: crypto.randomUUID(),
-      date: new Date().toISOString(),
-      title: 'Imported Notes',
-      content: oldNotes,
-    }];
-  }
-
-  const safeData: CharacterData = {
-    ...(fetchedChar.data || {}),
-    identity: {
-      origin: fetchedChar.data?.identity?.origin || '',
-      className: fetchedChar.data?.identity?.className || '',
-      path: fetchedChar.data?.identity?.path || '',
-      quote: fetchedChar.data?.identity?.quote || '',
-      inspirations: fetchedChar.data?.identity?.inspirations || [],
-      originChoices: fetchedChar.data?.identity?.originChoices || {},
-    },
-    progression: (() => {
-      const rawLevel = Math.max(0, fetchedChar.data?.progression?.level ?? 0);
-      const derivedTier = calculateTierFromLevel(rawLevel);
-      const rawXp = Math.max(0, fetchedChar.data?.progression?.xp ?? 0);
-      const totalXp =
-        rawXp < rawLevel * 5
-          ? rawLevel * 5 + Math.min(4, rawXp)
-          : rawXp;
-      return {
-        tier: fetchedChar.data?.progression?.tier ?? derivedTier,
-        level: rawLevel,
-        xp: totalXp,
-        spendableXp: totalXp,
-        advancements: Array.isArray(fetchedChar.data?.progression?.advancements)
-          ? fetchedChar.data.progression.advancements
-          : [],
-      };
-    })(),
-    attributes: {
-      grt: fetchedChar.data?.attributes?.grt || 1,
-      ref: fetchedChar.data?.attributes?.ref || 1,
-      int: fetchedChar.data?.attributes?.int || 1,
-      psy: fetchedChar.data?.attributes?.psy || 1,
-    },
-    bonus: {
-      vm: fetchedChar.data?.bonus?.vm || 0,
-      sl: fetchedChar.data?.bonus?.sl || 0,
-      dp: fetchedChar.data?.bonus?.dp || 0,
-      eva: fetchedChar.data?.bonus?.eva || 0,
-      ap: fetchedChar.data?.bonus?.ap || 0,
-    },
-    trackers: {
-      vigor: fetchedChar.data?.trackers?.vigor ?? 5,
-      strain: fetchedChar.data?.trackers?.strain ?? 0,
-      dp: fetchedChar.data?.trackers?.dp ?? 2,
-      ap: fetchedChar.data?.trackers?.ap ?? 0,
-      apInitialized: Boolean(fetchedChar.data?.trackers?.apInitialized),
-      acc: fetchedChar.data?.trackers?.acc ?? 0,
-      injuries: (fetchedChar.data?.trackers?.injuries || []).map((inj: any) => ({
-        name: inj.name || inj.part || 'Unknown Injury',
-        affectedAttributes: Array.isArray(inj.affectedAttributes)
-          ? inj.affectedAttributes
-          : (inj.affectedAttributes ? inj.affectedAttributes.split(',').map((s: string) => s.trim()) : []),
-        severity: inj.severity ?? 1,
-        treatment: inj.treatment || 'none',
-        weeksLeft: inj.weeksLeft ?? (inj.severity ?? 1) * 4,
-      })),
-    },
-    equipment: migratedEq,
-    abilities: Array.isArray(fetchedChar.data?.abilities)
-      ? fetchedChar.data.abilities.map((a: any) => (typeof a === 'string' ? { name: a, equipped: true } : a))
-      : [],
-    convictions: fetchedChar.data?.convictions || [],
-    failings: fetchedChar.data?.failings || [],
-    aspects: Array.isArray(fetchedChar.data?.aspects)
-      ? fetchedChar.data.aspects.map((a: any) =>
-          typeof a === 'string'
-            ? { id: crypto.randomUUID(), name: a, abandoned: false }
-            : { id: a?.id || crypto.randomUUID(), name: a?.name || '', abandoned: Boolean(a?.abandoned) }
-        )
-      : [],
-    specialSkills: fetchedChar.data?.specialSkills || [],
-    items: migratedItems,
-    possessions: (fetchedChar.data?.possessions || []).map((i: any) => ({ ...i, id: i.id || crypto.randomUUID() })),
-    disciplines: fetchedChar.data?.disciplines || [],
-    skills: fetchedChar.data?.skills || {},
-    journal: migratedJournal,
-    relationships: fetchedChar.data?.relationships || [],
-    notes: oldNotes,
-    allowedEditors: Array.isArray(fetchedChar.allowed_editors)
-      ? fetchedChar.allowed_editors
-      : Array.isArray(fetchedChar.data?.allowedEditors)
-      ? fetchedChar.data.allowedEditors
-      : [],
-  };
-
-  const initialApMax = apMax(safeData, getEntryByName);
-  if (!safeData.trackers.apInitialized && safeData.trackers.ap === 0 && initialApMax > 0) {
-    safeData.trackers.ap = initialApMax;
-    safeData.trackers.apInitialized = true;
-  }
-
-  safeData.progression.spendableXp = getSpendableXp(safeData);
-
-  return {
-    ...fetchedChar,
-    allowed_editors: safeData.allowedEditors,
-    data: safeData,
-  };
-}
-
-function isTextInputPatch(p: Partial<CharacterData>, prevData: CharacterData): boolean {
-  if ('notes' in p || 'journal' in p || 'relationships' in p) return true;
-  if ('identity' in p && p.identity) {
-    const sameMeta =
-      p.identity.origin === prevData.identity?.origin &&
-      p.identity.className === prevData.identity?.className &&
-      p.identity.path === prevData.identity?.path &&
-      JSON.stringify(p.identity.inspirations) === JSON.stringify(prevData.identity?.inspirations) &&
-      JSON.stringify(p.identity.originChoices) === JSON.stringify(prevData.identity?.originChoices);
-    if (sameMeta && p.identity.quote !== prevData.identity?.quote) return true;
-  }
-  if ('convictions' in p && p.convictions && p.convictions.length === (prevData.convictions?.length ?? 0)) {
-    return true;
-  }
-  if ('failings' in p && p.failings && p.failings.length === (prevData.failings?.length ?? 0)) {
-    return true;
-  }
-  return false;
-}
+const InventoryModal = lazy(() => import('./components/sheet/modals/InventoryModal'));
+const LevelUpModal = lazy(() => import('./components/sheet/modals/Modals').then((m) => ({ default: m.LevelUpModal })));
+const OriginModal = lazy(() => import('./components/sheet/modals/Modals').then((m) => ({ default: m.OriginModal })));
+const ClassModal = lazy(() => import('./components/sheet/modals/Modals').then((m) => ({ default: m.ClassModal })));
+const SpecialSkillModal = lazy(() => import('./components/sheet/modals/Modals').then((m) => ({ default: m.SpecialSkillModal })));
+const AbilityModal = lazy(() => import('./components/sheet/modals/Modals').then((m) => ({ default: m.AbilityModal })));
+const PathModal = lazy(() => import('./components/sheet/modals/Modals').then((m) => ({ default: m.PathModal })));
+const DisciplineModal = lazy(() => import('./components/sheet/modals/Modals').then((m) => ({ default: m.DisciplineModal })));
+const DiceRollerModal = lazy(() => import('./components/sheet/dice/DiceRollerModal'));
+const DiscoRollOverlay = lazy(() => import('./components/sheet/dice/DiscoRollOverlay'));
+const StrainConvictionPromptModal = lazy(() => import('./components/sheet/dice/StrainConvictionPromptModal'));
 
 export default function CharacterSheet({
   id,
@@ -287,6 +135,7 @@ export default function CharacterSheet({
   const [abilityPickTotal, setAbilityPickTotal] = useState(0);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [isCrisisNotifOpen, setIsCrisisNotifOpen] = useState(false);
+  const [crisisLockedSlot, setCrisisLockedSlot] = useState<number | null>(null);
   const [isDiceRollerOpen, setIsDiceRollerOpen] = useState(false);
   const [activeRollSession, setActiveRollSession] = useState<ActiveRollSession | null>(null);
   const [dragHoverSkill, setDragHoverSkill] = useState<DragSkillTarget | null>(null);
@@ -518,7 +367,7 @@ export default function CharacterSheet({
           nextChar = buildPatchedCharacter(nextChar, payload.patch as Partial<CharacterData>, true);
         } else if (payload.data) {
           nextChar = normalizeCharacter(
-            { ...nextChar, data: payload.data },
+            { ...nextChar, data: payload.data as CharacterData },
             getEntryByName
           );
         }
@@ -1049,6 +898,11 @@ export default function CharacterSheet({
     if (acceptedSession.category === 'strain_crisis_check') {
       const outcome = computeRollOutcome(acceptedSession);
       if (outcome.outcomeTone === 'failure' && canEdit) {
+        setCrisisLockedSlot(
+          typeof acceptedSession.testedConvictionIndex === 'number'
+            ? acceptedSession.testedConvictionIndex
+            : null
+        );
         setIsCrisisNotifOpen(true);
       }
       pendingStrainCrisisCheckRef.current = false;
@@ -1257,7 +1111,29 @@ export default function CharacterSheet({
         }}
         onRespondCrisis={(_notif, accepted) => {
           if (!accepted || !canEdit) return;
+          setCrisisLockedSlot(null);
           setIsCrisisNotifOpen(true);
+        }}
+        onRespondItemTransfer={async (notif, accepted) => {
+          if (!notif.itemTransfer) return;
+          const actorUserId = currentUserId || char.user_id;
+          const res = await executePartyTransferAction({
+            offer: notif.itemTransfer,
+            action: accepted ? 'claim' : 'return',
+            actorUserId,
+            actorUsername: currentUsername || char.name || 'Player',
+            getEntryByName,
+          });
+          if (!res.ok) {
+            throw new Error(res.error || 'Could not process item transfer.');
+          }
+          if (accepted && res.updatedChar && charRef.current && res.updatedChar.id === charRef.current.id) {
+            const normalized = normalizeCharacter(res.updatedChar, getEntryByName);
+            charRef.current = normalized;
+            setChar(normalized);
+            dirtyRef.current = false;
+            setHasUnsavedChanges(false);
+          }
         }}
         onInitiateRoll={(skillName, cl) => {
           if (!charRef.current) return;
@@ -1284,23 +1160,24 @@ export default function CharacterSheet({
         </div>
       )}
 
+      <Header
+        char={char}
+        onBack={handleRequestBack}
+        onSave={save}
+        saving={saving}
+        saved={saved}
+        hasUnsavedChanges={hasUnsavedChanges}
+        updateTracker={updateTracker}
+        showPulse={pulseState !== 'none'}
+        readOnly={effectiveReadOnly}
+        onOpenSettings={() => setIsSheetSettingsOpen(true)}
+        onOpenInRules={onNavigateToRules ? handleRequestOpenRules : undefined}
+        onOpenDiceRoller={() => setIsDiceRollerOpen(true)}
+        onDragHoverSkill={setDragHoverSkill}
+        onDropSkillRoll={handleDropSkillRoll}
+      />
+
       <div className={`min-h-screen rev-canvas rev-sheet-root pb-20 font-sans transition-all duration-1000 ${showFilter ? 'grayscale-[60%] contrast-[1.1]' : ''}`}>
-        <Header
-          char={char}
-          onBack={handleRequestBack}
-          onSave={save}
-          saving={saving}
-          saved={saved}
-          hasUnsavedChanges={hasUnsavedChanges}
-          updateTracker={updateTracker}
-          showPulse={pulseState !== 'none'}
-          readOnly={effectiveReadOnly}
-          onOpenSettings={() => setIsSheetSettingsOpen(true)}
-          onOpenInRules={onNavigateToRules ? handleRequestOpenRules : undefined}
-          onOpenDiceRoller={() => setIsDiceRollerOpen(true)}
-          onDragHoverSkill={setDragHoverSkill}
-          onDropSkillRoll={handleDropSkillRoll}
-        />
         <main className="w-full px-4 sm:px-6 pt-6 relative z-10">
           {activeTab === 'gameplay' && (
             <GameplaySection
@@ -1338,6 +1215,7 @@ export default function CharacterSheet({
       </div>
 
       {/* Modals rendered OUTSIDE the filtered wrapper so fixed positioning is viewport-relative */}
+      <Suspense fallback={null}>
       <LevelUpModal char={char} levelUpTarget={levelUpTarget} setLevelUpTarget={setLevelUpTarget} handleAdvance={handleAdvance} handleRegress={handleRegress} />
       <OriginModal char={char} isOpen={isOriginModalOpen} onClose={() => setIsOriginModalOpen(false)} applyOrigin={applyOrigin} />
       <ClassModal char={char} isOpen={isClassModalOpen} onClose={() => setIsClassModalOpen(false)} patch={patch} />
@@ -1372,7 +1250,32 @@ export default function CharacterSheet({
           setAbilityPickTotal(0);
         }}
       />
-      <InventoryModal char={char} isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} patch={patch} />
+      <InventoryModal
+        char={char}
+        isOpen={isInventoryModalOpen}
+        onClose={() => setIsInventoryModalOpen(false)}
+        patch={patch}
+        currentUserId={currentUserId}
+        currentUsername={currentUsername}
+        readOnly={effectiveReadOnly}
+        onTransferPersist={async (patchData) => {
+          if (effectiveReadOnly || !charRef.current) return false;
+          const prevChar = charRef.current;
+          const nextChar = buildPatchedCharacter(prevChar, patchData, false);
+          charRef.current = nextChar;
+          setChar(nextChar);
+          if (debounceSaveTimerRef.current !== null) {
+            window.clearTimeout(debounceSaveTimerRef.current);
+            debounceSaveTimerRef.current = null;
+          }
+          broadcast('sheet:patch', {
+            senderId: clientSessionIdRef.current,
+            patch: patchData,
+          });
+          emitPartyVitalsIfChanged(prevChar, nextChar);
+          return persistCharacterToDb(nextChar);
+        }}
+      />
       <DiceRollerModal
         isOpen={isDiceRollerOpen}
         onClose={() => setIsDiceRollerOpen(false)}
@@ -1398,7 +1301,9 @@ export default function CharacterSheet({
         <StrainConvictionPromptModal
           currentStrain={char.data.trackers.strain}
           strainMaxVal={baseStrainMax}
-          convictions={char.data.convictions.filter((c) => c.name?.trim())}
+          convictions={char.data.convictions
+            .map((c, slotIndex) => ({ ...c, slotIndex }))
+            .filter((c) => c.name?.trim())}
           onSelectConviction={(conviction) => {
             setIsStrainConvictionPromptOpen(false);
             setActiveRollSession(
@@ -1412,7 +1317,15 @@ export default function CharacterSheet({
         />
       )}
       {isCrisisNotifOpen && canEdit && (
-        <CrisisModal char={char} patch={patch} onClose={() => setIsCrisisNotifOpen(false)} />
+        <CrisisModal
+          char={char}
+          patch={patch}
+          lockedSlotIndex={crisisLockedSlot}
+          onClose={() => {
+            setIsCrisisNotifOpen(false);
+            setCrisisLockedSlot(null);
+          }}
+        />
       )}
 
       {currentUserId && (
@@ -1508,6 +1421,7 @@ export default function CharacterSheet({
           }
         }}
       />
+      </Suspense>
 
       <Footer activeTab={activeTab} setActiveTab={setActiveTab} showFilter={showFilter} />
 
@@ -1525,7 +1439,7 @@ export default function CharacterSheet({
           };
           return (
             <div
-              className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+              className="fixed inset-0 z-[300] rev-backdrop flex items-center justify-center p-4"
               onClick={() => setPendingNavigation(null)}
             >
               <div
@@ -1539,7 +1453,7 @@ export default function CharacterSheet({
                   <button
                     type="button"
                     onClick={() => setPendingNavigation(null)}
-                    className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors shrink-0"
+                    className="rev-icon-btn rev-icon-btn-edit text-xl"
                     aria-label="Close"
                   >
                     ×

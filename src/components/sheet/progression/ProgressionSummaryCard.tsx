@@ -128,7 +128,7 @@ export default function ProgressionSummaryCard({
     <section className="bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-6 shadow-sm w-full flex flex-col gap-4 sm:gap-5">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-gray-700 pb-3">
         <div>
-          <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 text-gray-200">
+          <h2 className="text-xl font-spectral first-letter:text-[1.2em] first-letter:text-red-500 text-gray-200">
             Progression & Advancements
           </h2>
           <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">

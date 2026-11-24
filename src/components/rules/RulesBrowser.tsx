@@ -163,6 +163,7 @@ export const RulesBrowser: React.FC<RulesBrowserProps> = ({
   );
 
   const chapterBookmarked = isBookmarked(activeChapter.id);
+  const isFrontMatter = activeChapter.id === '00-front-matter';
 
   return (
     <div className="space-y-4">
@@ -208,7 +209,7 @@ export const RulesBrowser: React.FC<RulesBrowserProps> = ({
           aria-label="Rulebook contents and search"
         >
           <div
-            className="fixed inset-0 rev-modal-backdrop backdrop-blur-sm"
+            className="fixed inset-0 rev-backdrop"
             onClick={() => setMobileDrawerOpen(false)}
           />
           <div className="relative z-10 w-full max-w-md max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-150">
@@ -256,8 +257,45 @@ export const RulesBrowser: React.FC<RulesBrowserProps> = ({
         </aside>
 
         {/* Active Chapter Page */}
-        <main className="sheet-panel p-5 sm:p-8 lg:p-10 min-w-0" ref={articleRef}>
+        <main
+          className={`sheet-panel min-w-0 ${
+            isFrontMatter ? 'p-0 overflow-hidden' : 'p-5 sm:p-8 lg:p-10'
+          }`}
+          ref={articleRef}
+        >
+          {isFrontMatter && (
+            <section
+              aria-label="Reverie Core Rules Cover"
+              className="rev-dark-card bg-black text-white px-6 sm:px-10 pt-10 sm:pt-14 pb-12 sm:pb-16 flex flex-col items-center text-center border-b border-white/10"
+            >
+              <img
+                src="/assets/aistudio/Seasons_duotone_092e55e2.png"
+                alt="The Seasons — Reverie Cover Art"
+                referrerPolicy="no-referrer"
+                className="w-full max-w-2xl h-auto object-contain mb-8 sm:mb-10 select-none"
+              />
+              <h1 className="font-spectral text-5xl sm:text-6xl font-normal uppercase tracking-[0.35em] text-white">
+                REVERIE
+              </h1>
+              <hr className="w-40 sm:w-56 border-0 border-t border-white/25 my-8 sm:my-9" />
+              <div className="flex flex-col items-center gap-3 sm:gap-4">
+                <p
+                  className="font-spectral italic normal-case font-normal text-sm sm:text-base text-gray-300 tracking-wide"
+                  style={{ textTransform: 'none' }}
+                >
+                  In memory of those who shattered the world.
+                </p>
+                <p className="font-spectral text-base sm:text-lg uppercase tracking-[0.28em] text-gray-200 mt-1">
+                  CORE ~ RULES
+                </p>
+                <p className="font-spectral text-base sm:text-lg uppercase tracking-[0.28em] text-gray-200">
+                  ALPHA 0 ~ 11 ~ 0
+                </p>
+              </div>
+            </section>
+          )}
 
+          <div className={isFrontMatter ? 'p-5 sm:p-8 lg:p-10' : ''}>
           {/* Chapter Header */}
           <header className="pb-5 mb-6 border-b rev-divider space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -385,40 +423,42 @@ export const RulesBrowser: React.FC<RulesBrowserProps> = ({
                   />
 
                   <div className="relative z-10">
-                    <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4">
-                    <div className="space-y-0.5 min-w-0">
-                      <h3
-                        className="font-spectral text-xl sm:text-2xl font-bold tracking-wide"
-                        style={{ color: 'var(--rev-text-bright)' }}
-                      >
-                        {section.title}
-                      </h3>
-                      <p
-                        className="text-xs tabular-nums"
-                        style={{ color: 'var(--rev-text-faint)' }}
-                      >
-                        Chapter {activeChapter.number} · {formatPageSpan(section.pages)}
-                      </p>
-                    </div>
+                    {!(activeChapter.sections.length === 1 && section.title === activeChapter.title) && (
+                      <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4">
+                        <div className="space-y-0.5 min-w-0">
+                          <h3
+                            className="font-spectral text-xl sm:text-2xl font-bold tracking-wide"
+                            style={{ color: 'var(--rev-text-bright)' }}
+                          >
+                            {section.title}
+                          </h3>
+                          <p
+                            className="text-xs tabular-nums"
+                            style={{ color: 'var(--rev-text-faint)' }}
+                          >
+                            Chapter {activeChapter.number} · {formatPageSpan(section.pages)}
+                          </p>
+                        </div>
 
-                    <button
-                      type="button"
-                      onClick={() => toggleBookmark(activeChapter.id, section.id)}
-                      aria-label={
-                        secBookmarked
-                          ? `Remove bookmark for ${section.title}`
-                          : `Bookmark ${section.title}`
-                      }
-                      className={`px-2.5 py-1 text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
-                        secBookmarked
-                          ? 'rev-btn-primary'
-                          : 'rev-btn-secondary opacity-80 hover:opacity-100'
-                      }`}
-                    >
-                      <BookmarkIcon filled={secBookmarked} className="w-3.5 h-3.5" />
-                      {secBookmarked ? 'Bookmarked' : 'Bookmark'}
-                    </button>
-                  </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleBookmark(activeChapter.id, section.id)}
+                          aria-label={
+                            secBookmarked
+                              ? `Remove bookmark for ${section.title}`
+                              : `Bookmark ${section.title}`
+                          }
+                          className={`px-2.5 py-1 text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
+                            secBookmarked
+                              ? 'rev-btn-primary'
+                              : 'rev-btn-secondary opacity-80 hover:opacity-100'
+                          }`}
+                        >
+                          <BookmarkIcon filled={secBookmarked} className="w-3.5 h-3.5" />
+                          {secBookmarked ? 'Bookmarked' : 'Bookmark'}
+                        </button>
+                      </div>
+                    )}
 
                     <RulesMarkdownRenderer
                       markdown={section.content}
@@ -485,6 +525,7 @@ export const RulesBrowser: React.FC<RulesBrowserProps> = ({
               )}
             </div>
           </footer>
+          </div>
         </main>
       </div>
 

@@ -274,7 +274,7 @@ export default function SettingsModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[250] rev-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[250] rev-backdrop flex items-center justify-center p-4"
       onClick={() => !isBusy && onClose()}
     >
       <div
@@ -291,8 +291,7 @@ export default function SettingsModal({
             <button
               type="button"
               onClick={onClose}
-              className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 transition-colors"
-              style={{ color: 'var(--rev-text-muted)' }}
+              className="rev-icon-btn rev-icon-btn-edit text-xl"
               aria-label="Close"
             >
               ×

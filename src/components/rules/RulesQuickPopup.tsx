@@ -58,7 +58,7 @@ export const RulesQuickPopup: React.FC<RulesQuickPopupProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[250] rev-modal-backdrop backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+      className="fixed inset-0 z-[250] rev-backdrop flex items-center justify-center p-3 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label={`Rules Reference: ${section.title}`}

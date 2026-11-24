@@ -249,18 +249,16 @@ export default function DiscoRollOverlay({
     namedConvictions.length > 0 &&
     isThreeD6;
 
-  const centerDieIndex = Math.floor(session.dice.length / 2);
-
-  // Verdict container classes aligned with green/red UI conventions
+  // Verdict container classes aligned with yellow/green/red UI conventions
   const verdictBoxClass = useMemo(() => {
     if (outcome.outcomeTone === 'radiant') {
-      return 'rev-keep-color border-green-700 bg-green-950/75 text-green-200';
+      return 'rev-keep-color border-yellow-400/85 bg-yellow-950/80 text-yellow-100';
     }
     if (outcome.outcomeTone === 'success') {
-      return 'rev-keep-color border-green-800 bg-green-950/75 text-green-200';
+      return 'rev-keep-color border-green-700 bg-green-950/75 text-green-200';
     }
     if (outcome.outcomeTone === 'failure') {
-      return 'rev-keep-color border-red-800 bg-red-950/75 text-red-200';
+      return 'rev-keep-color border-red-700 bg-red-950/75 text-red-200';
     }
     return 'border-white/30 bg-black/45 text-white';
   }, [outcome.outcomeTone]);
@@ -269,7 +267,7 @@ export default function DiscoRollOverlay({
     <div
       className={`fixed inset-0 z-[420] flex items-center justify-center p-4 sm:p-6 transition-[backdrop-filter,opacity] duration-300 ease-out ${
         isVisible && !isClosing
-          ? 'backdrop-blur-2xl opacity-100'
+          ? 'rev-roll-blur opacity-100'
           : 'backdrop-blur-none opacity-0 pointer-events-none'
       }`}
       role="dialog"
@@ -319,7 +317,7 @@ export default function DiscoRollOverlay({
           title={!allSettled ? 'Click to settle dice immediately' : undefined}
         >
           <div className="flex flex-wrap items-center justify-center gap-4">
-            {session.dice.map((die, idx) => {
+            {session.dice.map((die) => {
               const isSettled = settledDieIds.has(die.id);
               const track = faceTrack[die.id];
               const currVal = track?.curr ?? die.value;
@@ -328,39 +326,30 @@ export default function DiscoRollOverlay({
               const isCoin = die.size === 'coinflip';
               const clickableForExert = pickDieForExert && isSettled && !isClosing;
 
-              const isCenterDie = idx === centerDieIndex;
-              const isRadiantCenter =
-                allSettled && outcome.outcomeTone === 'radiant' && isCenterDie;
-              const isSuccessOutcome =
-                allSettled &&
-                (outcome.outcomeTone === 'success' || outcome.outcomeTone === 'radiant');
+              const isRadiantOutcome = allSettled && outcome.outcomeTone === 'radiant';
+              const isSuccessOutcome = allSettled && outcome.outcomeTone === 'success';
               const isFailureOutcome = allSettled && outcome.outcomeTone === 'failure';
 
               let boxBorderClass = 'border-white/85';
               let pipToneClass = 'bg-white';
               let textToneClass = 'text-white';
-              let boxInlineStyle: React.CSSProperties | undefined;
 
               if (clickableForExert) {
                 boxBorderClass = 'rev-keep-color border-amber-400 ring-2 ring-amber-400/50';
-                pipToneClass = 'bg-amber-300';
-                textToneClass = 'text-amber-200';
-              } else if (isRadiantCenter) {
+                pipToneClass = 'rev-keep-color bg-amber-400';
+                textToneClass = 'rev-keep-color text-amber-400';
+              } else if (isRadiantOutcome) {
                 boxBorderClass = 'rev-keep-color border-yellow-400';
-                pipToneClass = 'bg-yellow-300';
-                textToneClass = 'text-yellow-200';
-                boxInlineStyle = {
-                  boxShadow:
-                    '0 0 24px rgba(250, 204, 21, 0.58), 0 0 8px rgba(251, 191, 36, 0.7), inset 0 0 14px rgba(250, 204, 21, 0.28)',
-                };
+                pipToneClass = 'rev-keep-color bg-yellow-400';
+                textToneClass = 'rev-keep-color text-yellow-400';
               } else if (isSuccessOutcome) {
-                boxBorderClass = 'rev-keep-color border-green-600';
-                pipToneClass = 'bg-green-300';
-                textToneClass = 'text-green-200';
+                boxBorderClass = 'rev-keep-color border-green-500';
+                pipToneClass = 'rev-keep-color bg-green-500';
+                textToneClass = 'rev-keep-color text-green-500';
               } else if (isFailureOutcome) {
-                boxBorderClass = 'rev-keep-color border-red-700';
-                pipToneClass = 'bg-red-300';
-                textToneClass = 'text-red-200';
+                boxBorderClass = 'rev-keep-color border-red-500';
+                pipToneClass = 'rev-keep-color bg-red-500';
+                textToneClass = 'rev-keep-color text-red-500';
               }
 
               const boxDimensionClass = isCoin
@@ -383,21 +372,10 @@ export default function DiscoRollOverlay({
                   }`}
                 >
                   <div
-                    className={`relative overflow-hidden bg-transparent border-2 flex items-center justify-center select-none transition-[border-color,box-shadow,transform,opacity] duration-300 ${boxDimensionClass} ${boxBorderClass} ${
+                    className={`relative overflow-hidden bg-transparent border-2 flex items-center justify-center select-none transition-[border-color,transform,opacity] duration-300 ${boxDimensionClass} ${boxBorderClass} ${
                       !isSettled ? 'opacity-90 scale-[0.98]' : 'opacity-100 scale-100'
                     }`}
-                    style={boxInlineStyle}
                   >
-                    {/* Conviction-card inspired yellow radial aura for Radiant center die */}
-                    {isRadiantCenter && !clickableForExert && (
-                      <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          background:
-                            'radial-gradient(circle at center, rgba(250, 204, 21, 0.34) 0%, transparent 72%)',
-                        }}
-                      />
-                    )}
 
                     {/* Slot-machine downward rotating face reel */}
                     {!isSettled ? (
@@ -468,12 +446,19 @@ export default function DiscoRollOverlay({
                       Dice: {outcome.diceSum}
                     </span>
                     {session.baseModifiers.map((m, idx) => (
-                      <span key={idx} className="px-2 py-0.5 rounded bg-white/10 text-neutral-200 tabular-nums">
+                      <span
+                        key={idx}
+                        className={`rev-keep-color px-2 py-0.5 rounded border tabular-nums ${
+                          m.value >= 0
+                            ? 'bg-green-950/75 border-green-700 text-green-300'
+                            : 'bg-red-950/75 border-red-700 text-red-300'
+                        }`}
+                      >
                         {m.value >= 0 ? `+${m.value}` : m.value} {m.label}
                       </span>
                     ))}
                     {session.destinyApplied && (
-                      <span className="rev-keep-color px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-700 text-cyan-200 tabular-nums">
+                      <span className="rev-keep-color px-2 py-0.5 rounded bg-green-950/75 border border-green-700 text-green-300 tabular-nums">
                         +{session.destinyApplied.bonus} {session.destinyApplied.convictionName}
                       </span>
                     )}
@@ -487,12 +472,12 @@ export default function DiscoRollOverlay({
                 </div>
               )}
 
-              {/* Verdict Box (Green on Success/Radiant, Red on Failure) */}
+              {/* Verdict Box (Yellow on Radiant, Green on Success, Red on Failure) */}
               <div className={`rounded-xl border p-4 text-center space-y-3 transition-colors duration-300 ${verdictBoxClass}`}>
                 <div
                   className={`font-spectral font-bold text-xl tracking-wider uppercase ${
                     outcome.outcomeTone === 'radiant'
-                      ? 'rev-keep-color text-yellow-200 drop-shadow-[0_0_10px_rgba(250,204,21,0.45)]'
+                      ? 'rev-keep-color text-yellow-300 drop-shadow-[0_0_10px_rgba(250,204,21,0.45)]'
                       : ''
                   }`}
                 >
@@ -503,28 +488,28 @@ export default function DiscoRollOverlay({
                   (session.category === 'skill' ||
                     session.category === 'special_skill' ||
                     session.category === 'attribute') && (
-                    <div className="space-y-3 pt-2 border-t border-green-700/60 text-left">
-                      <p className="text-xs text-green-100/90 leading-relaxed">
+                    <div className="space-y-3 pt-2 border-t border-yellow-500/50 text-left">
+                      <p className="rev-keep-color text-xs text-yellow-100/90 leading-relaxed">
                         Radiant Success (CL +4): Select restoration options below to apply when closing this roll.
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer p-2 rounded border border-green-700/60 bg-black/30 hover:bg-black/45 transition-colors">
+                        <label className="rev-keep-color flex items-center gap-2 text-xs font-semibold cursor-pointer p-2 rounded border border-yellow-500/50 bg-yellow-900/35 hover:bg-yellow-900/55 text-yellow-100 transition-colors">
                           <input
                             type="checkbox"
                             checked={radiantVigorSelected}
                             onChange={(e) => setRadiantVigorSelected(e.target.checked)}
                             className="w-4 h-4 rounded"
-                            style={{ accentColor: 'var(--rev-accent)' }}
+                            style={{ accentColor: '#facc15' }}
                           />
                           <span>Restore 3 Vigor</span>
                         </label>
-                        <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer p-2 rounded border border-green-700/60 bg-black/30 hover:bg-black/45 transition-colors">
+                        <label className="rev-keep-color flex items-center gap-2 text-xs font-semibold cursor-pointer p-2 rounded border border-yellow-500/50 bg-yellow-900/35 hover:bg-yellow-900/55 text-yellow-100 transition-colors">
                           <input
                             type="checkbox"
                             checked={radiantStrainSelected}
                             onChange={(e) => setRadiantStrainSelected(e.target.checked)}
                             className="w-4 h-4 rounded"
-                            style={{ accentColor: 'var(--rev-accent)' }}
+                            style={{ accentColor: '#facc15' }}
                           />
                           <span>Restore 3 Strain</span>
                         </label>

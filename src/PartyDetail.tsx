@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import type {
   Character,
   CharacterData,
+  CombatEncounterState,
   Party,
   PartyMember,
   PartyMessage,
@@ -16,14 +17,14 @@ import { sendEphemeralBroadcast, useVisibilityRealtime } from './hooks/useVisibi
 import { useBodyScrollLock } from './hooks/useBodyScrollLock';
 import { useEscapeKey } from './hooks/useEscapeKey';
 import { safeCharacterData, saveAndMirrorCharacter } from './utils/characterSync';
-import PartyCalendar from './components/party/PartyCalendar';
-import PartyChat from './components/party/PartyChat';
+import { executePartyTransferAction, type PartyTransferOffer } from './utils/itemTransfer';
 import NotifyPlayersModal from './components/party/NotifyPlayersModal';
 import PartyNotificationPopup from './components/party/PartyNotificationPopup';
 import PartyDateTransitionPopup, { type PartyDateTransition } from './components/party/PartyDateTransitionPopup';
 import { CrisisModal } from './components/sheet/narrative/ConvictionsCard';
 import { getSpendableXp } from './components/sheet/progression/progressionData';
 import { normalizeCalendarDate, type ReverieCalendarDate } from './reverieCalendar';
+import CompactVitalMeter from './components/party/CompactVitalMeter';
 
 export type SharedCharacterEntry = {
   id: string;
@@ -34,132 +35,9 @@ export type SharedCharacterEntry = {
   username?: string;
 };
 
-
-function CompactVitalMeter({
-  kind,
-  label,
-  current,
-  max,
-}: {
-  kind: 'vigor' | 'strain' | 'dp' | 'ap';
-  label: string;
-  current: number;
-  max: number;
-}) {
-  const safeMax = Math.max(1, max);
-  const isVigor = kind === 'vigor';
-  const isStrain = kind === 'strain';
-  const isDestiny = kind === 'dp';
-  const isAp = kind === 'ap';
-
-  const hasTVG = isVigor && current > safeMax;
-  let titleColor = 'text-gray-300';
-  let segmentColor = 'bg-red-500';
-
-  if (isVigor) {
-    segmentColor = 'bg-red-500';
-    if (hasTVG) {
-      titleColor = 'text-[#76a5af]';
-    } else if (current <= -safeMax) {
-      titleColor = 'text-gray-400';
-      segmentColor = 'bg-black';
-    } else if (current <= 0) {
-      titleColor = 'text-red-500';
-      segmentColor = 'bg-red-800';
-    } else if (current <= safeMax / 2) {
-      titleColor = 'text-red-400';
-    } else {
-      titleColor = 'text-gray-200';
-    }
-  } else if (isStrain) {
-    segmentColor = 'bg-blue-500';
-    if (current >= safeMax * 2) {
-      titleColor = 'text-purple-400';
-      segmentColor = 'bg-purple-600';
-    } else if (current >= safeMax) {
-      titleColor = 'text-blue-400';
-    } else {
-      titleColor = 'text-gray-200';
-    }
-  } else if (isDestiny) {
-    segmentColor = 'bg-yellow-500';
-    if (current >= safeMax) {
-      titleColor = 'text-cyan-400';
-      segmentColor = 'bg-cyan-500';
-    } else if (current >= safeMax / 2) {
-      titleColor = 'text-yellow-400';
-    } else {
-      titleColor = 'text-gray-200';
-    }
-  } else if (isAp) {
-    if (current < max) {
-      titleColor = 'text-amber-400';
-      segmentColor = 'bg-amber-400';
-    } else if (current > max) {
-      titleColor = 'text-cyan-300';
-      segmentColor = 'bg-cyan-400';
-    } else {
-      titleColor = 'text-gray-200';
-      segmentColor = 'bg-cyan-500';
-    }
-  }
-
-  const totalBars = hasTVG ? current : safeMax;
-  const pct = Math.max(0, Math.min(100, (current / safeMax) * 100));
-
-  return (
-    <div className="flex flex-col gap-1 min-w-0">
-      <div className="flex items-baseline justify-between gap-1 text-[11px] leading-none">
-        <span className={`vital-static font-bold uppercase tracking-wider ${titleColor}`}>{label}</span>
-        <span className="font-bold tabular-nums" style={{ color: 'var(--rev-text)' }}>
-          <span className={current < 0 ? 'vital-static text-red-500' : ''}>{current}</span>
-          <span className="font-normal" style={{ color: 'var(--rev-text-faint)' }}>/{max}</span>
-        </span>
-      </div>
-
-      {totalBars <= 24 ? (
-        <div className="vital-static flex w-full gap-0.5 h-1.5">
-          {Array.from({ length: totalBars }).map((_, i) => {
-            let isFilled = false;
-            let isTVG = false;
-            let isOverflowing = false;
-
-            if (isVigor && current < 0) {
-              isFilled = i >= safeMax + current;
-            } else {
-              isFilled = i < current;
-              if (isStrain && i < current - safeMax) isOverflowing = true;
-              if (isVigor && i >= safeMax) isTVG = true;
-            }
-
-            let segClass = 'vital-static flex-1 h-full rounded-[1px] transition-colors duration-200 ';
-            if (isFilled) {
-              if (isTVG) {
-                segClass += 'bg-[#76a5af]';
-              } else if (isOverflowing) {
-                segClass += current >= safeMax * 2 ? 'bg-purple-600' : 'bg-purple-500';
-              } else {
-                segClass += segmentColor;
-              }
-            } else {
-              segClass += 'bg-gray-700/50';
-            }
-            return <div key={i} className={segClass} />;
-          })}
-        </div>
-      ) : (
-        <div className="vital-static h-1.5 w-full rounded-full bg-gray-700/50 overflow-hidden">
-          <div
-            className={`vital-static h-full rounded-full transition-all duration-300 ${
-              hasTVG ? 'bg-[#76a5af]' : segmentColor
-            }`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
+const PartyCalendar = lazy(() => import('./components/party/PartyCalendar'));
+const PartyChat = lazy(() => import('./components/party/PartyChat'));
+const CombatTracker = lazy(() => import('./components/party/CombatTracker'));
 
 export default function PartyDetail({
   partyId,
@@ -202,6 +80,8 @@ export default function PartyDetail({
   const [notificationQueue, setNotificationQueue] = useState<PartyNotificationPayload[]>([]);
   const [dateTransition, setDateTransition] = useState<PartyDateTransition | null>(null);
   const [crisisChar, setCrisisChar] = useState<Character | null>(null);
+  const [partyView, setPartyView] = useState<'overview' | 'combat'>('overview');
+  const [incomingCombatSync, setIncomingCombatSync] = useState<CombatEncounterState | null>(null);
 
   useBodyScrollLock(isEditPartyOpen || isInviteOpen || isShareOpen);
 
@@ -444,6 +324,11 @@ export default function PartyDetail({
       },
       'party:roster': () => {
         loadPartyData(false);
+      },
+      'party:combat': (payload: CombatEncounterState) => {
+        if (payload?.id) {
+          setIncomingCombatSync(payload);
+        }
       },
     },
     onBeforeHide: () => {
@@ -879,6 +764,40 @@ export default function PartyDetail({
     });
   };
 
+  const handleApplyTransferCharUpdate = (updatedChar?: Character) => {
+    if (!updatedChar) return;
+    setSharedChars(prev =>
+      prev.map(entry =>
+        entry.character_id === updatedChar.id
+          ? { ...entry, character: updatedChar }
+          : entry
+      )
+    );
+    setUserCharacters(prev =>
+      prev.map(c => (c.id === updatedChar.id ? updatedChar : c))
+    );
+  };
+
+  const handleTransferOfferAction = async (
+    offer: Pick<
+      PartyTransferOffer,
+      'offerId' | 'partyId' | 'fromCharId' | 'fromCharName' | 'fromUserId' | 'toCharId' | 'toCharName' | 'toUserId' | 'item'
+    >,
+    action: 'claim' | 'return' | 'reclaim'
+  ) => {
+    const res = await executePartyTransferAction({
+      offer,
+      action,
+      actorUserId: userId,
+      actorUsername: userUsername,
+      getEntryByName,
+    });
+    if (!res.ok) {
+      throw new Error(res.error || 'Could not process item transfer.');
+    }
+    handleApplyTransferCharUpdate(res.updatedChar);
+  };
+
   return (
     <div className="w-full">
       {confirmDialog}
@@ -889,6 +808,10 @@ export default function PartyDetail({
         giveTargets={giveTargets}
         onRespondGive={handleRespondGive}
         onRespondCrisis={handleRespondCrisis}
+        onRespondItemTransfer={async (notif, accepted) => {
+          if (!notif.itemTransfer) return;
+          await handleTransferOfferAction(notif.itemTransfer, accepted ? 'claim' : 'return');
+        }}
         onDismiss={(notifId) => {
           setNotificationQueue(prev => prev.filter(n => n.id !== notifId));
         }}
@@ -925,6 +848,7 @@ export default function PartyDetail({
             <p className="text-xs mt-0.5 whitespace-pre-wrap break-words" style={{ color: 'var(--rev-text-muted)' }}>
               {party.description?.trim() ? party.description : 'Party management and shared characters.'}
             </p>
+            <Suspense fallback={null}>
             <PartyCalendar
               partyId={partyId}
               calendarDate={party.calendar_date}
@@ -949,10 +873,11 @@ export default function PartyDetail({
               }}
               onError={(msg) => setError(msg)}
             />
+            </Suspense>
           </div>
         </div>
 
-        {/* Grouped Header Actions: Primary Actions + Compact Leader Menu */}
+        {/* Grouped Header Actions: View Switcher + Primary Actions + Compact Leader Menu */}
         <div
           className={`w-full lg:w-auto shrink-0 gap-2 ${
             isLeader
@@ -960,6 +885,29 @@ export default function PartyDetail({
               : 'flex flex-wrap items-center'
           }`}
         >
+          <div className={`flex items-center p-0.5 rev-inset shrink-0 ${isLeader ? 'col-span-2 sm:col-span-1' : 'w-full sm:w-auto'}`}>
+            <button
+              type="button"
+              onClick={() => setPartyView('overview')}
+              className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
+                partyView === 'overview' ? 'rev-btn-primary shadow-sm' : 'opacity-75 hover:opacity-100'
+              }`}
+              style={partyView === 'overview' ? undefined : { color: 'var(--rev-text-secondary)' }}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => setPartyView('combat')}
+              className={`flex-1 sm:flex-none px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
+                partyView === 'combat' ? 'rev-btn-primary shadow-sm' : 'opacity-75 hover:opacity-100'
+              }`}
+              style={partyView === 'combat' ? undefined : { color: 'var(--rev-text-secondary)' }}
+            >
+              Combat Tracker
+            </button>
+          </div>
+
           <button
             onClick={() => setIsShareOpen(true)}
             className={`rev-btn-primary px-4 py-2 font-bold text-sm shadow-sm text-center ${
@@ -1061,7 +1009,39 @@ export default function PartyDetail({
         </div>
       )}
 
-      {/* Wide 12-Col Desktop Workspace: Roster (3) + Shared Characters (5) + Live Chat (4) */}
+      {partyView === 'combat' ? (
+        <Suspense fallback={<div className="sheet-panel p-8 text-sm text-center" style={{ color: 'var(--rev-text-muted)' }}>Loading combat tracker...</div>}>
+        <CombatTracker
+          partyId={partyId}
+          userId={userId}
+          sharedChars={sharedChars}
+          isLeader={isLeader}
+          incomingCombatSync={incomingCombatSync}
+          onBroadcastCombat={(state) => broadcast('party:combat', state)}
+          onSyncCharacterUpdate={(updatedChar) => {
+            setSharedChars(prev =>
+              prev.map(entry =>
+                entry.character_id === updatedChar.id
+                  ? { ...entry, character: updatedChar }
+                  : entry
+              )
+            );
+            setUserCharacters(prev =>
+              prev.map(c => (c.id === updatedChar.id ? updatedChar : c))
+            );
+          }}
+          onBroadcastVitals={(payload) => {
+            setLiveVitalsMap(prev => {
+              const next = new Map(prev);
+              next.set(payload.character_id, payload);
+              return next;
+            });
+            broadcast('party:vitals', payload);
+          }}
+        />
+        </Suspense>
+      ) : (
+      /* Wide 12-Col Desktop Workspace: Roster (3) + Shared Characters (5) + Live Chat (4) */
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
         {/* Members Column */}
         <div className="sheet-panel p-4 sm:p-5 flex flex-col gap-4 lg:col-span-4 xl:col-span-3 min-w-0">
@@ -1218,6 +1198,7 @@ export default function PartyDetail({
 
         {/* Party Chat Column */}
         <div className="lg:col-span-12 xl:col-span-4">
+          <Suspense fallback={<div className="sheet-panel p-8 text-sm text-center" style={{ color: 'var(--rev-text-muted)' }}>Loading party chat...</div>}>
           <PartyChat
             partyId={partyId}
             userId={userId}
@@ -1230,9 +1211,12 @@ export default function PartyDetail({
             refreshSignal={chatRefreshSignal}
             onBroadcastMessage={(msg) => broadcast('party:chat', msg)}
             onBroadcastDeleteMessage={(messageId) => broadcast('party:chat:delete', { id: messageId })}
+            onRespondTransferOffer={handleTransferOfferAction}
           />
+          </Suspense>
         </div>
       </div>
+      )}
 
       {/* NOTIFY PLAYERS MODAL */}
       {isLeader && (
@@ -1252,7 +1236,7 @@ export default function PartyDetail({
       {/* EDIT PARTY MODAL */}
       {isEditPartyOpen && (
         <div
-          className="fixed inset-0 z-[200] rev-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4"
           onClick={() => !savingMeta && setIsEditPartyOpen(false)}
         >
           <div
@@ -1266,8 +1250,7 @@ export default function PartyDetail({
               {!savingMeta && (
                 <button
                   onClick={() => setIsEditPartyOpen(false)}
-                  className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-                  style={{ color: 'var(--rev-text-muted)' }}
+                  className="rev-icon-btn rev-icon-btn-edit text-xl"
                   aria-label="Close"
                 >
                   ×
@@ -1330,7 +1313,7 @@ export default function PartyDetail({
       {/* INVITE MODAL */}
       {isInviteOpen && (
         <div
-          className="fixed inset-0 z-[200] rev-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4"
           onClick={() => !inviting && setIsInviteOpen(false)}
         >
           <div
@@ -1344,8 +1327,7 @@ export default function PartyDetail({
               {!inviting && (
                 <button
                   onClick={() => setIsInviteOpen(false)}
-                  className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-                  style={{ color: 'var(--rev-text-muted)' }}
+                  className="rev-icon-btn rev-icon-btn-edit text-xl"
                   aria-label="Close"
                 >
                   ×
@@ -1397,11 +1379,11 @@ export default function PartyDetail({
       {/* SHARE CHARACTERS MODAL */}
       {isShareOpen && (
         <div
-          className="fixed inset-0 z-[200] rev-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4"
           onClick={() => !sharing && setIsShareOpen(false)}
         >
           <div
-            className="sheet-modal shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85vh] max-h-[85dvh]"
+            className="sheet-modal shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85dvh]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b rev-divider rev-inset-soft shrink-0">
@@ -1411,8 +1393,7 @@ export default function PartyDetail({
               {!sharing && (
                 <button
                   onClick={() => setIsShareOpen(false)}
-                  className="font-bold text-2xl leading-none px-2 py-0.5 rounded hover:bg-white/10 hover:text-white transition-colors"
-                  style={{ color: 'var(--rev-text-muted)' }}
+                  className="rev-icon-btn rev-icon-btn-edit text-xl"
                   aria-label="Close"
                 >
                   ×

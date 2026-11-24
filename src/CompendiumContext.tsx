@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabase';
 import type { CompendiumEntry } from './types';
 
@@ -28,15 +28,33 @@ export function CompendiumProvider({ children }: { children: React.ReactNode }) 
     });
   }, []);
 
-  const getDisciplines = () => entries.filter(e => e.type === 'discipline');
-  const getAbilities = () => entries.filter(e => e.type === 'ability');
-  const getClasses = () => entries.filter(e => e.type === 'class');
-  const getSpecialSkills = () => entries.filter(e => e.type === 'special_skill');
-  const getConvictions = () => entries.filter(e => e.type === 'conviction');
-  const getFailings = () => entries.filter(e => e.type === 'failing');
-  const getAspects = () => entries.filter(e => e.type === 'aspect');
-  
-  const getEntryByName = (name: string) => entries.find(e => e.name === name);
+  const indexes = useMemo(() => {
+    const byType = new Map<string, CompendiumEntry[]>();
+    const byName = new Map<string, CompendiumEntry>();
+    for (const entry of entries) {
+      const matching = byType.get(entry.type);
+      if (matching) matching.push(entry);
+      else byType.set(entry.type, [entry]);
+      byName.set(entry.name, entry);
+    }
+    return { byType, byName };
+  }, [entries]);
+
+  const getEntriesByType = useCallback(
+    (type: string) => indexes.byType.get(type) || [],
+    [indexes]
+  );
+  const getDisciplines = useCallback(() => getEntriesByType('discipline'), [getEntriesByType]);
+  const getAbilities = useCallback(() => getEntriesByType('ability'), [getEntriesByType]);
+  const getClasses = useCallback(() => getEntriesByType('class'), [getEntriesByType]);
+  const getSpecialSkills = useCallback(() => getEntriesByType('special_skill'), [getEntriesByType]);
+  const getConvictions = useCallback(() => getEntriesByType('conviction'), [getEntriesByType]);
+  const getFailings = useCallback(() => getEntriesByType('failing'), [getEntriesByType]);
+  const getAspects = useCallback(() => getEntriesByType('aspect'), [getEntriesByType]);
+  const getEntryByName = useCallback(
+    (name: string) => indexes.byName.get(name),
+    [indexes]
+  );
 
   return (
     <CompendiumContext.Provider value={{ 

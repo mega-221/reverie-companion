@@ -122,7 +122,7 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
     <section className="sheet-panel rev-nar-card p-3.5 sm:p-5 w-full min-h-[320px] lg:h-[420px] flex flex-col">
       {confirmDialog}
       <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-3 shrink-0 gap-2">
-        <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Relationships</h2>
+        <h2 className="text-xl font-spectral first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Relationships</h2>
         <button onClick={isAddingRel ? handleCancel : () => setIsAddingRel(true)} className="text-xs font-bold text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-1.5 rounded transition-colors whitespace-nowrap shrink-0">
           {isAddingRel ? 'Cancel' : '+ Add Bond'}
         </button>
@@ -245,9 +245,9 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => handleEdit(rel)} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold p-1 leading-none opacity-80 sm:opacity-50 sm:group-hover:opacity-100 transition-all" title="Edit Entry">✎</button>
-                    <button onClick={() => handleDelete(rel)} className="text-red-500 hover:text-red-400 hover:bg-red-500/15 rounded font-bold p-1 leading-none opacity-80 sm:opacity-50 sm:group-hover:opacity-100 transition-all" title="Delete Entry">×</button>
+                  <div className="flex items-center gap-0.5 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => handleEdit(rel)} className="rev-icon-btn rev-icon-btn-edit text-sm opacity-80 sm:opacity-50 sm:group-hover:opacity-100" title="Edit Entry">✎</button>
+                    <button onClick={() => handleDelete(rel)} className="rev-icon-btn rev-icon-btn-danger text-lg opacity-80 sm:opacity-50 sm:group-hover:opacity-100" title="Delete Entry">×</button>
                   </div>
                 </div>
               ))
@@ -305,7 +305,7 @@ export default function RelationshipsCard({ char, patch }: { char: Character, pa
       {/* Full Bond Inspection Modal */}
       {inspectingRel && createPortal(
         <div
-          className="fixed inset-0 z-[250] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[250] rev-backdrop flex items-center justify-center p-4"
           onClick={() => setInspectingRel(null)}
         >
           <div

@@ -28,7 +28,7 @@ export default function TierUnlockedModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[210] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-[210] rev-backdrop flex items-center justify-center p-4 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div

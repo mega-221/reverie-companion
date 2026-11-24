@@ -145,14 +145,14 @@ export default function DiceRollerModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[320] rev-modal-backdrop backdrop-blur-md flex items-center justify-center p-2.5 sm:p-5"
+      className="fixed inset-0 z-[320] rev-backdrop flex items-center justify-center p-2.5 sm:p-5"
       role="dialog"
       aria-modal="true"
       aria-label="Dice Roller"
       onClick={onClose}
     >
       <div
-        className="sheet-modal w-full max-w-2xl max-h-[90vh] max-h-[90dvh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150 shadow-2xl"
+        className="sheet-modal w-full max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -189,8 +189,7 @@ export default function DiceRollerModal({
             type="button"
             onClick={onClose}
             aria-label="Close dice roller"
-            className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded text-2xl leading-none font-bold hover:bg-white/10 transition-colors shrink-0"
-            style={{ color: 'var(--rev-text-muted)' }}
+            className="rev-icon-btn rev-icon-btn-edit text-xl"
           >
             ×
           </button>

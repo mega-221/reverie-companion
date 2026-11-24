@@ -34,8 +34,7 @@ function buildDateFrames(prev: ReverieCalendarDate, next: ReverieCalendarDate): 
     return frames;
   }
 
-  // Smoothly sample intermediate dates when advancing weeks, months, or years
-  const frameCount = 26;
+  const frameCount = 28;
   const frames: ReverieCalendarDate[] = [];
   for (let i = 0; i <= frameCount; i++) {
     const t = i / frameCount;
@@ -98,7 +97,7 @@ export default function PartyDateTransitionPopup({
     setVisible(false);
     const t = window.setTimeout(() => {
       onDismiss();
-    }, 300);
+    }, 380);
     timersRef.current.push(t);
   }, [rendered, clearAllTimers, onDismiss]);
 
@@ -128,12 +127,13 @@ export default function PartyDateTransitionPopup({
           return;
         }
 
-        const duration = Math.min(1350, Math.max(650, maxIndex * 75));
+        const duration = Math.min(1550, Math.max(780, maxIndex * 85));
         const startTime = performance.now();
 
         const tick = (now: number) => {
           const rawT = Math.min(1, (now - startTime) / duration);
-          const eased = 1 - Math.pow(1 - rawT, 2);
+          // Smooth cubic ease-out
+          const eased = 1 - Math.pow(1 - rawT, 3);
           const nextIdx = Math.min(maxIndex, Math.round(eased * maxIndex));
           setFrameIndex(nextIdx);
           if (rawT < 1) {
@@ -146,7 +146,7 @@ export default function PartyDateTransitionPopup({
         };
 
         animRafRef.current = requestAnimationFrame(tick);
-      }, 220);
+      }, 260);
 
       timersRef.current.push(startTimer);
 
@@ -190,80 +190,69 @@ export default function PartyDateTransitionPopup({
       aria-modal="true"
       aria-labelledby="party-date-transition-title"
       onClick={handleClose}
-      className={`fixed inset-0 z-[285] flex items-center justify-center p-4 backdrop-blur-md cursor-pointer animate-in fade-in duration-200 transition-opacity duration-300 ease-out ${
-        visible ? 'opacity-100' : 'opacity-0'
+      className={`fixed inset-0 z-[285] flex items-center justify-center p-6 cursor-pointer transition-all duration-500 ease-out ${
+        visible ? 'opacity-100 rev-roll-blur bg-black/35' : 'opacity-0 backdrop-blur-none bg-black/0'
       }`}
-      style={{ backgroundColor: 'var(--rev-modal-backdrop)' }}
     >
       <div
-        onClick={handleClose}
-        className={`sheet-modal w-full max-w-lg max-h-[88vh] max-h-[88dvh] overflow-y-auto no-scrollbar shadow-2xl animate-in fade-in zoom-in-95 duration-200 transition-all duration-300 ease-out ${
-          visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
+        className={`w-full max-w-2xl flex flex-col items-center justify-center text-center gap-5 select-none transition-all duration-500 ease-out ${
+          visible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-[0.98]'
         }`}
       >
-        <div className="px-5 py-3.5 border-b rev-divider rev-inset-soft flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            {rendered.partyName && (
-              <>
-                <span
-                  className="text-xs font-bold uppercase tracking-wider truncate"
-                  style={{ color: 'var(--rev-accent-text)' }}
-                >
-                  {rendered.partyName}
-                </span>
-                <span style={{ color: 'var(--rev-text-faint)' }}>·</span>
-              </>
-            )}
-            <span
-              id="party-date-transition-title"
-              className="text-xs font-bold uppercase tracking-wider truncate"
-              style={{ color: 'var(--rev-text-muted)' }}
-            >
-              In-Game Date Updated
-            </span>
-          </div>
+        {/* Subtle Eyebrow Header (no UI box) */}
+        <div
+          id="party-date-transition-title"
+          className="flex flex-wrap items-center justify-center gap-2.5 text-xs uppercase tracking-[0.28em] font-bold drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+          style={{ color: 'rgba(229, 231, 235, 0.82)' }}
+        >
+          {rendered.partyName && <span>{rendered.partyName}</span>}
+          {rendered.partyName && <span className="opacity-50">·</span>}
+          <span className="text-amber-300/90">{elapsedLabel}</span>
+        </div>
+
+        {/* Main Floating Date Display */}
+        <div className="w-full py-2 flex items-center justify-center">
           <span
-            className="text-[11px] font-bold uppercase tracking-wider shrink-0"
-            style={{ color: 'var(--rev-badge-warn)' }}
+            className="font-spectral text-3xl sm:text-5xl tracking-[0.06em] tabular-nums transition-all duration-500 drop-shadow-[0_4px_20px_rgba(0,0,0,0.95)]"
+            style={{
+              color: animFinished ? '#ffffff' : '#fcd34d',
+              transform: animFinished ? 'scale(1)' : 'scale(0.99)',
+            }}
           >
-            {elapsedLabel}
+            {currentLabel}
           </span>
         </div>
 
-        <div className="p-6 sm:p-8 flex flex-col items-center justify-center text-center gap-4">
-          <div className="w-full min-h-[3.5rem] flex items-center justify-center px-2">
-            <span
-              className="font-spectral font-bold text-2xl sm:text-3xl tabular-nums transition-colors duration-200"
-              style={{ color: animFinished ? 'var(--rev-text-bright)' : 'var(--rev-accent-text)' }}
-            >
-              {currentLabel}
-            </span>
-          </div>
+        {/* Minimal Divider */}
+        <div
+          className="h-px transition-all duration-700 ease-out"
+          style={{
+            width: animFinished ? '12rem' : '6rem',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)',
+          }}
+        />
 
-          <div
-            className="text-xs tabular-nums flex flex-wrap items-center justify-center gap-2"
-            style={{ color: 'var(--rev-text-faint)' }}
-          >
-            <span className={animFinished ? 'line-through' : ''}>{prevLabel}</span>
-            <span style={{ color: 'var(--rev-accent-text)' }}>→</span>
-            <span
-              className="font-bold"
-              style={{ color: animFinished ? 'var(--rev-text-secondary)' : 'var(--rev-text-muted)' }}
-            >
-              {nextLabel}
-            </span>
-          </div>
-
-          <p
-            className="text-[11px] tracking-wide pt-2 transition-opacity duration-300"
-            style={{
-              color: 'var(--rev-text-faint)',
-              opacity: animFinished ? 0.85 : 0.45,
-            }}
-          >
-            Click to continue
-          </p>
+        {/* Previous -> Next Reference */}
+        <div
+          className={`text-xs sm:text-sm tabular-nums flex flex-wrap items-center justify-center gap-2.5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] transition-all duration-500 ${
+            visible ? 'opacity-90 translate-y-0' : 'opacity-0 translate-y-2'
+          }`}
+          style={{ color: 'rgba(209, 213, 219, 0.78)' }}
+        >
+          <span className={animFinished ? 'line-through opacity-65' : ''}>{prevLabel}</span>
+          <span className="text-amber-300/80">→</span>
+          <span className="font-bold text-white">{nextLabel}</span>
         </div>
+
+        {/* Continue Cue */}
+        <p
+          className={`text-[11px] uppercase tracking-[0.25em] pt-4 transition-all duration-700 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] ${
+            animFinished && visible ? 'opacity-80 translate-y-0' : 'opacity-0 translate-y-1'
+          }`}
+          style={{ color: 'rgba(229, 231, 235, 0.75)' }}
+        >
+          Click anywhere to continue
+        </p>
       </div>
     </div>,
     document.body

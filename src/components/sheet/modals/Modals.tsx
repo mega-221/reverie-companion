@@ -105,16 +105,20 @@ export function LevelUpModal({ char, levelUpTarget, setLevelUpTarget, handleAdva
     (levelUpTarget.type !== 'attribute' && (isMaxed || availableSpendableXp < xpCost));
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-sm`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <h2 className="font-bold text-xl text-gray-200">Advance {title}</h2>
-          <button onClick={() => setLevelUpTarget(null)} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
+          <button onClick={() => setLevelUpTarget(null)} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
         </div>
         <div className="p-5 flex flex-col gap-4">
           {description && (
             <div className="text-sm italic text-gray-200 border-l-2 border-gray-600 pl-3">
-              {splitLines(description).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+              {splitLines(description).map((line: string, idx: number) => (
+                <span key={idx} className="block mb-1 last:mb-0">
+                  <KeywordText text={line} mode="effect" />
+                </span>
+              ))}
             </div>
           )}
           
@@ -211,11 +215,11 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <h2 className="font-bold text-xl text-gray-200">Select Origin</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
+          <button onClick={onClose} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
         </div>
         <div className="p-4 border-b border-gray-700 bg-black/10 shrink-0">
           <div className="flex flex-wrap gap-2">
@@ -257,7 +261,7 @@ export function OriginModal({ char, isOpen, onClose, applyOrigin }: any) {
                                 <option value="">— Select —</option>
                                 {choice.options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
                               </select>
-                              {selectedValue && skillDesc && <div className="text-xs text-gray-300 mt-1 italic border-l-2 border-gray-700 pl-2">{skillDesc}</div>}
+                              {selectedValue && skillDesc && <div className="text-xs text-gray-300 mt-1 italic border-l-2 border-gray-700 pl-2"><KeywordText text={skillDesc} mode="effect" /></div>}
                             </div>
                           );
                         })}
@@ -292,11 +296,11 @@ export function ClassModal({ char, isOpen, onClose, patch }: any) {
   const archetypes = ['Champion', 'Scoundrel', 'Guide', 'Scholar', 'Mystic', 'Aberration'];
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <h2 className="font-bold text-xl text-gray-200">Select Class</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
+          <button onClick={onClose} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {archetypes.map(archetype => {
@@ -330,11 +334,11 @@ export function SpecialSkillModal({ char, isOpen, onClose, patch, modalIndex }: 
   useBodyScrollLock(Boolean(isOpen));
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <h2 className="font-bold text-xl text-gray-200">Select Special Skill</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
+          <button onClick={onClose} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {(Object.keys(ATTRIBUTE_NAMES) as Array<keyof typeof ATTRIBUTE_NAMES>).map(attr => {
@@ -350,12 +354,16 @@ export function SpecialSkillModal({ char, isOpen, onClose, patch, modalIndex }: 
                       <div key={s.id} className={`bg-black/20 border border-gray-700 rounded-lg overflow-hidden transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''}`}>
                         <button onClick={() => setExpandedSpecialSkill(isExpanded ? null : s.id)} className="w-full text-left p-3 hover:bg-white/5 transition-colors flex justify-between items-center group">
                           <span className="font-bold text-gray-200 group-hover:text-white">{s.name}</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${SKILL_GROUPS[attr as keyof typeof SKILL_GROUPS].color} border-current`}>{attr.toUpperCase()}</span>
+                          <span className={`rev-ability-pill ${SKILL_GROUPS[attr as keyof typeof SKILL_GROUPS].color} border-current`}>{attr.toUpperCase()}</span>
                         </button>
                         {isExpanded && (
                           <div className="p-4 border-t border-gray-700 bg-black/40">
                             <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">
-                              {splitLines(s.data.description).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                              {splitLines(s.data.description).map((line: string, idx: number) => (
+                                <span key={idx} className="block mb-1 last:mb-0">
+                                  <KeywordText text={line} mode="effect" />
+                                </span>
+                              ))}
                             </div>
                             <button onClick={() => { 
                               if (modalIndex !== null) { 
@@ -434,7 +442,7 @@ export function AbilityModal({
   const guidedStepNum = isGuided ? Math.max(1, guidedTotal - guidedQueue.length + 1) : 0;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -453,7 +461,8 @@ export function AbilityModal({
               if (isGuided && onGuidedSkipAll) onGuidedSkipAll();
               else onClose();
             }}
-            className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors shrink-0"
+            className="rev-icon-btn rev-icon-btn-edit text-xl"
+            aria-label="Close"
           >
             ×
           </button>
@@ -543,17 +552,17 @@ export function AbilityModal({
                       <div key={ab.id} className={`bg-black/20 border border-gray-700 rounded-lg overflow-hidden transition-all duration-200 ${isExpanded ? 'ring-1 ring-red-900 shadow-md' : ''} ${isRankLocked || isAlreadyLearned ? 'opacity-50 grayscale' : ''}`}>
                         <button onClick={() => setExpandedModalAbility(isExpanded ? null : ab.id)} className="w-full text-left p-3 hover:bg-white/5 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 group">
                           <span className={`font-bold group-hover:text-white ${isRankLocked || isAlreadyLearned ? 'text-gray-400' : 'text-gray-200'}`}>{ab.name}</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {isAlreadyLearned && <span className="bg-gray-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-400 border border-gray-600">Learned</span>}
-                            {ab.data.type && <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
-                            {speedData && <span className="bg-black/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">{speedData.speedLabel}</span>}
-                            {speedData?.upkeepLabel && <span className="rev-keep-color rev-dark-card bg-teal-900/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-teal-300 border border-teal-700/50">{speedData.upkeepLabel}</span>}
-                            {ab.data.range && <span className="bg-black/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-gray-300 border border-gray-600">{ab.data.range}</span>}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {ab.data.type && <span className={`rev-ability-pill ${getTypeStyle(ab.data.type)}`}>{ab.data.type}</span>}
+                            {speedData && <span className="rev-ability-pill bg-black/40 text-gray-300 border-gray-600">{speedData.speedLabel}</span>}
+                            {speedData?.upkeepLabel && <span className="rev-keep-color rev-dark-card rev-ability-pill bg-teal-900/40 text-teal-300 border-teal-700/50">{speedData.upkeepLabel}</span>}
+                            {ab.data.range && <span className="rev-ability-pill bg-black/40 text-gray-300 border-gray-600">{ab.data.range}</span>}
                             {ab.data.class_rank !== undefined && (
-                              <span className={`bg-black/40 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-gray-600 ${isRankLocked ? 'rev-keep-color text-red-400' : 'text-gray-300'}`}>
-                                {isRankLocked ? `Rank ${ab.data.class_rank} (Locked)` : `Rank ${ab.data.class_rank}`}
+                              <span className={`rev-ability-pill tabular-nums bg-black/40 border-gray-600 ${isRankLocked ? 'rev-keep-color text-red-400' : 'text-gray-300'}`}>
+                                {isRankLocked ? `Rank ${ab.data.class_rank} Req` : `Rank ${ab.data.class_rank}`}
                               </span>
                             )}
+                            {isAlreadyLearned && <span className="rev-ability-pill bg-gray-800 text-gray-400 border-gray-600">Learned</span>}
                           </div>
                         </button>
                         {isExpanded && (
@@ -616,11 +625,11 @@ export function PathModal({ char, isOpen, onClose, patch, classData }: any) {
   const paths = classData.data.paths || [];
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-3xl`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <h2 className="font-bold text-xl text-gray-200">Select Path</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
+          <button onClick={onClose} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
         </div>
         {!isPathUnlocked ? (
           <div className="p-8 text-center text-sm text-gray-400 italic">
@@ -657,11 +666,11 @@ export function DisciplineModal({ char, isOpen, onClose, patch, modalIndex, onDi
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] rev-backdrop flex items-center justify-center p-4">
       <div className={`${MODAL_BG} max-w-2xl max-h-[85vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-black/20 shrink-0">
           <h2 className="font-bold text-xl text-gray-200">Select Discipline</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white hover:bg-white/10 rounded font-bold text-2xl leading-none px-2 py-0.5 transition-colors">×</button>
+          <button onClick={onClose} className="rev-icon-btn rev-icon-btn-edit text-xl" aria-label="Close">×</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {getDisciplines().map((d: any) => {
@@ -675,7 +684,11 @@ export function DisciplineModal({ char, isOpen, onClose, patch, modalIndex, onDi
                 {isExpanded && (
                   <div className="p-4 border-t border-gray-700 bg-black/40">
                     <div className="text-sm italic text-gray-200 mb-4 border-l-2 border-gray-700 pl-2">
-                      {splitLines(d.data.description).map((line: string, idx: number) => <span key={idx} className="block mb-1 last:mb-0">{line}</span>)}
+                      {splitLines(d.data.description).map((line: string, idx: number) => (
+                        <span key={idx} className="block mb-1 last:mb-0">
+                          <KeywordText text={line} mode="effect" />
+                        </span>
+                      ))}
                     </div>
                     <button onClick={() => {
                       if (modalIndex !== null) {

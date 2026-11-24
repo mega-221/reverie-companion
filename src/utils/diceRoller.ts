@@ -68,6 +68,7 @@ export interface ActiveRollSession {
     season: string;
     bonus: number;
   };
+  testedConvictionIndex?: number;
   notes?: string[];
   createdAt: string;
 }
@@ -167,6 +168,7 @@ export function createRollSession(params: {
   targetValue?: number;
   isContested?: boolean;
   contestedSide?: 'active' | 'passive';
+  testedConvictionIndex?: number;
   notes?: string[];
 }): ActiveRollSession {
   const advantageMode = params.advantageMode ?? 'normal';
@@ -232,6 +234,7 @@ export function createRollSession(params: {
     contestedSide: params.contestedSide,
     exertCount: 0,
     totalStrainIncurred: 0,
+    testedConvictionIndex: params.testedConvictionIndex,
     notes: params.notes,
     createdAt: new Date().toISOString(),
   };
@@ -610,7 +613,7 @@ export function buildDestinyRollSession(params?: { mod?: number }): ActiveRollSe
 }
 
 export function buildConvictionCheckSession(params: {
-  conviction: { name: string; season: string; rank: number };
+  conviction: { name: string; season: string; rank: number; slotIndex?: number };
   targetCl: number;
   isStrainCrisis?: boolean;
 }): ActiveRollSession {
@@ -631,6 +634,7 @@ export function buildConvictionCheckSession(params: {
     ],
     targetLabel: 'CL',
     targetValue: targetCl,
+    testedConvictionIndex: conviction.slotIndex,
     notes: isStrainCrisis
       ? ['Failing this CL 18 Conviction Check immediately triggers a Crisis.']
       : undefined,

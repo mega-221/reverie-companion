@@ -1,6 +1,8 @@
 import { supabase } from '../supabase';
 import { defaultCharacterData } from '../defaults';
-import type { AllowedEditor, CharacterData } from '../types';
+import type { AllowedEditor, Character, CharacterData, CompendiumEntry, InventoryItem } from '../types';
+import { calculateTierFromLevel, getSpendableXp } from '../components/sheet/progression/progressionData';
+import { apMax } from '../calc';
 
 /**
  * Normalizes a partial/older CharacterData blob safely with full default structures.
@@ -53,6 +55,159 @@ export function safeCharacterData(raw?: Partial<CharacterData>): CharacterData {
     relationships: Array.isArray(raw?.relationships) ? raw.relationships : [],
     allowedEditors: Array.isArray(raw?.allowedEditors) ? raw.allowedEditors : [],
   };
+}
+
+type LegacyInjury = {
+  name?: string;
+  part?: string;
+  affectedAttributes?: string[] | string;
+  severity?: number;
+  treatment?: 'none' | 'survival' | 'medicine';
+  weeksLeft?: number;
+};
+
+export function normalizeCharacter(
+  fetchedChar: Character,
+  getEntryByName: (name: string) => CompendiumEntry | undefined
+): Character {
+  const rawItems = Array.isArray(fetchedChar.data?.items)
+    ? fetchedChar.data.items as Array<InventoryItem | string>
+    : [];
+  const migratedItems: InventoryItem[] = rawItems.map((item) =>
+    typeof item === 'string'
+      ? { id: crypto.randomUUID(), name: item, qty: 1 }
+      : { ...item, id: item.id || crypto.randomUUID() }
+  );
+
+  const resolveEq = (value: string): string => {
+    if (!value) return '';
+    if (value.length > 30) return value;
+    const existing = migratedItems.find((item) => item.name === value);
+    if (existing) return existing.id;
+    const newId = crypto.randomUUID();
+    migratedItems.push({ id: newId, name: value, qty: 0 });
+    return newId;
+  };
+
+  const rawEquipment = fetchedChar.data?.equipment;
+  const migratedEquipment = {
+    mainHand: resolveEq(rawEquipment?.mainHand || ''),
+    mainHandMode: (rawEquipment?.mainHandMode || (rawEquipment?.mainHand ? '1H' : '')) as '1H' | '2H' | '',
+    offHand: resolveEq(rawEquipment?.offHand || ''),
+    armour: resolveEq(rawEquipment?.armour || ''),
+    extra: Array.isArray(rawEquipment?.extra)
+      ? rawEquipment.extra.map((itemId) => resolveEq(itemId))
+      : [],
+  };
+
+  const oldNotes = fetchedChar.data?.notes || '';
+  let migratedJournal = fetchedChar.data?.journal || [];
+  if (oldNotes && migratedJournal.length === 0) {
+    migratedJournal = [{
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      title: 'Imported Notes',
+      content: oldNotes,
+    }];
+  }
+
+  const safeData = safeCharacterData(fetchedChar.data);
+  const rawLevel = Math.max(0, safeData.progression.level);
+  const rawXp = Math.max(0, safeData.progression.xp);
+  const derivedTier = calculateTierFromLevel(rawLevel);
+  const totalXp = rawXp < rawLevel * 5
+    ? rawLevel * 5 + Math.min(4, rawXp)
+    : rawXp;
+
+  const safeDataWithMigrations: CharacterData = {
+    ...safeData,
+    progression: {
+      ...safeData.progression,
+      tier: safeData.progression.tier ?? derivedTier,
+      level: rawLevel,
+      xp: totalXp,
+      spendableXp: totalXp,
+    },
+    trackers: {
+      ...safeData.trackers,
+      injuries: (safeData.trackers.injuries as LegacyInjury[]).map((injury) => ({
+        name: injury.name || injury.part || 'Unknown Injury',
+        affectedAttributes: Array.isArray(injury.affectedAttributes)
+          ? injury.affectedAttributes
+          : typeof injury.affectedAttributes === 'string'
+            ? injury.affectedAttributes.split(',').map((value) => value.trim())
+            : [],
+        severity: injury.severity ?? 1,
+        treatment: injury.treatment || 'none',
+        weeksLeft: injury.weeksLeft ?? (injury.severity ?? 1) * 4,
+      })),
+    },
+    equipment: migratedEquipment,
+    abilities: safeData.abilities.map((ability) =>
+      typeof ability === 'string'
+        ? { name: ability, equipped: true }
+        : ability
+    ),
+    items: migratedItems,
+    possessions: safeData.possessions.map((item) => ({
+      ...item,
+      id: item.id || crypto.randomUUID(),
+    })),
+    aspects: (safeData.aspects || []).map((aspect) =>
+      typeof aspect === 'string'
+        ? { id: crypto.randomUUID(), name: aspect, abandoned: false }
+        : {
+            id: aspect.id || crypto.randomUUID(),
+            name: aspect.name || '',
+            abandoned: Boolean(aspect.abandoned),
+          }
+    ),
+    journal: migratedJournal,
+    allowedEditors: Array.isArray(fetchedChar.allowed_editors)
+      ? fetchedChar.allowed_editors
+      : safeData.allowedEditors,
+  };
+
+  const initialApMax = apMax(safeDataWithMigrations, getEntryByName);
+  if (
+    !safeDataWithMigrations.trackers.apInitialized &&
+    safeDataWithMigrations.trackers.ap === 0 &&
+    initialApMax > 0
+  ) {
+    safeDataWithMigrations.trackers.ap = initialApMax;
+    safeDataWithMigrations.trackers.apInitialized = true;
+  }
+
+  safeDataWithMigrations.progression.spendableXp = getSpendableXp(safeDataWithMigrations);
+
+  return {
+    ...fetchedChar,
+    allowed_editors: safeDataWithMigrations.allowedEditors,
+    data: safeDataWithMigrations,
+  };
+}
+
+export function isTextInputPatch(
+  patch: Partial<CharacterData>,
+  prevData: CharacterData
+): boolean {
+  if ('notes' in patch || 'journal' in patch || 'relationships' in patch) return true;
+  if ('identity' in patch && patch.identity) {
+    const sameMeta =
+      patch.identity.origin === prevData.identity?.origin &&
+      patch.identity.className === prevData.identity?.className &&
+      patch.identity.path === prevData.identity?.path &&
+      JSON.stringify(patch.identity.inspirations) === JSON.stringify(prevData.identity?.inspirations) &&
+      JSON.stringify(patch.identity.originChoices) === JSON.stringify(prevData.identity?.originChoices);
+    if (sameMeta && patch.identity.quote !== prevData.identity?.quote) return true;
+  }
+  if ('convictions' in patch && patch.convictions && patch.convictions.length === (prevData.convictions?.length ?? 0)) {
+    return true;
+  }
+  if ('failings' in patch && patch.failings && patch.failings.length === (prevData.failings?.length ?? 0)) {
+    return true;
+  }
+  return false;
 }
 
 /**

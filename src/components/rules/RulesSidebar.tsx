@@ -100,8 +100,7 @@ export const RulesSidebar: React.FC<RulesSidebarProps> = ({
                 type="button"
                 onClick={onCloseMobile}
                 aria-label="Close rulebook index"
-                className="px-2 py-0.5 rounded text-sm font-bold hover:bg-white/10 transition-colors"
-                style={{ color: 'var(--rev-text-muted)' }}
+                className="rev-icon-btn rev-icon-btn-edit text-sm"
               >
                 ✕
               </button>
@@ -136,8 +135,7 @@ export const RulesSidebar: React.FC<RulesSidebarProps> = ({
               type="button"
               onClick={() => onSearchChange('')}
               aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-xs font-bold hover:opacity-100 hover:bg-white/10 opacity-75 transition-colors"
-              style={{ color: 'var(--rev-text-muted)' }}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rev-icon-btn rev-icon-btn-edit text-xs"
             >
               ✕
             </button>
@@ -505,8 +503,7 @@ export const RulesSidebar: React.FC<RulesSidebarProps> = ({
                           onClick={() => onRemoveBookmark(bm.id)}
                           aria-label={`Remove bookmark ${title}`}
                           title="Remove bookmark"
-                          className="p-1 rounded text-xs opacity-60 hover:opacity-100 hover:bg-red-500/15 hover:text-red-300 transition-colors shrink-0"
-                          style={{ color: 'var(--rev-text-muted)' }}
+                          className="rev-icon-btn rev-icon-btn-danger text-xs"
                         >
                           ✕
                         </button>

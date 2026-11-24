@@ -7,7 +7,7 @@ export type PostgresChangeConfig = {
   schema?: string;
   table: string;
   filter?: string;
-  handler: (payload: any) => void;
+  handler: (payload: Record<string, unknown>) => void;
 };
 
 export type UseVisibilityRealtimeOptions = {
@@ -21,13 +21,13 @@ export type UseVisibilityRealtimeOptions = {
 
 type QueuedBroadcast = {
   event: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 };
 
 async function sendViaTransientSubscribe(
   channel: RealtimeChannel,
   event: string,
-  payload: Record<string, any>
+  payload: Record<string, unknown>
 ): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     let settled = false;
@@ -67,7 +67,7 @@ async function sendViaTransientSubscribe(
 export async function sendEphemeralBroadcast(
   channelName: string,
   event: string,
-  payload: Record<string, any>
+  payload: Record<string, unknown>
 ): Promise<void> {
   if (!channelName) return;
   const topic = `realtime:${channelName}`;
@@ -286,7 +286,7 @@ export function useVisibilityRealtime({
   }, [channelName, enabled, setupChannel, teardownChannel]);
 
   const broadcast = useCallback(
-    (event: string, payload: Record<string, any>) => {
+    (event: string, payload: Record<string, unknown>) => {
       const ch = channelRef.current;
       if (ch && subscribedRef.current) {
         ch.send({

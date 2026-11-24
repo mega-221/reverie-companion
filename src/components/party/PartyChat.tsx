@@ -7,6 +7,14 @@ import {
   parseRollLog,
   type RollLogEntry,
 } from '../../utils/diceRoller';
+import {
+  getItemDisplayLabel,
+  isItemTransferAckContent,
+  parseItemTransferAck,
+  parseItemTransferOffer,
+  type PartyTransferAck,
+  type PartyTransferOffer,
+} from '../../utils/itemTransfer';
 
 function renderMessageWithLinks(content: string) {
   const urlRegex = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
@@ -68,6 +76,7 @@ export default function PartyChat({
   refreshSignal,
   onBroadcastMessage,
   onBroadcastDeleteMessage,
+  onRespondTransferOffer,
 }: {
   partyId: string;
   userId: string;
@@ -80,6 +89,10 @@ export default function PartyChat({
   refreshSignal: number;
   onBroadcastMessage: (msg: PartyMessage) => void;
   onBroadcastDeleteMessage?: (messageId: string) => void;
+  onRespondTransferOffer?: (
+    offer: PartyTransferOffer,
+    action: 'claim' | 'return' | 'reclaim'
+  ) => Promise<void> | void;
 }) {
   const [messages, setMessages] = useState<PartyMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +101,7 @@ export default function PartyChat({
   const [copiedSql, setCopiedSql] = useState(false);
   const [draft, setDraft] = useState('');
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [processingOfferIds, setProcessingOfferIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'chat' | 'log'>('chat');
   const [unreadLogs, setUnreadLogs] = useState(0);
   const listEndRef = useRef<HTMLDivElement>(null);
@@ -151,8 +165,19 @@ export default function PartyChat({
     onConsumeDeletedMessages?.();
   }, [deletedMessageIds, onConsumeDeletedMessages]);
 
+  const transferAckMap = useMemo(() => {
+    const map = new Map<string, PartyTransferAck>();
+    for (const msg of messages) {
+      const ack = parseItemTransferAck(msg.content);
+      if (ack) {
+        map.set(ack.offerId, ack);
+      }
+    }
+    return map;
+  }, [messages]);
+
   const chatMessages = useMemo(
-    () => messages.filter(m => !isRollLogContent(m.content)),
+    () => messages.filter(m => !isRollLogContent(m.content) && !isItemTransferAckContent(m.content)),
     [messages]
   );
 
@@ -385,6 +410,141 @@ export default function PartyChat({
               const isOwn = msg.user_id === userId;
               const canDelete = isOwn || isLeader;
               const isDeleting = deletingIds.has(msg.id);
+              const transferOffer = parseItemTransferOffer(msg.content);
+              if (transferOffer) {
+                const ack = transferAckMap.get(transferOffer.offerId);
+                const isRecipient = transferOffer.toUserId === userId;
+                const isSender = transferOffer.fromUserId === userId;
+                const isBusy = processingOfferIds.has(transferOffer.offerId);
+                const label = getItemDisplayLabel(transferOffer.item);
+                const runTransferAction = async (action: 'claim' | 'return' | 'reclaim') => {
+                  if (!onRespondTransferOffer || isBusy) return;
+                  setError(null);
+                  setProcessingOfferIds(prev => new Set(prev).add(transferOffer.offerId));
+                  try {
+                    await onRespondTransferOffer(transferOffer, action);
+                  } catch (err: any) {
+                    setError(err?.message || 'Could not process item transfer.');
+                  } finally {
+                    setProcessingOfferIds(prev => {
+                      const next = new Set(prev);
+                      next.delete(transferOffer.offerId);
+                      return next;
+                    });
+                  }
+                };
+
+                return (
+                  <div
+                    key={msg.id}
+                    className="group w-full border rounded-lg p-3 bg-black/35 space-y-2"
+                    style={{
+                      borderColor: 'var(--rev-border)',
+                      borderLeftWidth: '4px',
+                      borderLeftColor:
+                        ack?.action === 'claimed'
+                          ? '#34d399'
+                          : ack?.action === 'returned'
+                          ? '#fbbf24'
+                          : ack?.action === 'reclaimed'
+                          ? '#94a3b8'
+                          : '#f59e0b',
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                          Item Transfer
+                        </div>
+                        <div className="text-sm font-bold truncate" style={{ color: 'var(--rev-text-bright)' }}>
+                          {transferOffer.item.qty}× {label}
+                        </div>
+                        <div className="text-xs" style={{ color: 'var(--rev-text-muted)' }}>
+                          {transferOffer.fromCharName} → <strong style={{ color: 'var(--rev-text-secondary)' }}>{transferOffer.toCharName}</strong>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[11px] tabular-nums" style={{ color: 'var(--rev-text-faint)' }}>
+                          {formatTime(msg.created_at)}
+                        </span>
+                        {canDelete && ack && (
+                          <button
+                            type="button"
+                            disabled={isDeleting}
+                            onClick={() => handleDeleteMessage(msg)}
+                            aria-label="Delete transfer message"
+                            title="Delete transfer message"
+                            className="rev-icon-btn rev-icon-btn-danger text-base opacity-70 sm:opacity-40 group-hover:opacity-100 disabled:opacity-30"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      {!ack ? (
+                        isRecipient && onRespondTransferOffer ? (
+                          <div className="flex items-center gap-2 w-full">
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => runTransferAction('claim')}
+                              className="flex-1 px-3 py-1.5 rounded text-xs font-bold rev-btn-primary disabled:opacity-40"
+                            >
+                              {isBusy ? 'Accepting...' : 'Accept Item'}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => runTransferAction('return')}
+                              className="px-3 py-1.5 rounded text-xs font-bold rev-btn-secondary disabled:opacity-40"
+                            >
+                              Return
+                            </button>
+                          </div>
+                        ) : isSender && onRespondTransferOffer ? (
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="text-[11px] text-amber-300 font-semibold">Pending acceptance</span>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => runTransferAction('reclaim')}
+                              className="px-2.5 py-1 rounded text-xs font-bold rev-btn-secondary disabled:opacity-40"
+                            >
+                              {isBusy ? 'Reclaiming...' : 'Cancel & Reclaim'}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-amber-300 font-semibold">Pending acceptance</span>
+                        )
+                      ) : ack.action === 'claimed' ? (
+                        <span className="text-[11px] font-bold text-emerald-300">Accepted by {transferOffer.toCharName}</span>
+                      ) : ack.action === 'returned' ? (
+                        isSender && onRespondTransferOffer ? (
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="text-[11px] font-bold text-amber-300">Returned by {transferOffer.toCharName}</span>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => runTransferAction('reclaim')}
+                              className="px-2.5 py-1 rounded text-xs font-bold rev-btn-primary disabled:opacity-40"
+                            >
+                              {isBusy ? 'Reclaiming...' : 'Reclaim to Backpack'}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] font-bold text-amber-300">Returned by {transferOffer.toCharName}</span>
+                        )
+                      ) : (
+                        <span className="text-[11px] font-bold" style={{ color: 'var(--rev-text-muted)' }}>
+                          Reclaimed by {transferOffer.fromCharName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
               return (
                 <div
                   key={msg.id}
@@ -407,8 +567,7 @@ export default function PartyChat({
                         onClick={() => handleDeleteMessage(msg)}
                         aria-label="Delete message"
                         title="Delete message"
-                        className="text-xs leading-none p-1 rounded opacity-70 sm:opacity-40 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/15 transition-all disabled:opacity-30"
-                        style={{ color: 'var(--rev-text-muted)' }}
+                        className="rev-icon-btn rev-icon-btn-danger text-base opacity-70 sm:opacity-40 group-hover:opacity-100 disabled:opacity-30"
                       >
                         ×
                       </button>

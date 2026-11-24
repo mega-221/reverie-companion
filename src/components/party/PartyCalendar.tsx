@@ -146,7 +146,7 @@ export default function PartyCalendar({
       {isPopupOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[260] rev-modal-backdrop backdrop-blur-[2px] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[260] rev-backdrop flex items-center justify-center p-4"
             onClick={() => !saving && setIsPopupOpen(false)}
           >
             <div

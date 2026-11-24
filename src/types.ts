@@ -48,13 +48,25 @@ export type PartyNotificationPayload = {
   partyName: string;
   senderName: string;
   targetUserIds: string[];
-  type?: 'prompt' | 'give' | 'crisis';
+  type?: 'prompt' | 'give' | 'crisis' | 'item_transfer';
   title: string;
   message: string;
   skill?: string;
   challengeLevel?: number;
   grantResource?: 'xp' | 'dp';
   grantAmount?: number;
+  itemTransfer?: {
+    offerId: string;
+    partyId: string;
+    partyName: string;
+    fromCharId: string;
+    fromCharName: string;
+    fromUserId: string;
+    toCharId: string;
+    toCharName: string;
+    toUserId: string;
+    item: InventoryItem;
+  };
   createdAt: string;
 };
 
@@ -194,4 +206,163 @@ export type CompendiumEntry = {
     location?: string;
     [key: string]: any;
   };
+};
+
+export type NpcAbility = {
+  id: string;
+  name: string;
+  type: 'attack' | 'defensive' | 'utility' | 'passive';
+  speed: '>' | '>>' | '>>>' | '|' | '<' | '';
+  upkeep?: '>' | '>>' | '>>>' | '|' | '<' | '';
+  range?: string;
+  snCost: number;
+  acc?: string;
+  dmg?: string;
+  eva?: string;
+  effect: string;
+  sourceCompendiumName?: string;
+};
+
+export type NpcItem = InventoryItem & {
+  equippedSlot?: 'mainHand' | 'offHand' | 'armour' | 'extra' | '';
+  mainHandMode?: '1H' | '2H' | '';
+};
+
+export type CustomNpc = {
+  id: string;
+  name: string;
+  role: string;
+  className: string;
+  path: string;
+  tier: number;
+  classRank: number;
+  notes: string;
+  stats: {
+    vigorMax: number;
+    strainMax: number;
+    dpMax: number;
+    apMax: number;
+    eva: number;
+    acc: number;
+    mov: number;
+    resists: string;
+    armourName: string;
+  };
+  attributes: { grt: number; ref: number; int: number; psy: number };
+  skills: Record<string, number>;
+  convictions: { season: string; name: string; statement: string; rank: number }[];
+  failings: { name: string; statement: string; rank: number }[];
+  abilities: NpcAbility[];
+  items: NpcItem[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CombatStatusKey =
+  | 'pierce'
+  | 'break'
+  | 'stun'
+  | 'bleeding'
+  | 'burn'
+  | 'soulburn'
+  | 'tmv'
+  | 'fractured'
+  | 'prone'
+  | 'feeble'
+  | 'blind'
+  | 'immobilized'
+  | 'unaware'
+  | 'stealth'
+  | 'taunt'
+  | 'intimidate';
+
+export type CombatStatusInstance = {
+  key: CombatStatusKey;
+  stacks?: number;
+};
+
+export type CombatantSide = 'ally' | 'enemy';
+
+export type CombatEquipmentItem = {
+  id: string;
+  slot: 'mainHand' | 'offHand' | 'armour' | 'extra' | 'carried';
+  name: string;
+  category?: string;
+  subtype?: string;
+  dmg?: string;
+  range?: string;
+  ap?: number;
+  effect?: string;
+};
+
+export type CombatAbility = {
+  id: string;
+  name: string;
+  sourceKind: 'basic' | 'class' | 'discipline' | 'npc';
+  type: 'attack' | 'defensive' | 'utility' | 'passive';
+  speed?: string;
+  upkeep?: string;
+  range?: string;
+  requirement?: string;
+  snCost: number;
+  acc?: string;
+  dmg?: string;
+  eva?: string;
+  effect: string;
+  rankReq?: number;
+  locked?: boolean;
+};
+
+export type Combatant = {
+  id: string;
+  side: CombatantSide;
+  kind: 'pc' | 'npc';
+  sourceCharacterId?: string;
+  sourceNpcId?: string;
+  name: string;
+  subtitle: string;
+  tier: number;
+  classRank: number;
+  attributes: { grt: number; ref: number; int: number; psy: number };
+  vigor: number;
+  vigorMax: number;
+  strain: number;
+  strainMax: number;
+  dp: number;
+  dpMax: number;
+  ap: number;
+  apMax: number;
+  tmv: number;
+  eva: number;
+  acc: number;
+  mov: number;
+  armourPenalty: number;
+  resists?: string;
+  hasActed: boolean;
+  moveUsed: boolean;
+  acpRemaining: number;
+  reactionUsed: boolean;
+  statuses: CombatStatusInstance[];
+  mainHandMode: '1H' | '2H';
+  equipmentList: CombatEquipmentItem[];
+  abilities: CombatAbility[];
+};
+
+export type CombatLogEntry = {
+  id: string;
+  round: number;
+  text: string;
+  tone?: 'neutral' | 'hit' | 'miss' | 'info';
+  createdAt: string;
+};
+
+export type CombatEncounterState = {
+  id: string;
+  active: boolean;
+  round: number;
+  activeSide: CombatantSide;
+  activeCombatantId: string | null;
+  combatants: Combatant[];
+  logs: CombatLogEntry[];
+  updatedAt: string;
 };

@@ -16,6 +16,19 @@ import {
   parseClassSectionIntro,
   type ParsedClassIntro,
 } from './classFormatting';
+import {
+  renderAbilityEffect,
+  renderInline,
+  renderListItem,
+  renderOriginSkillText,
+  type RichTextOptions,
+} from './RulesInline';
+import {
+  isDefinitionOrMetaLine,
+  isLikelyPlainSubheading,
+  parseAbilityHeader,
+  parseStatLine,
+} from './RulesParsers';
 
 interface RulesMarkdownRendererProps {
   markdown: string;
@@ -71,6 +84,7 @@ interface DefinitionItem {
 type Block =
   | { type: 'h2'; text: string }
   | { type: 'h3'; text: string }
+  | { type: 'minorTitle'; title: string; names: string[] }
   | { type: 'hr' }
   | { type: 'blockquote'; lines: string[] }
   | { type: 'list'; items: string[] }
@@ -88,243 +102,6 @@ type Block =
       description: string;
       classes: DefinitionItem[];
     };
-
-interface RichTextOptions {
-  colorAttributes?: boolean;
-  enableSeasonColors?: boolean;
-  enableConvictionColors?: boolean;
-  keywordMode?: KeywordMatchMode;
-  allowStealthStatusInProse?: boolean;
-}
-
-function renderInline(
-  text: string,
-  highlightQuery?: string,
-  optionsOrAttr: boolean | RichTextOptions = true
-): React.ReactNode {
-  const opts: RichTextOptions =
-    typeof optionsOrAttr === 'boolean'
-      ? { colorAttributes: optionsOrAttr }
-      : optionsOrAttr;
-  const {
-    colorAttributes = true,
-    enableSeasonColors = true,
-    enableConvictionColors = false,
-    keywordMode = 'prose',
-    allowStealthStatusInProse = false,
-  } = opts;
-
-  const nodes: React.ReactNode[] = [];
-  const tokenRegex = /(\*\*[^*]+\*\*|\*[^*\n]+\*)/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  let keyCounter = 0;
-
-  while ((match = tokenRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      const plain = text.slice(lastIndex, match.index);
-      nodes.push(
-        <AttributeColoredText
-          key={`p-${keyCounter++}`}
-          text={plain}
-          query={highlightQuery}
-          enableAttributeColors={colorAttributes}
-          enableSeasonColors={enableSeasonColors}
-          enableConvictionColors={enableConvictionColors}
-          keywordMode={keywordMode}
-          allowStealthStatusInProse={allowStealthStatusInProse}
-        />
-      );
-    }
-
-    const token = match[0];
-    if (token.startsWith('**') && token.endsWith('**')) {
-      const inner = token.slice(2, -2);
-      nodes.push(
-        <strong
-          key={`b-${keyCounter++}`}
-          className="font-semibold"
-          style={{ color: 'var(--rev-text-bright)' }}
-        >
-          <AttributeColoredText
-            text={inner}
-            query={highlightQuery}
-            enableAttributeColors={colorAttributes}
-            enableSeasonColors={enableSeasonColors}
-            enableConvictionColors={enableConvictionColors}
-            keywordMode={keywordMode}
-            allowStealthStatusInProse={allowStealthStatusInProse}
-          />
-        </strong>
-      );
-    } else if (token.startsWith('*') && token.endsWith('*')) {
-      const inner = token.slice(1, -1);
-      nodes.push(
-        <em
-          key={`i-${keyCounter++}`}
-          className="italic"
-          style={{ color: 'var(--rev-text-secondary)' }}
-        >
-          <AttributeColoredText
-            text={inner}
-            query={highlightQuery}
-            enableAttributeColors={colorAttributes}
-            enableSeasonColors={enableSeasonColors}
-            enableConvictionColors={enableConvictionColors}
-            keywordMode={keywordMode}
-            allowStealthStatusInProse={allowStealthStatusInProse}
-          />
-        </em>
-      );
-    }
-
-    lastIndex = tokenRegex.lastIndex;
-  }
-
-  if (lastIndex < text.length) {
-    nodes.push(
-      <AttributeColoredText
-        key={`p-${keyCounter++}`}
-        text={text.slice(lastIndex)}
-        query={highlightQuery}
-        enableAttributeColors={colorAttributes}
-        enableSeasonColors={enableSeasonColors}
-        enableConvictionColors={enableConvictionColors}
-        keywordMode={keywordMode}
-        allowStealthStatusInProse={allowStealthStatusInProse}
-      />
-    );
-  }
-
-  return nodes;
-}
-
-function renderOriginSkillText(text: string, highlightQuery?: string): React.ReactNode {
-  // Handle "Reason" alias for "Reasoning" in origins.md cleanly
-  const parts = text.split(/(\bReason\b)/g);
-  return (
-    <>
-      {parts.map((part, idx) =>
-        part === 'Reason' ? (
-          <span
-            key={idx}
-            className="rev-keep-color font-semibold"
-            style={{ color: ATTRIBUTE_CSS_VAR.int }}
-          >
-            <HighlightedText text={part} query={highlightQuery} />
-          </span>
-        ) : (
-          <AttributeColoredText
-            key={idx}
-            text={part}
-            query={highlightQuery}
-            enableAttributeColors
-            enableSeasonColors={false}
-            keywordMode="off"
-          />
-        )
-      )}
-    </>
-  );
-}
-
-function parseAbilityHeader(rawHeading: string): {
-  marker: string;
-  name: string;
-  subtype: string;
-} {
-  let work = rawHeading.trim();
-  let marker = '';
-
-  // Matches standard markers (>>>, >>, >, |, I, <) and channeled markers (>> />>, >>> />>, >> />, > />, | / |)
-  const markerMatch = work.match(
-    /^((?:>>>|>>|>|\||I|<)(?:\s*\/\s*(?:>>>|>>|>|\||I|<))?)\s+(.+)$/
-  );
-  if (markerMatch) {
-    marker = markerMatch[1].trim();
-    work = markerMatch[2].trim();
-  }
-
-  const dashParts = work.split(/\s+—\s+/);
-  const name = dashParts[0]?.trim() || work;
-  const subtype = (dashParts[1] || '').replace(/^\*|\*$/g, '').trim();
-
-  return { marker, name, subtype };
-}
-
-function parseStatLine(rawStatLine?: string): {
-  snCost: string | null;
-  acc: string | null;
-  dmg: string | null;
-  eva: string | null;
-  extraStats: string[];
-} {
-  if (!rawStatLine) {
-    return { snCost: null, acc: null, dmg: null, eva: null, extraStats: [] };
-  }
-  const clean = rawStatLine.replace(/\*\*/g, '').replace(/^\||\|$/g, '').trim();
-  const parts = clean.split(/\s*[·|]\s*/).map((p) => p.trim()).filter(Boolean);
-
-  let snCost: string | null = null;
-  let acc: string | null = null;
-  let dmg: string | null = null;
-  let eva: string | null = null;
-  const extraStats: string[] = [];
-
-  for (const part of parts) {
-    if (/(?:SN|Strain)$/i.test(part)) {
-      snCost = part;
-    } else if (/ACC$/i.test(part)) {
-      acc = part;
-    } else if (/DMG$/i.test(part)) {
-      dmg = part;
-    } else if (/EVA$/i.test(part)) {
-      eva = part;
-    } else {
-      extraStats.push(part);
-    }
-  }
-
-  return { snCost, acc, dmg, eva, extraStats };
-}
-
-function isLikelyPlainSubheading(line: string, nextLine?: string): boolean {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.length > 52) return false;
-  if (/^[●\-*>#|[\]]/.test(trimmed)) return false;
-  if (/[.?!:;]$/.test(trimmed)) return false;
-  if (
-    /^(Inspiration|Start with|Attribute Rank Limit|Skill Rank Limit|Requirements|Effect):/i.test(
-      trimmed
-    )
-  ) {
-    return false;
-  }
-  if (/^Tier \d+/i.test(trimmed)) return true;
-  if (
-    /^[A-Z0-9][A-Za-z0-9\s'’\-–/()]+$/.test(trimmed) &&
-    trimmed.split(/\s+/).length <= 6 &&
-    nextLine !== undefined &&
-    nextLine.trim().length > trimmed.length
-  ) {
-    return true;
-  }
-  return false;
-}
-
-function isDefinitionOrMetaLine(line: string): boolean {
-  const t = line.trim();
-  return (
-    /^(Inspiration|Start with|Attribute Rank Limit|Skill Rank Limit|Requirements|Effect):/i.test(
-      t
-    ) ||
-    /^\*\*(Archetype|Recommended disciplines|Recommended special skills|Effect):/i.test(t) ||
-    /^\*Requires:/i.test(t) ||
-    /^\[.*\]$/.test(t) ||
-    /^\|.*\|/.test(t) ||
-    /^[A-Z][A-Za-z0-9\s/()]+ - [A-Z]/.test(t)
-  );
-}
 
 const ATTR_CODE_META: Record<string, { key: AttributeKey; fullName: string }> = {
   GRT: { key: 'grt', fullName: 'Grit' },
@@ -526,6 +303,7 @@ const FRONT_MATTER_COVER_LINES = new Set([
   'ALPHA0 ~ 11 ~ 0',
   'ALPHA 0 ~ 11 ~ 0',
   'ALPHA 0~11~0',
+  'Prelude',
   'Table of Contents',
   '…',
 ]);
@@ -536,7 +314,7 @@ function syncParsedWithCompendium(
   blocks: Block[],
   entries: CompendiumEntry[]
 ): { classIntro: ParsedClassIntro | null; blocks: Block[] } {
-  if (sectionId === '00-front-matter') {
+  if (sectionId === 'front-matter') {
     const filtered = blocks
       .map((b) => {
         if (b.type === 'paragraph') {
@@ -878,7 +656,11 @@ function parseBlocks(
     startIdx++;
   }
 
-  const lines = rawLines.slice(startIdx);
+  const slicedLines = rawLines.slice(startIdx);
+  const lines =
+    sectionId === 'front-matter'
+      ? slicedLines.filter((l) => !FRONT_MATTER_COVER_LINES.has(l.trim()))
+      : slicedLines;
 
   // Dedicated rich structure for Origins catalogue
   if (sectionId === 'origins') {
@@ -903,6 +685,29 @@ function parseBlocks(
 
     if (!trimmed) {
       i++;
+      continue;
+    }
+
+    if (
+      sectionId === 'front-matter' &&
+      trimmed === 'Doomed Souls of The First March'
+    ) {
+      const names: string[] = [];
+      i++;
+      while (i < lines.length) {
+        const nameLine = lines[i].trim();
+        if (!nameLine) {
+          i++;
+          continue;
+        }
+        if (/^(●|-)\s+/.test(nameLine)) {
+          names.push(nameLine.replace(/^(●|-)\s+/, '').trim());
+          i++;
+          continue;
+        }
+        break;
+      }
+      blocks.push({ type: 'minorTitle', title: trimmed, names });
       continue;
     }
 
@@ -1203,6 +1008,7 @@ function parseBlocks(
         } else if (
           cur &&
           items.length > 0 &&
+          !(sectionId === 'front-matter' && cur === 'Doomed Souls of The First March') &&
           !/^(#{1,4}\s+|>\s+|\*\*\*|---)/.test(cur) &&
           !isLikelyPlainSubheading(cur, lines[i + 1]) &&
           !isDefinitionOrMetaLine(cur) &&
@@ -1282,90 +1088,6 @@ function parseBlocks(
   return { classIntro, blocks };
 }
 
-function renderListItem(
-  item: string,
-  highlightQuery?: string,
-  options: RichTextOptions = {}
-): React.ReactNode {
-  // Highlight leading "Term - description" or "Term: description" cleanly
-  const colonOrDash = item.match(/^([^—:\-]{2,36}?)\s*(:|\s-\s)\s*(.+)$/);
-  if (colonOrDash && !/^\*\*/.test(item)) {
-    const [, term, sep, rest] = colonOrDash;
-    return (
-      <>
-        <strong className="font-semibold" style={{ color: 'var(--rev-text-bright)' }}>
-          <AttributeColoredText
-            text={term}
-            query={highlightQuery}
-            enableAttributeColors={options.colorAttributes ?? true}
-            enableSeasonColors={options.enableSeasonColors ?? true}
-            enableConvictionColors={options.enableConvictionColors ?? false}
-            keywordMode={options.keywordMode ?? 'prose'}
-            allowStealthStatusInProse={options.allowStealthStatusInProse ?? false}
-          />
-        </strong>
-        <span style={{ color: 'var(--rev-text-muted)' }}>
-          {sep === ':' ? ': ' : ' — '}
-        </span>
-        {renderInline(rest, highlightQuery, options)}
-      </>
-    );
-  }
-  return renderInline(item, highlightQuery, options);
-}
-
-function renderAbilityEffect(
-  effectLines: string[],
-  highlightQuery?: string,
-  enableConvictionColors = false
-): React.ReactNode {
-  const joined = effectLines
-    .join(' ')
-    .trim()
-    .replace(/^\*\*(?:Effect|Effects):\*\*\s*/i, '')
-    .replace(/^(?:Effect|Effects):\s*/i, '')
-    .trim();
-  if (!joined) return null;
-
-  const effectOpts: RichTextOptions = {
-    colorAttributes: true,
-    enableSeasonColors: true,
-    enableConvictionColors,
-    keywordMode: 'effect',
-    allowStealthStatusInProse: true,
-  };
-
-  if (joined.includes(' ● ')) {
-    const [lead, ...bulletParts] = joined.split(/\s+●\s+/);
-    return (
-      <div className="space-y-1.5">
-        {lead && (
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--rev-text)' }}>
-            {renderInline(lead, highlightQuery, effectOpts)}
-          </p>
-        )}
-        <ul className="space-y-1 pl-4">
-          {bulletParts.map((item, idx) => (
-            <li
-              key={idx}
-              className="text-sm leading-relaxed list-disc"
-              style={{ color: 'var(--rev-text)' }}
-            >
-              {renderInline(item, highlightQuery, effectOpts)}
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
-  return (
-    <p className="text-sm leading-relaxed" style={{ color: 'var(--rev-text)' }}>
-      {renderInline(joined, highlightQuery, effectOpts)}
-    </p>
-  );
-}
-
 export const RulesMarkdownRenderer: React.FC<RulesMarkdownRendererProps> = ({
   markdown,
   sectionId,
@@ -1379,7 +1101,7 @@ export const RulesMarkdownRenderer: React.FC<RulesMarkdownRendererProps> = ({
 
   const isConvictionSection = sectionId === 'the-seasons' || sectionId === 'convictions';
   const isStatusSection = sectionId === 'status-effects';
-  const proseKeywordMode: KeywordMatchMode = isStatusSection ? 'effect' : 'prose';
+  const proseKeywordMode: KeywordMatchMode = isStatusSection ? 'effect' : 'off';
   const proseOptions: RichTextOptions = {
     colorAttributes: true,
     enableSeasonColors: true,
@@ -1438,7 +1160,7 @@ export const RulesMarkdownRenderer: React.FC<RulesMarkdownRendererProps> = ({
               query={highlightQuery}
               enableAttributeColors
               enableSeasonColors
-              keywordMode="prose"
+              keywordMode="off"
             />
           </p>
 
@@ -1524,6 +1246,31 @@ export const RulesMarkdownRenderer: React.FC<RulesMarkdownRendererProps> = ({
                   keywordMode="off"
                 />
               </h4>
+            );
+
+          case 'minorTitle':
+            return (
+              <div key={idx}>
+                <h4
+                  className="text-sm sm:text-base font-bold tracking-wide pt-2"
+                  style={{ color: 'var(--rev-text-bright)' }}
+                >
+                  {block.title}
+                </h4>
+                {block.names.length > 0 && (
+                  <ul className="space-y-2 pl-5 my-2">
+                    {block.names.map((name) => (
+                      <li
+                        key={name}
+                        className="list-disc text-[15px] leading-[1.7]"
+                        style={{ color: 'var(--rev-text)' }}
+                      >
+                        {renderListItem(name, highlightQuery, proseOptions)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             );
 
           case 'hr':
@@ -1879,7 +1626,7 @@ export const RulesMarkdownRenderer: React.FC<RulesMarkdownRendererProps> = ({
                       query={highlightQuery}
                       enableAttributeColors
                       enableSeasonColors
-                      keywordMode="prose"
+                      keywordMode="off"
                     />
                   </p>
                 </div>
@@ -1907,7 +1654,7 @@ export const RulesMarkdownRenderer: React.FC<RulesMarkdownRendererProps> = ({
                             query={highlightQuery}
                             enableAttributeColors
                             enableSeasonColors
-                            keywordMode="prose"
+                            keywordMode="off"
                           />
                         </span>
                       )}

@@ -79,7 +79,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
     const stats = [];
     if (isArmour && (armourCat || data.subtype)) stats.push({ label: 'Category', value: armourCat || data.subtype, color: 'text-gray-200' });
     if (data.ap !== undefined) stats.push({ label: 'AP', value: data.ap, color: 'text-cyan-400' });
-    if (resistsVal) stats.push({ label: 'Resists', value: resistsVal, color: 'text-amber-300' });
+    if (resistsVal) stats.push({ label: 'Resists', value: <KeywordText text={resistsVal} mode="effect" />, color: 'text-amber-300' });
     if (reqDisplay) stats.push({ label: 'Requires', value: reqDisplay, color: isArmour && !meetsCarry ? 'rev-keep-color text-red-400' : 'text-gray-300' });
     if (data.dmg) stats.push({ label: 'Damage', value: data.dmg, color: 'text-red-400' });
     if (data.range) stats.push({ label: 'Range', value: data.range, color: 'text-green-400' });
@@ -103,7 +103,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
               ? 'rev-keep-color bg-red-950/40 border-red-800/80 text-red-300'
               : 'bg-black/30 border-gray-700 text-gray-300'
           }`}>
-            <div>{ARMOUR_CATEGORY_RULES[armourCat].summary}</div>
+            <div><KeywordText text={ARMOUR_CATEGORY_RULES[armourCat].summary} mode="effect" /></div>
             {!meetsCarry && (
               <div className="font-bold text-red-400 mt-0.5">
                 Carry {reqCarry} unmet ({carryRank}/{reqCarry}): -{combatPenalty} combat rolls, -1 tile movement.
@@ -223,7 +223,7 @@ export default function LoadoutCard({ char, patch, onOpenInventory }: { char: Ch
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-sm p-4 flex flex-col h-full overflow-hidden">
       <div className="border-b border-gray-700 pb-3 mb-3 shrink-0 flex justify-between items-center">
-        <h2 className="text-xl font-spectral first-letter:font-cinzelDeco first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Loadout</h2>
+        <h2 className="text-xl font-spectral first-letter:text-[1.2em] first-letter:text-red-500 truncate text-gray-200">Loadout</h2>
         <button onClick={onOpenInventory} className="text-xs font-bold text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-3 py-1.5 rounded transition-colors active:opacity-60">
           Open Inventory
         </button>
